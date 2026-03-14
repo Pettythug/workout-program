@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Workout Program</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F6F3;
+      --surface: #FFFFFF;
+      --border: #E8E6E1;
+      --text: #1A1916;
+      --muted: #8A887F;
+      --accent: #2D5BE3;
+      --accent-light: #EEF2FF;
+      --success: #1A7A4A;
+      --success-light: #EDFAF3;
+      --warning: #B45309;
+      --warning-light: #FEF3C7;
+      --push: #2D5BE3;
+      --pull: #7C3AED;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0 0 80px;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .header-left p {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1px;
+      font-family: var(--mono);
+    }
+
+    .workout-badge {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    .badge-push {
+      background: var(--accent-light);
+      color: var(--push);
+    }
+
+    .badge-pull {
+      background: #F3EEFF;
+      color: var(--pull);
+    }
+
+    /* MAIN */
+    .main { padding: 16px 16px 0; max-width: 480px; margin: 0 auto; }
+
+    /* WORKOUT INFO BAR */
+    .info-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .info-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+    }
+
+    .info-item .label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-family: var(--mono);
+    }
+
+    .info-item .value {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 2px;
+      font-family: var(--mono);
+      color: var(--accent);
+    }
+
+    /* EXERCISE CARDS */
+    .section-label {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+      padding-left: 2px;
+    }
+
+    .exercise-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+    }
+
+    .exercise-card.completed {
+      opacity: 0.6;
+      border-color: var(--success);
+    }
+
+    .exercise-header {
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .exercise-header:active { background: var(--bg); }
+
+    .exercise-info { flex: 1; }
+
+    .exercise-category {
+      font-size: 10px;
+      font-family: var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+    }
+
+    .exercise-name {
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+    }
+
+    .exercise-max {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .exercise-max span {
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .expand-icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+
+    .exercise-card.open .expand-icon { transform: rotate(180deg); }
+
+    /* SET LOGGER */
+    .set-logger {
+      display: none;
+      border-top: 1px solid var(--border);
+      padding: 14px 16px;
+      background: var(--bg);
+    }
+
+    .exercise-card.open .set-logger { display: block; }
+
+    .sets-list { margin-bottom: 12px; }
+
+    .set-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .set-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      width: 20px;
+      flex-shrink: 0;
+    }
+
+    .set-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .set-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--text);
+      text-align: center;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .set-input:focus { border-color: var(--accent); }
+
+    .set-input::placeholder { color: var(--muted); font-size: 11px; }
+
+    .set-separator {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .set-log-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: var(--sans);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+
+    .set-log-btn:active { opacity: 0.8; }
+
+    .set-log-btn.logged {
+      background: var(--success-light);
+      color: var(--success);
+    }
+
+    .rep-range-hint {
+      font-size: 11px;
+      font-family: var(--mono);
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .rep-range-hint strong { color: var(--accent); }
+
+    /* NEW MAX INDICATOR */
+    .new-max-banner {
+      background: var(--warning-light);
+      border: 1px solid #FDE68A;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--warning);
+      font-family: var(--mono);
+      margin-top: 8px;
+      display: none;
+    }
+
+    /* COMPLETE WORKOUT BUTTON */
+    .complete-btn {
+      width: 100%;
+      background: var(--text);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      padding: 16px;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 16px;
+      letter-spacing: -0.2px;
+      transition: opacity 0.15s;
+    }
+
+    .complete-btn:active { opacity: 0.85; }
+    .complete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* LOADING & ERROR */
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .loading-dot {
+      display: inline-block;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.3; }
+      40% { opacity: 1; }
+    }
+
+    .error-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #DC2626;
+      font-size: 13px;
+    }
+
+    /* SUCCESS STATE */
+    .success-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .success-state .check {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .success-state h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .success-state p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* CONFIG SCREEN */
+    .config-screen {
+      padding: 40px 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .config-screen h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: -0.4px;
+    }
+
+    .config-screen p {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    .config-label {
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .config-input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      margin-bottom: 20px;
+    }
+
+    .config-input:focus { border-color: var(--accent); }
+
+    .config-btn {
+      width: 100%;
+      background: var(--text);
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .config-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 12px;
+      text-align: center;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN (shown if no API URL saved) -->
+<div id="configScreen" style="display:none;">
+  <div class="config-screen">
+    <h2>Setup</h2>
+    <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
+    <div class="config-label">Deployment URL</div>
+    <input type="text" class="config-input" id="apiUrlInput" placeholder="https://script.google.com/macros/s/..." />
+    <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
+    <p class="config-note">This is saved locally on your device only.</p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <div class="header">
+    <div class="header-left">
+      <h1>Today's Workout</h1>
+      <p id="headerSub">Loading...</p>
+    </div>
+    <div id="workoutBadge" class="workout-badge"></div>
+  </div>
+
+  <div class="main">
+    <div id="loadingState" class="loading">
+      <span class="loading-dot">●</span>
+      <span class="loading-dot">●</span>
+      <span class="loading-dot">●</span>
+    </div>
+
+    <div id="errorState" class="error-state" style="display:none;"></div>
+    <div id="successState" class="success-state" style="display:none;">
+      <div class="check">✓</div>
+      <h2>Workout Complete!</h2>
+      <p>Great work. Come back for your next session.</p>
+    </div>
+
+    <div id="workoutContent" style="display:none;">
+      <div class="info-bar">
+        <div class="info-item">
+          <div class="label">Workout</div>
+          <div class="value" id="infoWorkoutNum">—</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Reps</div>
+          <div class="value" id="infoRepRange">—</div>
+        </div>
+        <div class="info-item">
+          <div class="label">Sets</div>
+          <div class="value">3</div>
+        </div>
+      </div>
+
+      <div class="section-label">Exercises</div>
+      <div id="exerciseList"></div>
+
+      <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
+        Complete Workout
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'workout_api_url';
+  let API_URL = '';
+  let currentWorkout = null;
+  let loggedSets = {};
+  let currentMaxes = {};
+
+  // ── INIT ──────────────────────────────────────────────
+  function init() {
+    API_URL = localStorage.getItem(STORAGE_KEY) || '';
+    if (!API_URL) {
+      document.getElementById('configScreen').style.display = 'block';
+    } else {
+      document.getElementById('app').style.display = 'block';
+      loadWorkout();
+    }
+  }
+
+  function saveConfig() {
+    const url = document.getElementById('apiUrlInput').value.trim();
+    if (!url) return;
+    localStorage.setItem(STORAGE_KEY, url);
+    API_URL = url;
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadWorkout();
+  }
+
+  // ── LOAD WORKOUT ──────────────────────────────────────
+  async function loadWorkout() {
+    showLoading();
+    try {
+      const res = await fetch(`${API_URL}?action=getNextWorkout`);
+      const workout = await res.json();
+
+      if (workout.error) {
+        showError(workout.error);
+        return;
+      }
+
+      currentWorkout = workout;
+      const exercises = getExerciseList(workout);
+      loggedSets = {};
+      exercises.forEach(e => { loggedSets[e.name] = []; });
+
+      // Load maxes
+      const exNames = exercises.map(e => e.name).join(',');
+      const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(exNames)}`);
+      currentMaxes = await maxRes.json();
+
+      renderWorkout(workout, exercises);
+    } catch (err) {
+      showError('Could not connect to your sheet. Check your URL in settings.');
+    }
+  }
+
+  function getExerciseList(w) {
+    const isPush = w.type === 'Push';
+    return [
+      { name: w.explosive, category: 'Explosive' },
+      { name: w.kneeHip, category: isPush ? 'Knee Dominant' : 'Hip Dominant' },
+      { name: w.vertPushPull, category: isPush ? 'Vertical Push' : 'Vertical Pull' },
+      { name: w.horizPushPull, category: isPush ? 'Horizontal Push' : 'Horizontal Pull' },
+      { name: w.core, category: isPush ? 'Rotational Core' : 'Plank Core' },
+    ];
+  }
+
+  // ── RENDER ────────────────────────────────────────────
+  function renderWorkout(workout, exercises) {
+    document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
+    
+    const badge = document.getElementById('workoutBadge');
+    badge.textContent = workout.type;
+    badge.className = `workout-badge badge-${workout.type.toLowerCase()}`;
+
+    document.getElementById('infoWorkoutNum').textContent = workout.workoutNum;
+    document.getElementById('infoRepRange').textContent = workout.repRange;
+
+    const list = document.getElementById('exerciseList');
+    list.innerHTML = '';
+
+    exercises.forEach((ex, idx) => {
+      const maxData = currentMaxes[ex.name] || {};
+      const currentMax = maxData[workout.repRange] || '';
+
+      const card = document.createElement('div');
+      card.className = 'exercise-card';
+      card.id = `card-${idx}`;
+
+      card.innerHTML = `
+        <div class="exercise-header" onclick="toggleCard(${idx})">
+          <div class="exercise-info">
+            <div class="exercise-category">${ex.category}</div>
+            <div class="exercise-name">${ex.name}</div>
+            <div class="exercise-max">
+              ${workout.repRange} max: <span>${currentMax || '—'}</span>
+            </div>
+          </div>
+          <div class="expand-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="set-logger">
+          <div class="rep-range-hint">Target: <strong>${workout.repRange} reps</strong></div>
+          <div class="sets-list">
+            ${[1,2,3].map(s => `
+              <div class="set-row" id="setrow-${idx}-${s}">
+                <div class="set-num">${s}</div>
+                <div class="set-input-group">
+                  <input type="number" class="set-input" id="reps-${idx}-${s}" placeholder="reps" min="1" max="99">
+                  <span class="set-separator">×</span>
+                  <input type="number" class="set-input" id="weight-${idx}-${s}" placeholder="lbs" min="0" max="9999">
+                </div>
+                <button class="set-log-btn" id="logbtn-${idx}-${s}" onclick="logSet(${idx}, ${s}, '${ex.name}')">Log</button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="new-max-banner" id="maxbanner-${idx}"></div>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    hideLoading();
+    document.getElementById('workoutContent').style.display = 'block';
+  }
+
+  // ── CARD TOGGLE ───────────────────────────────────────
+  function toggleCard(idx) {
+    const card = document.getElementById(`card-${idx}`);
+    card.classList.toggle('open');
+  }
+
+  // ── LOG SET ───────────────────────────────────────────
+  async function logSet(cardIdx, setNum, exerciseName) {
+    const reps = parseInt(document.getElementById(`reps-${cardIdx}-${setNum}`).value);
+    const weight = parseFloat(document.getElementById(`weight-${cardIdx}-${setNum}`).value);
+
+    if (!reps || isNaN(weight)) {
+      alert('Please enter reps and weight.');
+      return;
+    }
+
+    const btn = document.getElementById(`logbtn-${cardIdx}-${setNum}`);
+    btn.textContent = '✓';
+    btn.classList.add('logged');
+    btn.disabled = true;
+
+    // Determine which rep range this set belongs to
+    const setRepRange = getRangeForReps(reps);
+
+    // Log to sheet
+    await fetch(`${API_URL}?action=logSet&workoutNum=${currentWorkout.workoutNum}&exercise=${encodeURIComponent(exerciseName)}&setNum=${setNum}&reps=${reps}&weight=${weight}&repRange=${encodeURIComponent(setRepRange)}`);
+
+    // Track logged sets
+    if (!loggedSets[exerciseName]) loggedSets[exerciseName] = [];
+    loggedSets[exerciseName].push({ reps, weight, repRange: setRepRange });
+
+    // Check for new max
+    await checkAndUpdateMax(cardIdx, exerciseName, reps, weight, setRepRange);
+
+    // Check if exercise is done (all 3 sets logged)
+    if (loggedSets[exerciseName].length >= 3) {
+      document.getElementById(`card-${cardIdx}`).classList.add('completed');
+    }
+
+    // Check if all exercises done
+    checkAllComplete();
+  }
+
+  function getRangeForReps(reps) {
+    if (reps <= 3) return '1-3';
+    if (reps <= 7) return '4-7';
+    if (reps <= 12) return '8-12';
+    return '15-20';
+  }
+
+  async function checkAndUpdateMax(cardIdx, exerciseName, reps, weight, repRange) {
+    const existingMax = currentMaxes[exerciseName]?.[repRange] || '';
+    let isNew = false;
+
+    if (!existingMax) {
+      isNew = true;
+    } else {
+      const parts = existingMax.split('x');
+      const existingWeight = parseFloat(parts[1]);
+      if (weight > existingWeight) isNew = true;
+    }
+
+    if (isNew) {
+      const newMax = `${reps}x${weight}`;
+      await fetch(`${API_URL}?action=updateMax&exercise=${encodeURIComponent(exerciseName)}&repRange=${encodeURIComponent(repRange)}&newMax=${encodeURIComponent(newMax)}`);
+
+      // Update local maxes
+      if (!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
+      currentMaxes[exerciseName][repRange] = newMax;
+
+      // Show banner
+      const banner = document.getElementById(`maxbanner-${cardIdx}`);
+      banner.style.display = 'block';
+      banner.textContent = `🏆 New ${repRange} max: ${newMax}`;
+
+      // Update displayed max if same range as workout
+      if (repRange === currentWorkout.repRange) {
+        const card = document.getElementById(`card-${cardIdx}`);
+        card.querySelector('.exercise-max span').textContent = newMax;
+      }
+    }
+  }
+
+  function checkAllComplete() {
+    const exercises = getExerciseList(currentWorkout);
+    const allDone = exercises.every(ex => (loggedSets[ex.name] || []).length >= 3);
+    document.getElementById('completeBtn').disabled = !allDone;
+  }
+
+  // ── COMPLETE WORKOUT ──────────────────────────────────
+  async function completeWorkout() {
+    const btn = document.getElementById('completeBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    await fetch(`${API_URL}?action=completeWorkout&workoutNum=${currentWorkout.workoutNum}`);
+
+    document.getElementById('workoutContent').style.display = 'none';
+    document.getElementById('successState').style.display = 'block';
+  }
+
+  // ── UI HELPERS ────────────────────────────────────────
+  function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('workoutContent').style.display = 'none';
+  }
+
+  function hideLoading() {
+    document.getElementById('loadingState').style.display = 'none';
+  }
+
+  function showError(msg) {
+    hideLoading();
+    const el = document.getElementById('errorState');
+    el.style.display = 'block';
+    el.textContent = msg;
+  }
+
+  init();
+</script>
+</body>
+</html>
