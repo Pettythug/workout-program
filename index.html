@@ -293,9 +293,12 @@
               </div>
             </div>
             <div class="new-max-banner" id="acc-maxbanner"></div>
+            <div class="exercise-actions">
+              <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
+            </div>
           </div>
         </div>
-        <button class="more-time-btn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
+        <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
       </div>
 
     </div>
@@ -532,6 +535,14 @@
     await fetch(`${API_URL}?action=completeWorkout&workoutNum=${currentWorkout.workoutNum}`);
     document.getElementById('workoutContent').style.display = 'none';
     document.getElementById('successState').style.display = 'block';
+  }
+
+  function markAccessoryDone() {
+    const card = document.getElementById('accessoryCard');
+    card.classList.remove('open');
+    card.classList.add('done');
+    document.getElementById('accessoryLogger').style.display = 'none';
+    document.getElementById('suggestDiffBtn').style.display = 'none';
   }
 
   async function getAccessory() {
