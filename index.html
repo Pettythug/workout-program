@@ -425,13 +425,39 @@
       cursor: pointer;
     }
 
-    .config-note {
-      font-size: 11px;
+    .more-time-btn {
+      width: 100%;
+      background: transparent;
       color: var(--muted);
-      margin-top: 12px;
-      text-align: center;
-      font-family: var(--mono);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      font-family: var(--sans);
+      font-size: 13px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.15s;
     }
+
+    .more-time-btn:active { background: var(--bg); }
+
+    .got-more-btn {
+      width: 100%;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent-light);
+      border-radius: var(--radius);
+      padding: 14px;
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: all 0.15s;
+    }
+
+    .got-more-btn:active { background: var(--accent-light); }
+  </style>
   </style>
 </head>
 <body>
@@ -494,6 +520,48 @@
       <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
         Complete Workout
       </button>
+
+      <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
+        + Got more time? Suggest an accessory
+      </button>
+
+      <!-- ACCESSORY SECTION -->
+      <div id="accessorySection" style="display:none; margin-top: 16px;">
+        <div class="section-label">Accessory — Optional</div>
+        <div id="accessoryCard" class="exercise-card">
+          <div class="exercise-header" onclick="toggleCard('accessory')">
+            <div class="exercise-info">
+              <div class="exercise-category">Accessory</div>
+              <div class="exercise-name" id="accessoryName">—</div>
+              <div class="exercise-max" id="accessoryMax"></div>
+            </div>
+            <div class="expand-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <div class="set-logger">
+            <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
+            <div class="sets-list">
+              ${[1,2,3].map(s => `
+                <div class="set-row">
+                  <div class="set-num">${s}</div>
+                  <div class="set-input-group">
+                    <input type="number" class="set-input" id="acc-reps-${s}" placeholder="reps" min="1" max="99">
+                    <span class="set-separator">×</span>
+                    <input type="number" class="set-input" id="acc-weight-${s}" placeholder="lbs" min="0" max="9999">
+                  </div>
+                  <button class="set-log-btn" id="acc-logbtn-${s}" onclick="logAccessorySet(${s})">Log</button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="new-max-banner" id="acc-maxbanner"></div>
+          </div>
+        </div>
+        <button class="more-time-btn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
+      </div>
+
     </div>
   </div>
 </div>
@@ -714,9 +782,87 @@
     const exercises = getExerciseList(currentWorkout);
     const allDone = exercises.every(ex => (loggedSets[ex.name] || []).length >= 3);
     document.getElementById('completeBtn').disabled = !allDone;
+    if (allDone) {
+      document.getElementById('gotMoreBtn').style.display = 'block';
+    }
   }
 
-  // ── COMPLETE WORKOUT ──────────────────────────────────
+  // ── ACCESSORY ─────────────────────────────────────────
+  let currentAccessory = null;
+
+  async function getAccessory() {
+    document.getElementById('gotMoreBtn').style.display = 'none';
+    document.getElementById('accessorySection').style.display = 'block';
+    document.getElementById('accessoryName').textContent = '...';
+
+    try {
+      const res = await fetch(`${API_URL}?action=getAccessoryExercise`);
+      const data = await res.json();
+      currentAccessory = data.exercise;
+
+      document.getElementById('accessoryName').textContent = currentAccessory;
+      document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
+
+      // Load max for this exercise
+      const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(currentAccessory)}`);
+      const maxData = await maxRes.json();
+      const max = maxData[currentAccessory]?.[currentWorkout.repRange] || '—';
+      document.getElementById('accessoryMax').innerHTML = `${currentWorkout.repRange} max: <span style="color:var(--accent);font-weight:500">${max}</span>`;
+
+      // Reset set inputs
+      [1,2,3].forEach(s => {
+        document.getElementById(`acc-reps-${s}`).value = '';
+        document.getElementById(`acc-weight-${s}`).value = '';
+        const btn = document.getElementById(`acc-logbtn-${s}`);
+        btn.textContent = 'Log';
+        btn.classList.remove('logged');
+        btn.disabled = false;
+      });
+      document.getElementById('acc-maxbanner').style.display = 'none';
+
+    } catch (err) {
+      document.getElementById('accessoryName').textContent = 'Could not load exercise';
+    }
+  }
+
+  function toggleCard(idx) {
+    const card = idx === 'accessory'
+      ? document.getElementById('accessoryCard')
+      : document.getElementById(`card-${idx}`);
+    card.classList.toggle('open');
+  }
+
+  async function logAccessorySet(setNum) {
+    const reps = parseInt(document.getElementById(`acc-reps-${setNum}`).value);
+    const weight = parseFloat(document.getElementById(`acc-weight-${setNum}`).value);
+
+    if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+
+    const btn = document.getElementById(`acc-logbtn-${setNum}`);
+    btn.textContent = '✓';
+    btn.classList.add('logged');
+    btn.disabled = true;
+
+    const setRepRange = getRangeForReps(reps);
+    await fetch(`${API_URL}?action=logSet&workoutNum=${currentWorkout.workoutNum}&exercise=${encodeURIComponent(currentAccessory)}&setNum=${setNum}&reps=${reps}&weight=${weight}&repRange=${encodeURIComponent(setRepRange)}`);
+
+    // Check max
+    const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(currentAccessory)}`);
+    const maxData = await maxRes.json();
+    const existingMax = maxData[currentAccessory]?.[setRepRange] || '';
+    let isNew = !existingMax;
+    if (!isNew) {
+      const existingWeight = parseFloat(existingMax.split('x')[1]);
+      if (weight > existingWeight) isNew = true;
+    }
+    if (isNew) {
+      const newMax = `${reps}x${weight}`;
+      await fetch(`${API_URL}?action=updateMax&exercise=${encodeURIComponent(currentAccessory)}&repRange=${encodeURIComponent(setRepRange)}&newMax=${encodeURIComponent(newMax)}`);
+      const banner = document.getElementById('acc-maxbanner');
+      banner.style.display = 'block';
+      banner.textContent = `🏆 New ${setRepRange} max: ${newMax}`;
+    }
+  }
   async function completeWorkout() {
     const btn = document.getElementById('completeBtn');
     btn.disabled = true;
