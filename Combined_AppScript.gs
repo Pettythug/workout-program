@@ -52,7 +52,7 @@ const WORKOUT_BUILDER_ACTIONS = new Set([
  * - Otherwise → returns GymLog history + best data for index.html.
  */
 function doGet(e) {
-  const action = e.parameter.action;
+  const action = e?.parameter?.action;  // guard: e is undefined when run from the editor
 
   // ── Workout Builder routes (original_index.html) ──────────────────────────
   if (action === "getNextWorkout")       return wb_getNextWorkout();
@@ -108,11 +108,9 @@ function getOrCreateSheet(name, headers) {
 }
 
 function cors(output) {
-  return output
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*")
-    .setHeader("Access-Control-Allow-Methods", "GET, POST")
-    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+  // Note: ContentService.TextOutput does not support setHeader().
+  // Google automatically adds CORS headers for web apps deployed as "Anyone".
+  return output.setMimeType(ContentService.MimeType.JSON);
 }
 
 function ok(data) {
