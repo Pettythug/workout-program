@@ -158,7 +158,7 @@
     }
 
     async function sheetsPost(payload) {
-      // Apps Script POST redirect (302) causes browsers to silently drop the request body.
+      // Apps Script POST redirect (302) silently drops the request body.
       // Workaround: tunnel writes through GET with URL-encoded payload param.
       const encoded = encodeURIComponent(JSON.stringify(payload));
       const res = await fetch(SCRIPT_URL + '?payload=' + encoded);
@@ -238,9 +238,6 @@
               setExercises(merged);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
             }
-            // Auto-syncAll on first empty-sheet load is skipped: 51-exercise payload
-            // exceeds URL length limits in the GET-workaround approach.
-            // The sheet fills naturally as the user logs sets via individual logSet calls.
             setSyncStatus("ok");
           } catch {
             setSyncStatus("error");
