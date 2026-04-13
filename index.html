@@ -1,626 +1,653 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Workout Program</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0c0c0c" />
+  <title>GYM LOG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --bg: #F7F6F3;
-      --surface: #FFFFFF;
-      --border: #E8E6E1;
-      --text: #1A1916;
-      --muted: #8A887F;
-      --accent: #2D5BE3;
-      --accent-light: #EEF2FF;
-      --success: #1A7A4A;
-      --success-light: #EDFAF3;
-      --warning: #B45309;
-      --warning-light: #FEF3C7;
-      --skip: #6B7280;
-      --skip-light: #F3F4F6;
-      --push: #2D5BE3;
-      --pull: #7C3AED;
-      --mono: 'DM Mono', monospace;
-      --sans: 'DM Sans', sans-serif;
-      --radius: 12px;
-      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
+    html,
     body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 0 0 80px;
+      height: 100%;
+      background: #0c0c0c;
+      overflow: hidden;
     }
 
-    .header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 16px 20px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    #root {
+      height: 100%;
     }
 
-    .header-left h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-    .header-left p { font-size: 12px; color: var(--muted); margin-top: 1px; font-family: var(--mono); }
-    .header-right { display: flex; align-items: center; gap: 8px; }
-
-    .workout-badge { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
-    .badge-push { background: var(--accent-light); color: var(--push); }
-    .badge-pull { background: #F3EEFF; color: var(--pull); }
-
-    .settings-btn {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 16px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
-    .main { padding: 16px 16px 0; max-width: 480px; margin: 0 auto; }
-
-    .info-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
-
-    .info-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center; }
-    .info-item .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--mono); }
-    .info-item .value { font-size: 18px; font-weight: 600; margin-top: 2px; font-family: var(--mono); color: var(--accent); }
-
-    .section-label { font-size: 11px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; padding-left: 2px; }
-
-    .exercise-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; box-shadow: var(--shadow); transition: all 0.2s ease; }
-    .exercise-card.done { opacity: 0.6; border-color: var(--success); }
-    .exercise-card.skipped { opacity: 0.5; border-color: var(--skip); }
-
-    .exercise-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
-    .exercise-header:active { background: var(--bg); }
-    .exercise-info { flex: 1; }
-    .exercise-category { font-size: 10px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
-    .exercise-name { font-size: 15px; font-weight: 500; letter-spacing: -0.2px; }
-    .exercise-max { font-size: 11px; font-family: var(--mono); color: var(--muted); margin-top: 3px; }
-    .exercise-max span { color: var(--accent); font-weight: 500; }
-    .exercise-status { font-size: 18px; margin-left: 8px; flex-shrink: 0; }
-
-    .expand-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; margin-left: 4px; }
-    .exercise-card.open .expand-icon { transform: rotate(180deg); }
-
-    .set-logger { display: none; border-top: 1px solid var(--border); padding: 14px 16px; background: var(--bg); }
-    .exercise-card.open .set-logger { display: block; }
-
-    .sets-list { margin-bottom: 12px; }
-    .set-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .set-num { font-family: var(--mono); font-size: 12px; color: var(--muted); width: 20px; flex-shrink: 0; }
-    .set-input-group { display: flex; align-items: center; gap: 6px; flex: 1; }
-
-    .set-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 14px; color: var(--text); text-align: center; outline: none; -webkit-appearance: none; }
-    .set-input:focus { border-color: var(--accent); }
-    .set-input::placeholder { color: var(--muted); font-size: 11px; }
-
-    .set-separator { font-size: 12px; color: var(--muted); font-family: var(--mono); }
-
-    .set-log-btn { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 8px 14px; font-family: var(--sans); font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0; transition: opacity 0.15s; }
-    .set-log-btn:active { opacity: 0.8; }
-    .set-log-btn.logged { background: var(--success-light); color: var(--success); }
-
-    .rep-range-hint { font-size: 11px; font-family: var(--mono); color: var(--muted); text-align: center; margin-bottom: 10px; }
-    .rep-range-hint strong { color: var(--accent); }
-
-    .new-max-banner { background: var(--warning-light); border: 1px solid #FDE68A; border-radius: 8px; padding: 8px 12px; font-size: 12px; color: var(--warning); font-family: var(--mono); margin-top: 8px; display: none; }
-
-    .exercise-actions { display: flex; gap: 8px; margin-top: 12px; }
-
-    .mark-done-btn { flex: 1; background: var(--success-light); color: var(--success); border: 1px solid #A7F3C9; border-radius: 8px; padding: 10px; font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-    .skip-btn { background: var(--skip-light); color: var(--skip); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
-    .mark-done-btn:active, .skip-btn:active { opacity: 0.7; }
-
-    .complete-btn { width: 100%; background: var(--text); color: white; border: none; border-radius: var(--radius); padding: 16px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 16px; letter-spacing: -0.2px; transition: opacity 0.15s; }
-    .complete-btn:active { opacity: 0.85; }
-    .complete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .got-more-btn { width: 100%; background: transparent; color: var(--accent); border: 1px solid var(--accent-light); border-radius: var(--radius); padding: 14px; font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 12px; transition: all 0.15s; }
-    .got-more-btn:active { background: var(--accent-light); }
-
-    .more-time-btn { width: 100%; background: transparent; color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; font-family: var(--sans); font-size: 13px; cursor: pointer; margin-top: 8px; transition: all 0.15s; }
-    .more-time-btn:active { background: var(--bg); }
-
-    .loading { text-align: center; padding: 60px 20px; color: var(--muted); font-family: var(--mono); font-size: 13px; }
-    .loading-dot { display: inline-block; animation: pulse 1.4s ease-in-out infinite; }
-    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
-
-    .error-state { text-align: center; padding: 40px 20px; color: #DC2626; font-size: 13px; }
-
-    .success-state { text-align: center; padding: 60px 20px; }
-    .success-state .check { font-size: 48px; margin-bottom: 12px; }
-    .success-state h2 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
-    .success-state p { color: var(--muted); font-size: 14px; }
-
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: flex-end; justify-content: center; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 480px; }
-    .modal h3 { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
-    .modal-label { font-size: 12px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: var(--text); outline: none; margin-bottom: 16px; }
-    .modal-input:focus { border-color: var(--accent); }
-    .modal-save-btn { width: 100%; background: var(--text); color: white; border: none; border-radius: var(--radius); padding: 14px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px; }
-    .modal-cancel-btn { width: 100%; background: transparent; color: var(--muted); border: none; padding: 10px; font-family: var(--sans); font-size: 14px; cursor: pointer; }
-
-    .config-screen { padding: 40px 20px; max-width: 480px; margin: 0 auto; }
-    .config-screen h2 { font-size: 22px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.4px; }
-    .config-screen p { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
-    .config-label { font-size: 12px; font-family: var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
-    .config-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-family: var(--mono); font-size: 13px; color: var(--text); outline: none; margin-bottom: 20px; }
-    .config-input:focus { border-color: var(--accent); }
-    .config-btn { width: 100%; background: var(--text); color: white; border: none; border-radius: var(--radius); padding: 14px; font-family: var(--sans); font-size: 15px; font-weight: 600; cursor: pointer; }
-    .config-note { font-size: 11px; color: var(--muted); margin-top: 12px; text-align: center; font-family: var(--mono); }
-  </style>
-</head>
-<body>
-
-<!-- CONFIG SCREEN -->
-<div id="configScreen" style="display:none;">
-  <div class="config-screen">
-    <h2>Setup</h2>
-    <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
-    <div class="config-label">Deployment URL</div>
-    <input type="text" class="config-input" id="apiUrlInput" placeholder="https://script.google.com/macros/s/..." />
-    <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
-    <p class="config-note">Saved locally on your device only.</p>
-  </div>
-</div>
-
-<!-- SETTINGS MODAL -->
-<div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
-  <div class="modal">
-    <h3>Settings</h3>
-    <div class="modal-label">Apps Script URL</div>
-    <input type="text" class="modal-input" id="settingsUrlInput" placeholder="https://script.google.com/macros/s/..." />
-    <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
-    <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
-  </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app" style="display:none;">
-  <div class="header">
-    <div class="header-left">
-      <h1>Today's Workout</h1>
-      <p id="headerSub">Loading...</p>
-    </div>
-    <div class="header-right">
-      <div id="workoutBadge" class="workout-badge"></div>
-      <button class="settings-btn" onclick="openSettings()">⚙️</button>
-    </div>
-  </div>
-
-  <div class="main">
-    <div id="loadingState" class="loading">
-      <span class="loading-dot">●</span>
-      <span class="loading-dot">●</span>
-      <span class="loading-dot">●</span>
-    </div>
-
-    <div id="errorState" class="error-state" style="display:none;"></div>
-
-    <div id="successState" class="success-state" style="display:none;">
-      <div class="check">✓</div>
-      <h2>Workout Complete!</h2>
-      <p>Great work. Come back for your next session.</p>
-    </div>
-
-    <div id="workoutContent" style="display:none;">
-      <div class="info-bar">
-        <div class="info-item">
-          <div class="label">Workout</div>
-          <div class="value" id="infoWorkoutNum">—</div>
-        </div>
-        <div class="info-item">
-          <div class="label">Reps</div>
-          <div class="value" id="infoRepRange">—</div>
-        </div>
-        <div class="info-item">
-          <div class="label">Sets</div>
-          <div class="value">3</div>
-        </div>
-      </div>
-
-      <div class="section-label">Exercises</div>
-      <div id="exerciseList"></div>
-
-      <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
-        Complete Workout
-      </button>
-
-      <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
-        + Got more time? Suggest an accessory
-      </button>
-
-      <div id="accessorySection" style="display:none; margin-top: 16px;">
-        <div class="section-label">Accessory — Optional</div>
-        <div class="exercise-card" id="accessoryCard">
-          <div class="exercise-header" onclick="toggleAccessory()">
-            <div class="exercise-info">
-              <div class="exercise-category">Accessory</div>
-              <div class="exercise-name" id="accessoryName">—</div>
-              <div class="exercise-max" id="accessoryMax"></div>
-            </div>
-            <div class="expand-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-          </div>
-          <div class="set-logger" id="accessoryLogger" style="display:none;">
-            <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
-            <div class="sets-list">
-              <div class="set-row">
-                <div class="set-num">1</div>
-                <div class="set-input-group">
-                  <input type="number" class="set-input" id="acc-reps-1" placeholder="reps" min="1" max="99">
-                  <span class="set-separator">×</span>
-                  <input type="number" class="set-input" id="acc-weight-1" placeholder="lbs" min="0" max="9999">
-                </div>
-                <button class="set-log-btn" id="acc-logbtn-1" onclick="logAccessorySet(1)">Log</button>
-              </div>
-              <div class="set-row">
-                <div class="set-num">2</div>
-                <div class="set-input-group">
-                  <input type="number" class="set-input" id="acc-reps-2" placeholder="reps" min="1" max="99">
-                  <span class="set-separator">×</span>
-                  <input type="number" class="set-input" id="acc-weight-2" placeholder="lbs" min="0" max="9999">
-                </div>
-                <button class="set-log-btn" id="acc-logbtn-2" onclick="logAccessorySet(2)">Log</button>
-              </div>
-              <div class="set-row">
-                <div class="set-num">3</div>
-                <div class="set-input-group">
-                  <input type="number" class="set-input" id="acc-reps-3" placeholder="reps" min="1" max="99">
-                  <span class="set-separator">×</span>
-                  <input type="number" class="set-input" id="acc-weight-3" placeholder="lbs" min="0" max="9999">
-                </div>
-                <button class="set-log-btn" id="acc-logbtn-3" onclick="logAccessorySet(3)">Log</button>
-              </div>
-            </div>
-            <div class="new-max-banner" id="acc-maxbanner"></div>
-            <div class="exercise-actions">
-              <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
-            </div>
-          </div>
-        </div>
-        <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-  const STORAGE_KEY = 'workout_api_url';
-  let API_URL = '';
-  let currentWorkout = null;
-  let exerciseStatus = {};
-  let currentMaxes = {};
-  let currentAccessory = null;
-
-  function init() {
-    API_URL = localStorage.getItem(STORAGE_KEY) || '';
-    if (!API_URL) {
-      document.getElementById('configScreen').style.display = 'block';
-    } else {
-      document.getElementById('app').style.display = 'block';
-      loadWorkout();
-    }
-  }
-
-  function saveConfig() {
-    const url = document.getElementById('apiUrlInput').value.trim();
-    if (!url) return;
-    localStorage.setItem(STORAGE_KEY, url);
-    API_URL = url;
-    document.getElementById('configScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    loadWorkout();
-  }
-
-  function openSettings() {
-    document.getElementById('settingsUrlInput').value = API_URL;
-    document.getElementById('settingsModal').classList.add('open');
-  }
-
-  function closeSettingsModal() {
-    document.getElementById('settingsModal').classList.remove('open');
-  }
-
-  function closeSettings(e) {
-    if (e.target === document.getElementById('settingsModal')) closeSettingsModal();
-  }
-
-  function saveSettings() {
-    const url = document.getElementById('settingsUrlInput').value.trim();
-    if (!url) return;
-    localStorage.setItem(STORAGE_KEY, url);
-    API_URL = url;
-    closeSettingsModal();
-    loadWorkout();
-  }
-
-  async function loadWorkout() {
-    showLoading();
-    try {
-      const res = await fetch(`${API_URL}?action=getNextWorkout`);
-      const workout = await res.json();
-      if (workout.error) { showError(workout.error); return; }
-
-      currentWorkout = workout;
-      const exercises = getExerciseList(workout);
-      exerciseStatus = {};
-      exercises.forEach(e => { exerciseStatus[e.name] = 'pending'; });
-
-      const exNames = exercises.map(e => e.name).join(',');
-      const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(exNames)}`);
-      currentMaxes = await maxRes.json();
-
-      renderWorkout(workout, exercises);
-    } catch (err) {
-      showError('Could not connect to your sheet. Check your URL in settings.');
-    }
-  }
-
-  function getExerciseList(w) {
-    const isPush = w.type === 'Push';
-    return [
-      { name: w.explosive, category: 'Explosive' },
-      { name: w.kneeHip, category: isPush ? 'Knee Dominant' : 'Hip Dominant' },
-      { name: w.vertPushPull, category: isPush ? 'Vertical Push' : 'Vertical Pull' },
-      { name: w.horizPushPull, category: isPush ? 'Horizontal Push' : 'Horizontal Pull' },
-      { name: w.core, category: isPush ? 'Rotational Core' : 'Plank Core' },
-    ];
-  }
-
-  function renderWorkout(workout, exercises) {
-    document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
-    const badge = document.getElementById('workoutBadge');
-    badge.textContent = workout.type;
-    badge.className = `workout-badge badge-${workout.type.toLowerCase()}`;
-    document.getElementById('infoWorkoutNum').textContent = workout.workoutNum;
-    document.getElementById('infoRepRange').textContent = workout.repRange;
-
-    const list = document.getElementById('exerciseList');
-    list.innerHTML = '';
-
-    exercises.forEach((ex, idx) => {
-      const maxData = currentMaxes[ex.name] || {};
-      const currentMax = maxData[workout.repRange] || '—';
-
-      const card = document.createElement('div');
-      card.className = 'exercise-card';
-      card.id = `card-${idx}`;
-
-      card.innerHTML = `
-        <div class="exercise-header" onclick="toggleCard(${idx})">
-          <div class="exercise-info">
-            <div class="exercise-category">${ex.category}</div>
-            <div class="exercise-name">${ex.name}</div>
-            <div class="exercise-max">${workout.repRange} max: <span id="maxval-${idx}">${currentMax}</span></div>
-          </div>
-          <div class="exercise-status" id="status-icon-${idx}"></div>
-          <div class="expand-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </div>
-        <div class="set-logger">
-          <div class="rep-range-hint">Target: <strong>${workout.repRange} reps</strong></div>
-          <div class="sets-list">
-            ${[1,2,3].map(s => `
-              <div class="set-row">
-                <div class="set-num">${s}</div>
-                <div class="set-input-group">
-                  <input type="number" class="set-input" id="reps-${idx}-${s}" placeholder="reps" min="1" max="99">
-                  <span class="set-separator">×</span>
-                  <input type="number" class="set-input" id="weight-${idx}-${s}" placeholder="lbs" min="0" max="9999">
-                </div>
-                <button class="set-log-btn" id="logbtn-${idx}-${s}" onclick="logSet(${idx}, ${s}, '${ex.name}')">Log</button>
-              </div>
-            `).join('')}
-          </div>
-          <div class="new-max-banner" id="maxbanner-${idx}"></div>
-          <div class="exercise-actions">
-            <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name}')">✓ Mark Done</button>
-            <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name}')">Skip</button>
-          </div>
-        </div>
-      `;
-      list.appendChild(card);
-    });
-
-    hideLoading();
-    document.getElementById('workoutContent').style.display = 'block';
-  }
-
-  function toggleCard(idx) {
-    const card = document.getElementById(`card-${idx}`);
-    if (card.classList.contains('done') || card.classList.contains('skipped')) return;
-    card.classList.toggle('open');
-  }
-
-  function toggleAccessory() {
-    const logger = document.getElementById('accessoryLogger');
-    const card = document.getElementById('accessoryCard');
-    card.classList.toggle('open');
-    logger.style.display = card.classList.contains('open') ? 'block' : 'none';
-  }
-
-  async function logSet(cardIdx, setNum, exerciseName) {
-    const reps = parseInt(document.getElementById(`reps-${cardIdx}-${setNum}`).value);
-    const weight = parseFloat(document.getElementById(`weight-${cardIdx}-${setNum}`).value);
-    if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
-
-    const btn = document.getElementById(`logbtn-${cardIdx}-${setNum}`);
-    btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
-
-    const setRepRange = getRangeForReps(reps);
-    await fetch(`${API_URL}?action=logSet&workoutNum=${currentWorkout.workoutNum}&exercise=${encodeURIComponent(exerciseName)}&setNum=${setNum}&reps=${reps}&weight=${weight}&repRange=${encodeURIComponent(setRepRange)}`);
-    await checkAndUpdateMax(cardIdx, exerciseName, reps, weight, setRepRange);
-  }
-
-  function markDone(idx, exerciseName) {
-    exerciseStatus[exerciseName] = 'done';
-    const card = document.getElementById(`card-${idx}`);
-    card.classList.remove('open');
-    card.classList.add('done');
-    document.getElementById(`status-icon-${idx}`).textContent = '✓';
-    checkAllComplete();
-  }
-
-  function skipExercise(idx, exerciseName) {
-    exerciseStatus[exerciseName] = 'skipped';
-    const card = document.getElementById(`card-${idx}`);
-    card.classList.remove('open');
-    card.classList.add('skipped');
-    document.getElementById(`status-icon-${idx}`).textContent = '—';
-    checkAllComplete();
-  }
-
-  function checkAllComplete() {
-    const allResolved = Object.values(exerciseStatus).every(s => s === 'done' || s === 'skipped');
-    document.getElementById('completeBtn').disabled = !allResolved;
-    if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
-  }
-
-  function getRangeForReps(reps) {
-    if (reps <= 3) return '1-3';
-    if (reps <= 7) return '4-7';
-    if (reps <= 12) return '8-12';
-    return '15-20';
-  }
-
-  async function checkAndUpdateMax(cardIdx, exerciseName, reps, weight, repRange) {
-    const existingMax = currentMaxes[exerciseName]?.[repRange] || '';
-    let isNew = !existingMax || existingMax === '—';
-    if (!isNew) {
-      const existingWeight = parseFloat(existingMax.split('x')[1]);
-      if (weight > existingWeight) isNew = true;
-    }
-    if (isNew) {
-      const newMax = `${reps}x${weight}`;
-      await fetch(`${API_URL}?action=updateMax&exercise=${encodeURIComponent(exerciseName)}&repRange=${encodeURIComponent(repRange)}&newMax=${encodeURIComponent(newMax)}`);
-      if (!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
-      currentMaxes[exerciseName][repRange] = newMax;
-      const banner = document.getElementById(`maxbanner-${cardIdx}`);
-      if (banner) { banner.style.display = 'block'; banner.textContent = `🏆 New ${repRange} max: ${newMax}`; }
-      if (repRange === currentWorkout.repRange) {
-        const val = document.getElementById(`maxval-${cardIdx}`);
-        if (val) val.textContent = newMax;
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
     }
-  }
 
-  async function completeWorkout() {
-    const btn = document.getElementById('completeBtn');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    await fetch(`${API_URL}?action=completeWorkout&workoutNum=${currentWorkout.workoutNum}`);
-    document.getElementById('workoutContent').style.display = 'none';
-    document.getElementById('successState').style.display = 'block';
-  }
+    .spinner {
+      animation: spin 0.8s linear infinite;
+    }
 
-  function markAccessoryDone() {
-    const card = document.getElementById('accessoryCard');
-    card.classList.remove('open');
-    card.classList.add('done');
-    document.getElementById('accessoryLogger').style.display = 'none';
-    document.getElementById('suggestDiffBtn').style.display = 'none';
-  }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+    }
+  </style>
+</head>
 
-  async function getAccessory() {
-    document.getElementById('gotMoreBtn').style.display = 'none';
-    document.getElementById('accessorySection').style.display = 'block';
-    document.getElementById('accessoryName').textContent = '...';
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-    try {
-      const res = await fetch(`${API_URL}?action=getAccessoryExercise`);
-      const data = await res.json();
-      currentAccessory = data.exercise;
+    // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
+    const SCRIPT_URL = "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+    // ────────────────────────────────────────────────────────────────────────
 
-      document.getElementById('accessoryName').textContent = currentAccessory;
-      document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
+    const STORAGE_KEY = "gym-tracker-v3";
 
-      const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(currentAccessory)}`);
-      const maxData = await maxRes.json();
-      const max = maxData[currentAccessory]?.[currentWorkout.repRange] || '—';
-      document.getElementById('accessoryMax').innerHTML = `${currentWorkout.repRange} max: <span style="color:var(--accent);font-weight:500">${max}</span>`;
+    const REP_RANGES = [
+      { key: "r1_3", label: "1-3" },
+      { key: "r4_7", label: "4-7" },
+      { key: "r8_12", label: "8-12" },
+      { key: "r15_20", label: "15-20" },
+    ];
 
-      [1,2,3].forEach(s => {
-        document.getElementById(`acc-reps-${s}`).value = '';
-        document.getElementById(`acc-weight-${s}`).value = '';
-        const btn = document.getElementById(`acc-logbtn-${s}`);
-        btn.textContent = 'Log'; btn.classList.remove('logged'); btn.disabled = false;
+    function getRange(reps) {
+      const n = parseInt(reps);
+      if (isNaN(n)) return null;
+      if (n >= 1 && n <= 3) return "r1_3";
+      if (n >= 4 && n <= 7) return "r4_7";
+      if (n >= 8 && n <= 12) return "r8_12";
+      if (n >= 15 && n <= 20) return "r15_20";
+      return null;
+    }
+
+    function todayStr() {
+      return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function parseWeight(w) {
+      const n = parseFloat(String(w).replace(/[^0-9.\-]/g, ""));
+      return isNaN(n) ? 0 : n;
+    }
+
+    function isBetter(newWeight, oldWeight) {
+      return parseWeight(newWeight) > parseWeight(oldWeight);
+    }
+
+    function latest(reps, weight) { return { reps: String(reps), weight: String(weight) }; }
+    function hist(person, reps, weight, range, note = "") {
+      return { date: "Pre-loaded", person, reps: String(reps), weight: String(weight), range, note };
+    }
+
+    const INITIAL_EXERCISES = [
+      { id: 1, name: "Seated Leg Curl", best: { brian: { r4_7: latest(6, 145) }, dad: { r8_12: latest(10, 100) } }, history: [hist("brian", 6, 145, "r4_7"), hist("brian", 2, 199, "r1_3", "Session 1 #12"), hist("dad", 10, 100, "r8_12"), hist("dad", 12, 133, "r8_12", "Session 1 #7")] },
+      { id: 2, name: "Rotary Calf", best: { brian: { r15_20: latest(14, 478) }, dad: { r8_12: latest(8, 376) } }, history: [hist("brian", 14, 478, "r15_20", "Session 4 #13"), hist("brian", 8, 444, "r8_12", "Session 1 #12"), hist("dad", 8, 376, "r8_12", "Session 4 #10"), hist("dad", 12, 240, "r8_12", "Session 1 #6")] },
+      { id: 3, name: "Glute Master", best: { brian: { r8_12: latest(10, 218) }, dad: { r1_3: latest(3, 68) } }, history: [hist("brian", 10, 218, "r8_12"), hist("dad", 3, 68, "r1_3")] },
+      { id: 4, name: "Mid Row Machine", best: { brian: { r8_12: latest(12, 204) }, dad: { r8_12: latest(9, 130) } }, history: [hist("brian", 12, 204, "r8_12", "#13"), hist("dad", 9, 130, "r8_12", "#6")] },
+      { id: 5, name: "Lat Pull-Down Machine (One Armed)", best: { brian: { r4_7: latest(6, 113) }, dad: { r8_12: latest(8, 57) } }, history: [hist("brian", 6, 113, "r4_7", "#7"), hist("dad", 8, 57, "r8_12", "#3")] },
+      { id: 6, name: "Deltoid Fly Machine", best: { brian: { r8_12: latest(10, 70) }, dad: { r8_12: latest(9, 40) } }, history: [hist("brian", 10, 70, "r8_12"), hist("dad", 9, 40, "r8_12")] },
+      { id: 7, name: "Lateral Step Up", best: { brian: { r4_7: latest(5, "45 - 20in box") }, dad: { r8_12: latest(8, "0 - 16in box") } }, history: [hist("brian", 5, "45 - 20in box", "r4_7"), hist("dad", 8, "0 - 16in box", "r8_12")] },
+      { id: 8, name: "One Leg Seated Leg Press", best: { brian: { r1_3: latest(2, 110) }, dad: { r1_3: latest(3, 50) } }, history: [hist("brian", 2, 110, "r1_3"), hist("dad", 3, 50, "r1_3")] },
+      { id: 9, name: "Adductor Machine", best: { brian: { r8_12: latest(12, 90) }, dad: { r8_12: latest(8, 90) } }, history: [hist("brian", 12, 90, "r8_12", "Session 4"), hist("brian", 6, 110, "r4_7", "Session 1"), hist("dad", 8, 90, "r8_12", "Session 4"), hist("dad", 8, 60, "r8_12", "Session 1")] },
+      { id: 10, name: "Abductor Machine", best: { brian: { r8_12: latest(10, 130) }, dad: { r8_12: latest(10, 90) } }, history: [hist("brian", 10, 130, "r8_12"), hist("dad", 10, 90, "r8_12")] },
+      { id: 11, name: "One Arm Chest Press Machine", best: { brian: { r4_7: latest(5, 70) }, dad: { r1_3: latest(3, 30) } }, history: [hist("brian", 5, 70, "r4_7"), hist("dad", 3, 30, "r1_3")] },
+      { id: 12, name: "One Arm Shoulder Press Machine", best: { brian: { r1_3: latest(2, 40) }, dad: { r1_3: latest(2, 20) } }, history: [hist("brian", 2, 40, "r1_3"), hist("dad", 2, 20, "r1_3")] },
+      { id: 13, name: "Abdominal Machine", best: { brian: { r8_12: latest(10, 110) }, dad: { r4_7: latest(4, 110) } }, history: [hist("brian", 10, 110, "r8_12"), hist("dad", 4, 110, "r4_7")] },
+      { id: 14, name: "45 Degree Hip Extension", best: { brian: { r8_12: latest(10, 60) }, dad: { r4_7: latest(6, 0) } }, history: [hist("brian", 10, 60, "r8_12"), hist("dad", 6, 0, "r4_7")] },
+      { id: 15, name: "Chin Up Machine", best: { brian: { r4_7: latest(5, -145) }, dad: { r8_12: latest(8, -160) } }, history: [hist("brian", 5, -145, "r4_7"), hist("dad", 8, -160, "r8_12")] },
+      { id: 16, name: "Single Arm Cable Low Row", best: { brian: { r1_3: latest(2, 85) }, dad: { r4_7: latest(4, 50) } }, history: [hist("brian", 2, 85, "r1_3"), hist("dad", 4, 50, "r4_7")] },
+      { id: 17, name: "Squatmax MD", best: { brian: { r4_7: latest(5, 315) }, dad: { r1_3: latest(2, 135) } }, history: [hist("brian", 5, 315, "r4_7"), hist("dad", 2, 135, "r1_3")] },
+      { id: 18, name: "Incline Press 30° Lever Arm", best: { brian: { r4_7: latest(5, 60) }, dad: { r4_7: latest(5, 10) } }, history: [hist("brian", 5, 60, "r4_7"), hist("dad", 5, 10, "r4_7")] },
+      { id: 19, name: "Seated Lever Arm Shoulder Press", best: { brian: { r1_3: latest(2, 50) }, dad: { r8_12: latest(8, 0) } }, history: [hist("brian", 2, 50, "r1_3"), hist("dad", 8, 0, "r8_12")] },
+      { id: 20, name: "Chest Supported Row", best: { brian: { r4_7: latest(6, 115) }, dad: { r1_3: latest(1, 90) } }, history: [hist("brian", 6, 115, "r4_7"), hist("dad", 1, 90, "r1_3")] },
+      { id: 21, name: "ISO-Lateral High Row", best: { brian: { r4_7: latest(4, 270) }, dad: { r8_12: latest(8, 70) } }, history: [hist("brian", 4, 270, "r4_7"), hist("dad", 8, 70, "r8_12")] },
+      { id: 22, name: "Iso-Lateral Front Lat Pulldown", best: { brian: { r1_3: latest(2, 115) }, dad: { r1_3: latest(2, 55) } }, history: [hist("brian", 2, 115, "r1_3"), hist("dad", 2, 55, "r1_3")] },
+      { id: 23, name: "Trap Bar Deadlift", best: { brian: { r1_3: latest(1, 410) }, dad: { r1_3: latest(2, 200) } }, history: [hist("brian", 1, 410, "r1_3", "Sessions 3 & 4"), hist("dad", 2, 200, "r1_3", "Session 3"), hist("dad", 5, 190, "r4_7", "Session 2")] },
+      { id: 24, name: "Seated Leg Press", best: { brian: { r15_20: latest(15, 330) }, dad: { r8_12: latest(12, 150) } }, history: [hist("brian", 15, 330, "r15_20"), hist("dad", 12, 150, "r8_12")] },
+      { id: 25, name: "Chest Press Machine", best: { brian: { r1_3: latest(2, 220) }, dad: { r4_7: latest(4, 135) } }, history: [hist("brian", 2, 220, "r1_3"), hist("dad", 4, 135, "r4_7")] },
+      { id: 26, name: "Shoulder Press Machine", best: { brian: { r1_3: latest(2, 111) }, dad: { r8_12: latest(8, 69) } }, history: [hist("brian", 2, 111, "r1_3"), hist("dad", 8, 69, "r8_12")] },
+      { id: 27, name: "Chest Fly Machine", best: { brian: { r4_7: latest(5, 120) }, dad: { r4_7: latest(5, 70) } }, history: [hist("brian", 5, 120, "r4_7"), hist("dad", 5, 70, "r4_7")] },
+      { id: 28, name: "Dips", best: { brian: { r4_7: latest(7, "BW") }, dad: { r4_7: latest(5, -140) } }, history: [hist("brian", 7, "BW", "r4_7"), hist("dad", 5, -140, "r4_7")] },
+      { id: 29, name: "Incline Press Machine", best: { brian: { r1_3: latest(3, 100) }, dad: { r1_3: latest(3, 47.5) } }, history: [hist("brian", 3, 100, "r1_3"), hist("dad", 3, 47.5, "r1_3")] },
+      { id: 30, name: "Outer Thigh Machine", best: { brian: { r4_7: latest(5, "67 (#12)") }, dad: { r8_12: latest(10, "45 (#8)") } }, history: [hist("brian", 5, "67 (#12)", "r4_7"), hist("dad", 10, "45 (#8)", "r8_12")] },
+      { id: 31, name: "Hammer Strength Row", best: { brian: { r4_7: latest(6, 135) }, dad: { r4_7: latest(7, 105) } }, history: [hist("brian", 6, 135, "r4_7"), hist("dad", 7, 105, "r4_7")] },
+      { id: 32, name: "Nautilus Impact Lat Pulldown", best: { brian: { r4_7: latest(4, 160) }, dad: { r4_7: latest(7, 90) } }, history: [hist("brian", 4, 160, "r4_7"), hist("dad", 7, 90, "r4_7")] },
+      { id: 33, name: "Hoist Single Leg Extension", best: { brian: { r8_12: latest(10, "91 (#6)") }, dad: { r8_12: latest(8, "52 (#3)") } }, history: [hist("brian", 10, "91 (#6)", "r8_12"), hist("dad", 8, "52 (#3)", "r8_12")] },
+      { id: 34, name: "Hammer Strength ISO-Lateral Bench Press", best: { brian: { r8_12: latest(12, 60) }, dad: { r1_3: latest(2, 45) } }, history: [hist("brian", 12, 60, "r8_12", "Today"), hist("brian", 3, 90, "r1_3", "Pre-loaded"), hist("dad", 2, 45, "r1_3")] },
+      { id: 35, name: "Hammer Strength ISO-Lateral Shoulder Press", best: { brian: { r1_3: latest(2, 90) }, dad: { r1_3: latest(2, 45) } }, history: [hist("brian", 2, 90, "r1_3"), hist("dad", 2, 45, "r1_3")] },
+      { id: 36, name: "Cable Tricep Pushdown", best: { brian: { r1_3: latest(2, 80) }, dad: { r4_7: latest(7, 40) } }, history: [hist("brian", 2, 80, "r1_3"), hist("dad", 7, 40, "r4_7")] },
+      { id: 37, name: "Total Gym Elevate Core Basic Scrunch", best: { brian: { r15_20: latest(15, "BW") }, dad: { r8_12: latest(10, "BW") } }, history: [hist("brian", 15, "BW", "r15_20"), hist("dad", 10, "BW", "r8_12")] },
+      { id: 38, name: "Single Leg Squats", best: { brian: { r8_12: latest(10, 30) }, dad: { r8_12: latest(0, 11) } }, history: [hist("brian", 10, 30, "r8_12"), hist("dad", 0, 11, "r8_12")] },
+      { id: 39, name: "Horizontal Pull-Ups", best: { brian: { r8_12: latest(10, "BW Hole 14") }, dad: { r4_7: latest(7, "BW Hole 14") } }, history: [hist("brian", 10, "BW Hole 14", "r8_12"), hist("dad", 7, "BW Hole 14", "r4_7")] },
+      { id: 40, name: "QT Underhand Pulldown", best: { brian: { r8_12: latest(9, 135) }, dad: { r4_7: latest(5, 100) } }, history: [hist("brian", 9, 135, "r8_12"), hist("dad", 5, 100, "r4_7")] },
+      { id: 41, name: "SquatMax Romanian Deadlift w/ Harness", best: { brian: { r8_12: latest(10, 180) }, dad: { r4_7: latest(7, 90) } }, history: [hist("brian", 10, 180, "r8_12"), hist("dad", 7, 90, "r4_7")] },
+      { id: 42, name: "Push-Up", best: { brian: { r15_20: latest(15, "BW") }, dad: { r15_20: latest(20, "BW") } }, history: [hist("brian", 15, "BW", "r15_20"), hist("dad", 20, "BW", "r15_20")] },
+      { id: 43, name: "Standing Shoulder Press w/ Post Hold", best: { brian: { r4_7: latest(5, 50) }, dad: { r4_7: latest(6, 25) } }, history: [hist("brian", 5, 50, "r4_7"), hist("dad", 6, 25, "r4_7")] },
+      { id: 44, name: "Iron Master Leg Extension w/ Bands", best: { brian: { r1_3: latest(1, "135+60lb bands") }, dad: { r4_7: latest(4, "70+60lb bands") } }, history: [hist("brian", 1, "135+60lb bands", "r1_3"), hist("dad", 4, "70+60lb bands", "r4_7")] },
+      { id: 45, name: "QT Belt Single Leg Calf Raises", best: { brian: { r8_12: latest(10, 80) }, dad: { r8_12: latest(8, 55) } }, history: [hist("brian", 10, 80, "r8_12"), hist("dad", 8, 55, "r8_12")] },
+      { id: 46, name: "QT Belt March in Place", best: { brian: { r15_20: latest(100, 135) }, dad: { r15_20: latest(100, 55) } }, history: [hist("brian", 100, 135, "r15_20"), hist("dad", 100, 55, "r15_20")] },
+      { id: 47, name: "Chest Supported 30° Dumbbell Row", best: { brian: { r4_7: latest(6, 60) }, dad: { r4_7: latest(6, 40) } }, history: [hist("brian", 6, 60, "r4_7"), hist("dad", 6, 40, "r4_7")] },
+      { id: 48, name: "QT Bench Press 45° Handle", best: { brian: { r4_7: latest(4, 70) }, dad: { r1_3: latest(3, 35) } }, history: [hist("brian", 4, 70, "r4_7"), hist("dad", 3, 35, "r1_3")] },
+      { id: 49, name: "QT Viking Press", best: { brian: { r15_20: latest(16, 120) }, dad: { r4_7: latest(6, 120) } }, history: [hist("brian", 16, 120, "r15_20"), hist("dad", 6, 120, "r4_7")] },
+      { id: 50, name: "Tricep Extension", best: { brian: {}, dad: {} }, history: [] },
+      { id: 51, name: "Knee Up", best: { brian: {}, dad: {} }, history: [] },
+    ];
+
+    async function sheetsGet() {
+      const res = await fetch(SCRIPT_URL);
+      const json = await res.json();
+      if (json.status !== "ok") throw new Error(json.message);
+      return json.data;
+    }
+
+    async function sheetsPost(payload) {
+      const res = await fetch(SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+      const json = await res.json();
+      if (json.status !== "ok") throw new Error(json.message);
+      return json.data;
+    }
+
+    function mergeFromSheets(localExercises, sheetsData) {
+      const { history: allHistory, best: allBest } = sheetsData;
+      return localExercises.map(ex => {
+        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
+        const sheetBest = allBest[ex.name];
+        return {
+          ...ex,
+          history: sheetHistory.length > 0 ? sheetHistory : ex.history,
+          best: sheetBest || ex.best,
+        };
       });
-      document.getElementById('acc-maxbanner').style.display = 'none';
-
-    } catch (err) {
-      document.getElementById('accessoryName').textContent = 'Could not load exercise';
     }
-  }
 
-  async function logAccessorySet(setNum) {
-    const reps = parseInt(document.getElementById(`acc-reps-${setNum}`).value);
-    const weight = parseFloat(document.getElementById(`acc-weight-${setNum}`).value);
-    if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+    function WorkoutTracker() {
+      const [exercises, setExercises] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [syncStatus, setSyncStatus] = useState("idle");
+      const [search, setSearch] = useState("");
+      const [view, setView] = useState("list");
+      const [expanded, setExpanded] = useState(null);
+      const [toast, setToast] = useState(null);
+      const [confirmDelete, setConfirmDelete] = useState(null);
+      const [whoMode, setWhoMode] = useState("both");
+      const [logExId, setLogExId] = useState(null);
+      const [sets, setSets] = useState([]);
+      const [brianReps, setBrianReps] = useState("");
+      const [brianWeight, setBrianWeight] = useState("");
+      const [dadReps, setDadReps] = useState("");
+      const [dadWeight, setDadWeight] = useState("");
+      const [logNote, setLogNote] = useState("");
+      const [logError, setLogError] = useState("");
+      const [setCount, setSetCount] = useState(1);
+      const [newName, setNewName] = useState("");
 
-    const btn = document.getElementById(`acc-logbtn-${setNum}`);
-    btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
+      const scriptConfigured = SCRIPT_URL !== "https://script.google.com/macros/s/AKfycbz7te_cP8obg1ia_GicmoKi3fXu6bCoDGqaRWYFQTEgSRtqEx6lOlqPLF7r3Rufy3LzIw/exec";
 
-    const setRepRange = getRangeForReps(reps);
-    await fetch(`${API_URL}?action=logSet&workoutNum=${currentWorkout.workoutNum}&exercise=${encodeURIComponent(currentAccessory)}&setNum=${setNum}&reps=${reps}&weight=${weight}&repRange=${encodeURIComponent(setRepRange)}`);
+      useEffect(() => { loadData(); }, []);
 
-    const maxRes = await fetch(`${API_URL}?action=getMaxes&exercises=${encodeURIComponent(currentAccessory)}`);
-    const maxData = await maxRes.json();
-    const existingMax = maxData[currentAccessory]?.[setRepRange] || '';
-    let isNew = !existingMax || existingMax === '—';
-    if (!isNew) {
-      const existingWeight = parseFloat(existingMax.split('x')[1]);
-      if (weight > existingWeight) isNew = true;
+      const showToast = (msg, type = "success") => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 2400);
+      };
+
+      const loadData = async () => {
+        let base = INITIAL_EXERCISES;
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (saved && Array.isArray(saved)) {
+            const savedIds = new Set(saved.map(e => e.id));
+            const savedNames = new Set(saved.map(e => e.name.toLowerCase()));
+            const newOnes = INITIAL_EXERCISES.filter(e => !savedIds.has(e.id) && !savedNames.has(e.name.toLowerCase()));
+            base = [...saved, ...newOnes].map(ex => {
+              if (ex.latest && !ex.best) return { ...ex, best: ex.latest };
+              if (!ex.best) return { ...ex, best: { brian: {}, dad: {} } };
+              return ex;
+            });
+          }
+        } catch { }
+        setExercises(base);
+        setLoading(false);
+
+        if (scriptConfigured) {
+          setSyncStatus("syncing");
+          try {
+            const sheetsData = await sheetsGet();
+            const hasData = sheetsData.history.length > 0 || Object.keys(sheetsData.best).length > 0;
+            if (hasData) {
+              const merged = mergeFromSheets(base, sheetsData);
+              setExercises(merged);
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            } else {
+              await sheetsPost({ action: "syncAll", exercises: base });
+            }
+            setSyncStatus("ok");
+          } catch {
+            setSyncStatus("error");
+            showToast("Sheets sync failed — working offline", "error");
+          }
+        }
+      };
+
+      const persist = async (data, sheetsPayload = null) => {
+        setExercises(data);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        if (scriptConfigured && sheetsPayload) {
+          setSyncStatus("syncing");
+          try {
+            await sheetsPost(sheetsPayload);
+            setSyncStatus("ok");
+          } catch {
+            setSyncStatus("error");
+            showToast("Saved locally — Sheets sync failed", "error");
+          }
+        }
+      };
+
+      const openLog = (id) => {
+        setLogExId(id); setSets([]); setBrianReps(""); setBrianWeight("");
+        setDadReps(""); setDadWeight(""); setLogNote(""); setLogError(""); setSetCount(1);
+        setView("log");
+      };
+
+      const getBest = (exId, person, rangeKey) => {
+        const ex = exercises.find(e => e.id === exId);
+        const b = ex?.best?.[person]?.[rangeKey];
+        if (!b) return null;
+        return b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`;
+      };
+
+      const saveSet = async () => {
+        const brianRange = whoMode !== "dad" ? getRange(brianReps) : null;
+        const dadRange = whoMode !== "brian" ? getRange(dadReps) : null;
+        if (whoMode !== "dad" && !brianReps.trim()) return setLogError("Enter Brian's reps");
+        if (whoMode !== "dad" && !brianRange) return setLogError("Brian's reps must fit a range: 1-3, 4-7, 8-12, or 15-20");
+        if (whoMode !== "brian" && !dadReps.trim()) return setLogError("Enter Dad's reps");
+        if (whoMode !== "brian" && !dadRange) return setLogError("Dad's reps must fit a range: 1-3, 4-7, 8-12, or 15-20");
+        setLogError("");
+        const date = todayStr();
+        const newEntries = [];
+        if (whoMode !== "dad") newEntries.push({ date, person: "brian", reps: brianReps, weight: brianWeight, range: brianRange, note: logNote, setNum: setCount });
+        if (whoMode !== "brian") newEntries.push({ date, person: "dad", reps: dadReps, weight: dadWeight, range: dadRange, note: logNote, setNum: setCount });
+        const exName = exercises.find(e => e.id === logExId)?.name;
+        const updated = exercises.map(ex => {
+          if (ex.id !== logExId) return ex;
+          let newBest = { brian: { ...(ex.best?.brian || {}) }, dad: { ...(ex.best?.dad || {}) } };
+          newEntries.forEach(entry => {
+            const current = newBest[entry.person]?.[entry.range];
+            if (!current || isBetter(entry.weight, current.weight))
+              newBest[entry.person][entry.range] = { reps: entry.reps, weight: entry.weight };
+          });
+          return { ...ex, best: newBest, history: [...newEntries, ...(ex.history || [])] };
+        });
+        await persist(updated, { action: "logSet", exercise: exName, entries: newEntries });
+        setSets([...sets, ...newEntries]);
+        setBrianReps(""); setBrianWeight(""); setDadReps(""); setDadWeight(""); setLogNote("");
+        setSetCount(setCount + 1);
+        showToast(`Set ${setCount} saved!`);
+      };
+
+      const finishLogging = () => { setView("list"); setExpanded(logExId); };
+
+      const deleteHistoryEntry = async (exId, histIdx) => {
+        const ex = exercises.find(e => e.id === exId);
+        const entry = ex?.history?.[histIdx];
+        const updated = exercises.map(ex => {
+          if (ex.id !== exId) return ex;
+          const newHistory = (ex.history || []).filter((_, i) => i !== histIdx);
+          const newBest = { brian: {}, dad: {} };
+          newHistory.forEach(h => {
+            const current = newBest[h.person]?.[h.range];
+            if (!current || isBetter(h.weight, current.weight))
+              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
+          });
+          return { ...ex, best: newBest, history: newHistory };
+        });
+        await persist(updated, entry ? { action: "deleteHistory", exercise: ex.name, person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range } : null);
+        setConfirmDelete(null);
+        showToast("Entry deleted");
+      };
+
+      const deleteExercise = async (id) => {
+        const updated = exercises.filter(e => e.id !== id);
+        await persist(updated, { action: "syncAll", exercises: updated });
+        setConfirmDelete(null);
+        if (expanded === id) setExpanded(null);
+        showToast("Deleted");
+      };
+
+      const addExercise = async () => {
+        if (!newName.trim()) return showToast("Name required", "error");
+        const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+        const updated = [...exercises, { id: maxId + 1, name: newName.trim(), best: { brian: {}, dad: {} }, history: [] }];
+        await persist(updated, { action: "syncAll", exercises: updated });
+        setNewName(""); showToast("Exercise added!"); setView("list");
+      };
+
+      const manualSync = async () => {
+        setSyncStatus("syncing");
+        try {
+          await sheetsPost({ action: "syncAll", exercises });
+          setSyncStatus("ok");
+          showToast("Synced to Sheets ✓");
+        } catch {
+          setSyncStatus("error");
+          showToast("Sync failed", "error");
+        }
+      };
+
+      const filtered = exercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
+
+      const syncDot = scriptConfigured ? (
+        <div onClick={syncStatus === "error" ? manualSync : undefined}
+          title={syncStatus === "error" ? "Tap to retry" : syncStatus === "syncing" ? "Syncing..." : "Synced"}
+          style={{
+            width: 8, height: 8, borderRadius: "50%", marginLeft: 8, cursor: syncStatus === "error" ? "pointer" : "default",
+            background: syncStatus === "ok" ? "#22c55e" : syncStatus === "error" ? "#ef4444" : "#f97316",
+            animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none", flexShrink: 0
+          }} />
+      ) : null;
+
+      if (loading) return <div style={s.center}><div className="spinner" style={s.spinner} /></div>;
+
+      if (view === "log") {
+        const ex = exercises.find(e => e.id === logExId);
+        const brianRange = getRange(brianReps);
+        const dadRange = getRange(dadReps);
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={finishLogging}>← Done</button>
+              <div style={s.headerTitle}>LOG SET {setCount}</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <div style={s.logExName}>{ex?.name}</div>
+              <div style={s.whoLabel}>WHO'S WORKING OUT?</div>
+              <div style={s.segmented}>
+                {[["both", "Both"], ["brian", "Brian"], ["dad", "Dad"]].map(([val, label]) => (
+                  <button key={val} style={{ ...s.segBtn, ...(whoMode === val ? s.segActive : {}) }} onClick={() => setWhoMode(val)}>{label}</button>
+                ))}
+              </div>
+              {sets.length > 0 && (
+                <div style={s.setsLogged}>
+                  <div style={s.setsLoggedTitle}>LOGGED THIS SESSION</div>
+                  {sets.map((set, i) => (
+                    <div key={i} style={s.setRow}>
+                      <span style={s.setNum}>Set {set.setNum}</span>
+                      <span style={s.setPerson}>{set.person === "brian" ? "Brian" : "Dad"}</span>
+                      <span style={s.setRange}>{REP_RANGES.find(r => r.key === set.range)?.label}</span>
+                      <span style={s.setResult}>{set.weight ? `${set.reps}x${set.weight}` : `${set.reps} reps`}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {whoMode !== "dad" && (
+                <div style={s.personBlock}>
+                  <div style={s.personBlockLabel}>BRIAN</div>
+                  <div style={s.inlineRow}>
+                    <div style={s.inlineField}>
+                      <label style={s.label}>REPS</label>
+                      <input style={s.input} placeholder="e.g. 8" type="number" value={brianReps} onChange={e => { setBrianReps(e.target.value); setLogError(""); }} />
+                      {brianRange && <div style={s.rangeTag}>{REP_RANGES.find(r => r.key === brianRange)?.label}</div>}
+                    </div>
+                    <div style={s.inlineField}>
+                      <label style={s.label}>WEIGHT</label>
+                      <input style={s.input} placeholder="e.g. 135" value={brianWeight} onChange={e => setBrianWeight(e.target.value)} />
+                      {brianRange && getBest(logExId, "brian", brianRange) && <div style={s.bestTag}>Best: {getBest(logExId, "brian", brianRange)}</div>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {whoMode !== "brian" && (
+                <div style={s.personBlock}>
+                  <div style={s.personBlockLabel}>DAD</div>
+                  <div style={s.inlineRow}>
+                    <div style={s.inlineField}>
+                      <label style={s.label}>REPS</label>
+                      <input style={s.input} placeholder="e.g. 8" type="number" value={dadReps} onChange={e => { setDadReps(e.target.value); setLogError(""); }} />
+                      {dadRange && <div style={s.rangeTag}>{REP_RANGES.find(r => r.key === dadRange)?.label}</div>}
+                    </div>
+                    <div style={s.inlineField}>
+                      <label style={s.label}>WEIGHT</label>
+                      <input style={s.input} placeholder="e.g. 95" value={dadWeight} onChange={e => setDadWeight(e.target.value)} />
+                      {dadRange && getBest(logExId, "dad", dadRange) && <div style={s.bestTag}>Best: {getBest(logExId, "dad", dadRange)}</div>}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div style={s.inlineField}>
+                <label style={s.label}>NOTE (optional)</label>
+                <input style={s.input} placeholder="e.g. felt strong, pin #7" value={logNote} onChange={e => setLogNote(e.target.value)} />
+              </div>
+              {logError && <div style={s.error}>{logError}</div>}
+              <div style={s.logBtnRow}>
+                <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>
+                {sets.length > 0 && <button style={s.doneBtn} onClick={finishLogging}>Done</button>}
+              </div>
+            </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      if (view === "add") {
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={() => setView("list")}>← Back</button>
+              <div style={s.headerTitle}>NEW EXERCISE</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <label style={s.label}>EXERCISE NAME</label>
+              <input style={s.input} placeholder="e.g. Leg Press" value={newName} autoFocus onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === "Enter" && addExercise()} />
+              <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
+            </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      return (
+        <div style={s.root}>
+          <div style={s.header}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={s.title}>GYM LOG</div>
+                {syncDot}
+              </div>
+              <div style={s.subtitle}>Brian & Dad · {exercises.length} exercises</div>
+            </div>
+            <button style={s.addIconBtn} onClick={() => setView("add")}>➕</button>
+          </div>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}>🔍</span>
+            <input style={s.searchInput} placeholder="Search exercises..." value={search} onChange={e => setSearch(e.target.value)} />
+            {search && <button style={s.clearBtn} onClick={() => setSearch("")}>✕</button>}
+          </div>
+          {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          {confirmDelete && (
+            <div style={s.overlay}>
+              <div style={s.modal}>
+                <div style={s.modalTitle}>{confirmDelete.type === "exercise" ? "Delete exercise?" : "Delete this entry?"}</div>
+                <div style={s.modalSub}>{confirmDelete.type === "exercise" ? exercises.find(e => e.id === confirmDelete.exId)?.name : "This will be removed and best results will update."}</div>
+                <div style={s.modalBtns}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={() => confirmDelete.type === "exercise" ? deleteExercise(confirmDelete.exId) : deleteHistoryEntry(confirmDelete.exId, confirmDelete.histIdx)}>Delete</button>
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={s.listWrap}>
+            {filtered.map(ex => {
+              const isExpanded = expanded === ex.id;
+              const hasData = Object.keys(ex.best?.brian || {}).length > 0 || Object.keys(ex.best?.dad || {}).length > 0;
+              return (
+                <div key={ex.id} style={s.card}>
+                  <div style={s.cardHeader}>
+                    <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
+                      <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                      {ex.name}
+                    </div>
+                    <div style={s.cardActions}>
+                      <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
+                      <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
+                    </div>
+                  </div>
+                  {hasData && (
+                    <div style={s.rangeGrid}>
+                      <div style={s.rangeHeaderRow}>
+                        <div style={s.personCol} />
+                        {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
+                      </div>
+                      {["brian", "dad"].map(person => (
+                        <div key={person} style={s.rangeRow}>
+                          <div style={s.personCol}>{person === "brian" ? "Brian" : "Dad"}</div>
+                          {REP_RANGES.map(r => {
+                            const b = ex.best?.[person]?.[r.key];
+                            const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                            return (
+                              <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
+                                {val || <span style={s.dash}>—</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {isExpanded && (
+                    <div style={s.history}>
+                      {(ex.history || []).length === 0 ? (
+                        <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
+                      ) : (
+                        <>
+                          <div style={s.historyTitle}>HISTORY</div>
+                          {(ex.history || []).map((h, i) => (
+                            <div key={i} style={s.historyRow}>
+                              <div style={s.historyLeft}>
+                                <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
+                                <div style={s.historyMeta}>
+                                  <span style={s.historyPerson}>{h.person === "brian" ? "Brian" : "Dad"}</span>
+                                  <span style={s.historyRange}>{REP_RANGES.find(r => r.key === h.range)?.label}</span>
+                                  <span style={s.historyResult}>{h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`}</span>
+                                </div>
+                                {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                              </div>
+                              <button style={s.histDelBtn} onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}>✕</button>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filtered.length === 0 && <div style={s.noResults}>{search ? `No results for "${search}"` : "No exercises yet"}</div>}
+          </div>
+        </div>
+      );
     }
-    if (isNew) {
-      const newMax = `${reps}x${weight}`;
-      await fetch(`${API_URL}?action=updateMax&exercise=${encodeURIComponent(currentAccessory)}&repRange=${encodeURIComponent(setRepRange)}&newMax=${encodeURIComponent(newMax)}`);
-      const banner = document.getElementById('acc-maxbanner');
-      banner.style.display = 'block';
-      banner.textContent = `🏆 New ${setRepRange} max: ${newMax}`;
-    }
-  }
 
-  function showLoading() {
-    document.getElementById('loadingState').style.display = 'block';
-    document.getElementById('errorState').style.display = 'none';
-    document.getElementById('workoutContent').style.display = 'none';
-    document.getElementById('successState').style.display = 'none';
-  }
+    const s = {
+      root: { background: "#0c0c0c", height: "100dvh", fontFamily: "'DM Mono','Courier New',monospace", color: "#ddd", display: "flex", flexDirection: "column", overflow: "hidden" },
+      center: { background: "#0c0c0c", height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" },
+      spinner: { width: 24, height: 24, border: "2px solid #222", borderTop: "2px solid #f97316", borderRadius: "50%" },
+      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 12px", borderBottom: "1px solid #1a1a1a", flexShrink: 0 },
+      title: { fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" },
+      subtitle: { fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3 },
+      headerTitle: { fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#f97316", flex: 1, textAlign: "center" },
+      addIconBtn: { background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontSize: 15 },
+      backBtn: { background: "transparent", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: 1, width: 60, textAlign: "left" },
+      searchWrap: { display: "flex", alignItems: "center", margin: "10px 12px 6px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "0 10px", flexShrink: 0 },
+      searchIcon: { fontSize: 12, marginRight: 6 },
+      searchInput: { flex: 1, background: "transparent", border: "none", outline: "none", color: "#ddd", fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "10px 0" },
+      clearBtn: { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 12 },
+      toast: { position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", padding: "7px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: "#fff", zIndex: 999, letterSpacing: 1 },
+      overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+      modal: { background: "#141414", border: "1px solid #2a2a2a", borderRadius: 12, padding: 24, width: 290 },
+      modalTitle: { fontSize: 14, fontWeight: 700, color: "#f97316", marginBottom: 8, letterSpacing: 1 },
+      modalSub: { fontSize: 11, color: "#666", marginBottom: 20, lineHeight: 1.5 },
+      modalBtns: { display: "flex", gap: 10 },
+      cancelBtn: { flex: 1, padding: 10, background: "#1e1e1e", border: "none", borderRadius: 8, color: "#aaa", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12 },
+      confirmBtn: { flex: 1, padding: 10, background: "#ef4444", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 },
+      listWrap: { flex: 1, overflowY: "auto", padding: "6px 12px 20px", WebkitOverflowScrolling: "touch" },
+      card: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 6, overflow: "hidden" },
+      cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px" },
+      cardName: { flex: 1, fontSize: 12, color: "#e0e0e0", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
+      chevron: { color: "#444", fontSize: 10, minWidth: 10 },
+      cardActions: { display: "flex", gap: 6, alignItems: "center" },
+      logBtn: { background: "#1a1100", border: "1px solid #f97316", borderRadius: 6, color: "#f97316", fontSize: 10, fontWeight: 700, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      delBtn: { background: "transparent", border: "none", color: "#2a2a2a", cursor: "pointer", fontSize: 11, padding: "2px 4px" },
+      rangeGrid: { borderTop: "1px solid #161616", padding: "8px 12px 10px" },
+      rangeHeaderRow: { display: "flex", marginBottom: 4 },
+      personCol: { width: 36, fontSize: 9, color: "#555", letterSpacing: 1, flexShrink: 0 },
+      rangeColHeader: { flex: 1, fontSize: 9, color: "#555", letterSpacing: 1, textAlign: "center" },
+      rangeRow: { display: "flex", alignItems: "center", marginBottom: 3 },
+      rangeCell: { flex: 1, fontSize: 10, color: "#444", textAlign: "center", padding: "3px 2px", borderRadius: 4 },
+      rangeCellFilled: { color: "#ccc", background: "#161616" },
+      dash: { color: "#2a2a2a" },
+      history: { borderTop: "1px solid #161616", padding: "10px 12px" },
+      historyTitle: { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 8 },
+      historyRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 8 },
+      historyLeft: { flex: 1 },
+      historyDate: { fontSize: 9, color: "#444", marginBottom: 2 },
+      historyMeta: { display: "flex", gap: 8, alignItems: "center" },
+      historyPerson: { fontSize: 10, color: "#f97316" },
+      historyRange: { fontSize: 10, color: "#555", background: "#161616", padding: "2px 6px", borderRadius: 4 },
+      historyResult: { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      historyNote: { fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 },
+      histDelBtn: { background: "transparent", border: "none", color: "#333", cursor: "pointer", fontSize: 11, padding: "2px 6px", flexShrink: 0 },
+      noHistory: { fontSize: 11, color: "#333", textAlign: "center", padding: "8px 0" },
+      noResults: { padding: 32, textAlign: "center", color: "#333", fontSize: 12 },
+      formWrap: { padding: 16, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" },
+      logExName: { fontSize: 14, fontWeight: 700, color: "#e0e0e0", letterSpacing: 1 },
+      whoLabel: { fontSize: 9, color: "#444", letterSpacing: 2 },
+      segmented: { display: "flex", border: "1px solid #1e1e1e", borderRadius: 8, overflow: "hidden" },
+      segBtn: { flex: 1, padding: 10, background: "#111", border: "none", color: "#555", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: 1 },
+      segActive: { background: "#1a1100", color: "#f97316" },
+      setsLogged: { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 7, padding: "8px 10px" },
+      setsLoggedTitle: { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 6 },
+      setRow: { display: "flex", gap: 8, alignItems: "center", marginBottom: 3 },
+      setNum: { fontSize: 9, color: "#444", minWidth: 30 },
+      setPerson: { fontSize: 10, color: "#f97316", minWidth: 32 },
+      setRange: { fontSize: 10, color: "#555", background: "#1a1a1a", padding: "1px 5px", borderRadius: 4 },
+      setResult: { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      personBlock: { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 12px" },
+      personBlockLabel: { fontSize: 10, color: "#f97316", fontWeight: 700, letterSpacing: 2, marginBottom: 8 },
+      inlineRow: { display: "flex", gap: 10 },
+      inlineField: { flex: 1, display: "flex", flexDirection: "column", gap: 4 },
+      label: { fontSize: 9, color: "#444", letterSpacing: 2 },
+      input: { padding: "9px 10px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 7, color: "#ddd", fontSize: 12, fontFamily: "'DM Mono',monospace", outline: "none", width: "100%" },
+      rangeTag: { fontSize: 10, color: "#f97316", letterSpacing: 1 },
+      bestTag: { fontSize: 9, color: "#555", letterSpacing: 1 },
+      error: { fontSize: 11, color: "#ef4444", letterSpacing: 1 },
+      logBtnRow: { display: "flex", gap: 10 },
+      saveSetBtn: { flex: 2, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      doneBtn: { flex: 1, padding: 12, background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace" },
+      submitBtn: { marginTop: 6, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+    };
 
-  function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
-
-  function showError(msg) {
-    hideLoading();
-    const el = document.getElementById('errorState');
-    el.style.display = 'block';
-    el.textContent = msg;
-  }
-
-  init();
-</script>
+    ReactDOM.createRoot(document.getElementById("root")).render(<WorkoutTracker />);
+  </script>
 </body>
+
 </html>
