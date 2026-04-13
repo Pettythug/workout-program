@@ -52,7 +52,22 @@ const WORKOUT_BUILDER_ACTIONS = new Set([
  * - Otherwise → returns GymLog history + best data for index.html.
  */
 function doGet(e) {
-  const action = e?.parameter?.action;  // guard: e is undefined when run from the editor
+  const action     = e?.parameter?.action;
+  const payloadStr = e?.parameter?.payload; // write ops tunneled as GET from gym-log.html
+
+  // ── GymLog write operations (tunneled through GET) ────────────────────────
+  if (payloadStr) {
+    try {
+      const payload = JSON.parse(payloadStr);
+      if (payload.action === "logSet")        return gymlog_handleLogSet(payload);
+      if (payload.action === "syncAll")       return gymlog_handleSyncAll(payload);
+      if (payload.action === "deleteHistory") return gymlog_handleDeleteHistory(payload);
+      if (payload.action === "deleteExercise")return gymlog_handleDeleteExercise(payload);
+      return err("Unknown payload action: " + payload.action);
+    } catch (ex) {
+      return err(ex.message);
+    }
+  }
 
   // ── Workout Builder routes (original_index.html) ──────────────────────────
   if (action === "getNextWorkout")       return wb_getNextWorkout();
@@ -197,7 +212,7 @@ function gymlog_handleLogSet(payload) {
     ]);
   });
 
-  gymlog_updateBestRow(bestSheet, exercise, entries);
+  gymlog_recalculateBestForExercise(exercise);
 
   return ok({ logged: entries.length });
 }
@@ -262,7 +277,37 @@ function gymlog_handleDeleteHistory(payload) {
     }
   }
 
+  gymlog_recalculateBestForExercise(exercise);
+
   return ok({ deleted: 1 });
+}
+
+function gymlog_handleDeleteExercise(payload) {
+  const { exercise } = payload;
+  const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+  const bestSheet = getOrCreateSheet(BEST_TAB, BEST_HEADERS);
+
+  // Delete all rows from History
+  if (histSheet.getLastRow() > 1) {
+    const data = histSheet.getRange(2, 3, histSheet.getLastRow() - 1, 1).getValues();
+    for (let i = data.length - 1; i >= 0; i--) {
+      if (data[i][0] === exercise) {
+        histSheet.deleteRow(i + 2);
+      }
+    }
+  }
+
+  // Delete row from Best
+  if (bestSheet.getLastRow() > 1) {
+    const bestData = bestSheet.getRange(2, 1, bestSheet.getLastRow() - 1, 1).getValues();
+    for (let i = bestData.length - 1; i >= 0; i--) {
+      if (bestData[i][0] === exercise) {
+        bestSheet.deleteRow(i + 2);
+      }
+    }
+  }
+
+  return ok({ deletedExercise: exercise });
 }
 
 // ── GymLog Utilities ──────────────────────────────────────────────────────────
@@ -288,47 +333,62 @@ function clearDataRows(sheet) {
   }
 }
 
-function gymlog_updateBestRow(bestSheet, exerciseName, entries) {
-  const lastRow = bestSheet.getLastRow();
-  let rowIndex  = -1;
+function gymlog_recalculateBestForExercise(exerciseName) {
+  const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+  const bestSheet = getOrCreateSheet(BEST_TAB, BEST_HEADERS);
 
-  if (lastRow > 1) {
-    const names = bestSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  const histData = (histSheet.getLastRow() > 1) 
+      ? histSheet.getRange(2, 1, histSheet.getLastRow() - 1, HISTORY_HEADERS.length).getValues()
+      : [];
+  
+  // Find all history for this exact exercise
+  const entries = histData.filter(r => r[2] === exerciseName).map(r => ({
+      person: r[1], reps: String(r[3]), weight: String(r[4]), range: r[5]
+  }));
+
+  // Find the row in bestSheet
+  const lastBestRow = bestSheet.getLastRow();
+  let rowIndex = -1;
+  if (lastBestRow > 1) {
+    const names = bestSheet.getRange(2, 1, lastBestRow - 1, 1).getValues();
     for (let i = 0; i < names.length; i++) {
       if (names[i][0] === exerciseName) { rowIndex = i + 2; break; }
     }
   }
 
-  let currentRow = ["", "", "", "", "", "", "", "", ""];
-  if (rowIndex > 0) {
-    currentRow = bestSheet.getRange(rowIndex, 1, 1, BEST_HEADERS.length).getValues()[0];
+  // If no history left, delete the best row entirely
+  if (entries.length === 0) {
+    if (rowIndex > 0) bestSheet.deleteRow(rowIndex);
+    return;
   }
 
-  const colMap = {
-    "brian_r1_3": 1, "brian_r4_7": 2, "brian_r8_12": 3, "brian_r15_20": 4,
-    "dad_r1_3":   5, "dad_r4_7":   6, "dad_r8_12":   7, "dad_r15_20":   8
-  };
-
+  let bestObj = {brian: {}, dad: {}};
+  
+  // Recalculate bests fully
   entries.forEach(entry => {
-    const key = `${entry.person}_${entry.range}`;
-    const col = colMap[key];
-    if (col === undefined) return;
+    const newWeight = parseFloat(entry.weight.replace(/[^0-9.\-]/g, "")) || 0;
+    const newReps = parseInt(entry.reps.replace(/[^0-9]/g, "")) || 0;
 
-    const newWeight      = parseFloat(String(entry.weight).replace(/[^0-9.\-]/g, "")) || 0;
-    const existing       = String(currentRow[col] || "");
-    const existingWeight = existing.includes("x") ? parseFloat(existing.split("x")[1]) || 0 : 0;
+    const existing = bestObj[entry.person]?.[entry.range];
+    const existingWeight = existing ? (parseFloat(existing.weight.replace(/[^0-9.\-]/g, "")) || 0) : 0;
+    const existingReps = existing ? (parseInt(existing.reps.replace(/[^0-9]/g, "")) || 0) : 0;
 
-    if (newWeight > existingWeight || !existing) {
-      currentRow[col] = `${entry.reps}x${entry.weight}`;
+    if (!existing || newWeight > existingWeight || (newWeight === existingWeight && newReps > existingReps)) {
+        if (!bestObj[entry.person]) bestObj[entry.person] = {};
+        bestObj[entry.person][entry.range] = { reps: entry.reps, weight: entry.weight };
     }
   });
 
-  currentRow[0] = exerciseName;
+  const row = [
+    exerciseName,
+    formatBest(bestObj.brian.r1_3), formatBest(bestObj.brian.r4_7), formatBest(bestObj.brian.r8_12), formatBest(bestObj.brian.r15_20),
+    formatBest(bestObj.dad.r1_3), formatBest(bestObj.dad.r4_7), formatBest(bestObj.dad.r8_12), formatBest(bestObj.dad.r15_20)
+  ];
 
   if (rowIndex > 0) {
-    bestSheet.getRange(rowIndex, 1, 1, BEST_HEADERS.length).setValues([currentRow]);
+    bestSheet.getRange(rowIndex, 1, 1, BEST_HEADERS.length).setValues([row]);
   } else {
-    bestSheet.appendRow(currentRow);
+    bestSheet.appendRow(row);
   }
 }
 

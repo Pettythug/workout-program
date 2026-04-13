@@ -56,7 +56,7 @@
     const { useState, useEffect } = React;
 
     // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwTuEwofnGtvh3jdWen47Rgc_7_fRqwKoaI08D3mQ9Nf4IQ2pwxbQ6mciz0SzkaOf6YuQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
     // ────────────────────────────────────────────────────────────────────────
 
     const STORAGE_KEY = "gym-tracker-v4";
@@ -292,8 +292,10 @@
       };
 
       const deleteExercise = async (id) => {
+        const ex = exercises.find(e => e.id === id);
+        if (!ex) return;
         const updated = exercises.filter(e => e.id !== id);
-        await persist(updated, { action: "syncAll", exercises: updated });
+        await persist(updated, { action: "deleteExercise", exercise: ex.name });
         setConfirmDelete(null);
         if (expanded === id) setExpanded(null);
         showToast("Deleted");
@@ -303,7 +305,7 @@
         if (!newName.trim()) return showToast("Name required", "error");
         const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
         const updated = [...exercises, { id: maxId + 1, name: newName.trim(), best: { brian: {}, dad: {} }, history: [] }];
-        await persist(updated, { action: "syncAll", exercises: updated });
+        await persist(updated); // Just local until a set is logged
         setNewName(""); showToast("Exercise added!"); setView("list");
       };
 
