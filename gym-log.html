@@ -122,8 +122,8 @@
         const sheetBest = allBest[ex.name];
         return {
           ...ex,
-          history: sheetHistory.length > 0 ? sheetHistory : ex.history,
-          best: sheetBest || ex.best,
+          history: sheetHistory,
+          best: sheetBest || { brian: {}, dad: {} },
         };
       });
     }
