@@ -96,59 +96,7 @@
       return { date: "Pre-loaded", person, reps: String(reps), weight: String(weight), range, note };
     }
 
-    const INITIAL_EXERCISES = [
-      { id: 1, name: "Seated Leg Curl", best: { brian: {}, dad: {} }, history: [] },
-      { id: 2, name: "Rotary Calf", best: { brian: {}, dad: {} }, history: [] },
-      { id: 3, name: "Glute Master", best: { brian: {}, dad: {} }, history: [] },
-      { id: 4, name: "Mid Row Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 5, name: "Lat Pull-Down Machine (One Armed)", best: { brian: {}, dad: {} }, history: [] },
-      { id: 6, name: "Deltoid Fly Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 7, name: "Lateral Step Up", best: { brian: {}, dad: {} }, history: [] },
-      { id: 8, name: "One Leg Seated Leg Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 9, name: "Adductor Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 10, name: "Abductor Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 11, name: "One Arm Chest Press Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 12, name: "One Arm Shoulder Press Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 13, name: "Abdominal Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 14, name: "45 Degree Hip Extension", best: { brian: {}, dad: {} }, history: [] },
-      { id: 15, name: "Chin Up Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 16, name: "Single Arm Cable Low Row", best: { brian: {}, dad: {} }, history: [] },
-      { id: 17, name: "Squatmax MD", best: { brian: {}, dad: {} }, history: [] },
-      { id: 18, name: "Incline Press 30° Lever Arm", best: { brian: {}, dad: {} }, history: [] },
-      { id: 19, name: "Seated Lever Arm Shoulder Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 20, name: "Chest Supported Row", best: { brian: {}, dad: {} }, history: [] },
-      { id: 21, name: "ISO-Lateral High Row", best: { brian: {}, dad: {} }, history: [] },
-      { id: 22, name: "Iso-Lateral Front Lat Pulldown", best: { brian: {}, dad: {} }, history: [] },
-      { id: 23, name: "Trap Bar Deadlift", best: { brian: {}, dad: {} }, history: [] },
-      { id: 24, name: "Seated Leg Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 25, name: "Chest Press Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 26, name: "Shoulder Press Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 27, name: "Chest Fly Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 28, name: "Dips", best: { brian: {}, dad: {} }, history: [] },
-      { id: 29, name: "Incline Press Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 30, name: "Outer Thigh Machine", best: { brian: {}, dad: {} }, history: [] },
-      { id: 31, name: "Hammer Strength Row", best: { brian: {}, dad: {} }, history: [] },
-      { id: 32, name: "Nautilus Impact Lat Pulldown", best: { brian: {}, dad: {} }, history: [] },
-      { id: 33, name: "Hoist Single Leg Extension", best: { brian: {}, dad: {} }, history: [] },
-      { id: 34, name: "Hammer Strength ISO-Lateral Bench Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 35, name: "Hammer Strength ISO-Lateral Shoulder Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 36, name: "Cable Tricep Pushdown", best: { brian: {}, dad: {} }, history: [] },
-      { id: 37, name: "Total Gym Elevate Core Basic Scrunch", best: { brian: {}, dad: {} }, history: [] },
-      { id: 38, name: "Single Leg Squats", best: { brian: {}, dad: {} }, history: [] },
-      { id: 39, name: "Horizontal Pull-Ups", best: { brian: {}, dad: {} }, history: [] },
-      { id: 40, name: "QT Underhand Pulldown", best: { brian: {}, dad: {} }, history: [] },
-      { id: 41, name: "SquatMax Romanian Deadlift w/ Harness", best: { brian: {}, dad: {} }, history: [] },
-      { id: 42, name: "Push-Up", best: { brian: {}, dad: {} }, history: [] },
-      { id: 43, name: "Standing Shoulder Press w/ Post Hold", best: { brian: {}, dad: {} }, history: [] },
-      { id: 44, name: "Iron Master Leg Extension w/ Bands", best: { brian: {}, dad: {} }, history: [] },
-      { id: 45, name: "QT Belt Single Leg Calf Raises", best: { brian: {}, dad: {} }, history: [] },
-      { id: 46, name: "QT Belt March in Place", best: { brian: {}, dad: {} }, history: [] },
-      { id: 47, name: "Chest Supported 30° Dumbbell Row", best: { brian: {}, dad: {} }, history: [] },
-      { id: 48, name: "QT Bench Press 45° Handle", best: { brian: {}, dad: {} }, history: [] },
-      { id: 49, name: "QT Viking Press", best: { brian: {}, dad: {} }, history: [] },
-      { id: 50, name: "Tricep Extension", best: { brian: {}, dad: {} }, history: [] },
-      { id: 51, name: "Knee Up", best: { brian: {}, dad: {} }, history: [] }
-    ];
+    const INITIAL_EXERCISES = [];
 
     async function sheetsGet() {
       const res = await fetch(SCRIPT_URL);
@@ -234,6 +182,24 @@
             const sheetsData = await sheetsGet();
             const hasData = sheetsData.history.length > 0 || Object.keys(sheetsData.best).length > 0;
             if (hasData) {
+              // Dynamically add any exercises found in Sheets that aren't in the local list
+              const existingNames = new Set(base.map(e => e.name.toLowerCase()));
+              const sheetExerciseNames = new Set([
+                ...Object.keys(sheetsData.best || {}),
+                ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean)
+              ]);
+
+              let nextId = Math.max(0, ...base.map(e => e.id)) + 1;
+              for (const name of sheetExerciseNames) {
+                if (!existingNames.has(name.toLowerCase())) {
+                  base.push({ id: nextId++, name, best: { brian: {}, dad: {} }, history: [] });
+                  existingNames.add(name.toLowerCase());
+                }
+              }
+
+              // Sort all exercises alphabetically
+              base.sort((a, b) => a.name.localeCompare(b.name));
+
               const merged = mergeFromSheets(base, sheetsData);
               setExercises(merged);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
