@@ -60,6 +60,7 @@ function doGet(e) {
       const payload = JSON.parse(payloadStr);
       if (payload.action === "logSet")         return gymlog_handleLogSet(payload);
       if (payload.action === "syncAll")        return gymlog_handleSyncAll(payload);
+      if (payload.action === "syncMeta")       return gymlog_handleSyncMeta(payload);
       if (payload.action === "deleteHistory")  return gymlog_handleDeleteHistory(payload);
       if (payload.action === "deleteExercise") return gymlog_handleDeleteExercise(payload);
       if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
@@ -90,6 +91,7 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     if (payload.action === "logSet")         return gymlog_handleLogSet(payload);
     if (payload.action === "syncAll")        return gymlog_handleSyncAll(payload);
+    if (payload.action === "syncMeta")       return gymlog_handleSyncMeta(payload);
     if (payload.action === "deleteHistory")  return gymlog_handleDeleteHistory(payload);
     if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
     if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
@@ -333,7 +335,36 @@ function gymlog_recalculateBestForExercise(exerciseName) {
 
 
 // =============================================================================
-// GYMLOG — SYNC ALL
+// GYMLOG — SYNC META (lightweight: people + exercise metadata only, no history)
+// Used by the manual sync button in Settings. History is already in Sheets
+// from individual logSet calls and does not need to be re-sent.
+// =============================================================================
+
+function gymlog_handleSyncMeta(payload) {
+  const { people: payloadPeople, exercises: exMeta } = payload;
+
+  // Save people roster
+  if (payloadPeople && payloadPeople.length > 0) {
+    const peopleSheet = getOrCreateSheet(PEOPLE_TAB, PEOPLE_HEADERS);
+    clearDataRows(peopleSheet);
+    payloadPeople.forEach(name => peopleSheet.appendRow([String(name)]));
+  }
+
+  // Save exercise metadata (clear + rewrite GymLog_Exercises tab)
+  if (exMeta && exMeta.length > 0) {
+    const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+    clearDataRows(exSheet);
+    exMeta.forEach(ex => {
+      exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || ""]);
+    });
+  }
+
+  return ok({ synced: exMeta?.length || 0 });
+}
+
+
+// =============================================================================
+// GYMLOG — SYNC ALL (full overwrite — kept for data migration or emergencies)
 // =============================================================================
 
 function gymlog_handleSyncAll(payload) {

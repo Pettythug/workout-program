@@ -480,16 +480,14 @@
         if (syncStatus === "syncing") return;
         setSyncStatus("syncing");
         try {
-          // Send only metadata — history is already in Sheets from individual logSet calls.
-          // syncAll with full history exceeds URL length limits.
           const exMeta = exercises.map(ex => ({ name: ex.name, timed: ex.timed, category: ex.category || "" }));
           await sheetsPost({ action: "syncMeta", people, exercises: exMeta });
           setSyncStatus("ok");
           setLastSyncTime(new Date());
           showToast("Synced to Sheets ✓");
-        } catch {
+        } catch (e) {
           setSyncStatus("error");
-          showToast("Sync failed", "error");
+          showToast("Sync failed: " + (e?.message || "unknown error"), "error");
         }
       };
 
