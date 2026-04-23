@@ -25,10 +25,12 @@ const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
 const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
+const EXERCISES_TAB = "GymLog_Exercises"; // exercise metadata: timed flag + category
 
 const HISTORY_HEADERS = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep Range", "Note", "Set #"];
 const BEST_HEADERS    = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS  = ["Name"];
+const EXERCISES_HEADERS = ["Exercise", "Timed", "Category"];
 const REP_RANGES      = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
@@ -61,6 +63,7 @@ function doGet(e) {
       if (payload.action === "deleteHistory")  return gymlog_handleDeleteHistory(payload);
       if (payload.action === "deleteExercise") return gymlog_handleDeleteExercise(payload);
       if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
+      if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -89,6 +92,7 @@ function doPost(e) {
     if (payload.action === "syncAll")        return gymlog_handleSyncAll(payload);
     if (payload.action === "deleteHistory")  return gymlog_handleDeleteHistory(payload);
     if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
+    if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -210,10 +214,22 @@ function gymlog_doGet() {
       : [];
     const people = peopleRaw.map(r => String(r[0])).filter(n => n.trim());
 
+    // ── Exercise metadata (timed flag + category) ─────────────────────────────
+    const exSheet   = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+    const exRaw     = exSheet.getLastRow() > 1
+      ? exSheet.getRange(2, 1, exSheet.getLastRow() - 1, EXERCISES_HEADERS.length).getValues()
+      : [];
+    const exercisesMeta = exRaw.map(r => ({
+      name:     String(r[0]).trim(),
+      timed:    r[1] === true || String(r[1]).toLowerCase() === "true",
+      category: String(r[2] || "").trim(),
+    })).filter(e => e.name);
+
     return ok({
       history,
       best,
-      people: people.length > 0 ? people : DEFAULT_PEOPLE,
+      people:    people.length > 0 ? people : DEFAULT_PEOPLE,
+      exercises: exercisesMeta,
     });
 
   } catch (e) {
@@ -362,7 +378,48 @@ function gymlog_handleSyncAll(payload) {
     payloadPeople.forEach(name => peopleSheet.appendRow([String(name)]));
   }
 
+  // Save exercise metadata if provided
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  clearDataRows(exSheet);
+  exercises.forEach(ex => {
+    exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || ""]);
+  });
+
   return ok({ synced: exercises.length });
+}
+
+
+// =============================================================================
+// GYMLOG — SAVE EXERCISE METADATA
+// =============================================================================
+
+function gymlog_handleSaveExercise(payload) {
+  const { exercise, timed, category } = payload;
+  if (!exercise) return err("No exercise name provided");
+
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+
+  // Upsert: update existing row or append new one
+  const lastRow = exSheet.getLastRow();
+  let rowIndex  = -1;
+  if (lastRow > 1) {
+    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < names.length; i++) {
+      if (String(names[i][0]).trim().toLowerCase() === String(exercise).trim().toLowerCase()) {
+        rowIndex = i + 2;
+        break;
+      }
+    }
+  }
+
+  const row = [exercise, timed ? true : false, category || ""];
+  if (rowIndex > 0) {
+    exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).setValues([row]);
+  } else {
+    exSheet.appendRow(row);
+  }
+
+  return ok({ saved: exercise });
 }
 
 

@@ -37,6 +37,19 @@
     const PEOPLE_KEY   = "gym-tracker-people-v1"; // separate people roster cache
     const DEFAULT_PEOPLE = ["Brian", "Dad"];
 
+    const EXERCISE_CATEGORIES = [
+      "Explosive",
+      "Knee Dominant",
+      "Hip Dominant",
+      "Horizontal Push",
+      "Horizontal Pull",
+      "Vertical Push",
+      "Vertical Pull",
+      "Rotational Core",
+      "Plank Core",
+      "Accessory",
+    ];
+
     // ── REP RANGES (15-20 replaced by 13+) ───────────────────────────────────
     const REP_RANGES = [
       { key: "r1_3",     label: "1-3"  },
@@ -153,9 +166,10 @@
         const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
         return {
           ...ex,
-          timed:   sheetExInfo?.timed ?? ex.timed ?? false,
-          history: sheetHistory,
-          best:    sheetBest || makeBest(),
+          timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
+          category: sheetExInfo?.category ?? ex.category ?? "",
+          history:  sheetHistory,
+          best:     sheetBest || makeBest(),
         };
       });
 
@@ -182,6 +196,7 @@
       const [setCount,      setSetCount]      = useState(1);
       const [newName,       setNewName]       = useState("");
       const [newExTimed,    setNewExTimed]    = useState(false);
+      const [newExCategory, setNewExCategory] = useState("");
       const [newPersonName, setNewPersonName] = useState("");
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
@@ -211,9 +226,9 @@
               if (!ex.best) {
                 const b = {};
                 localPeople.forEach(p => { b[p.toLowerCase()] = {}; });
-                return { ...ex, timed: ex.timed ?? false, best: b };
+                return { ...ex, timed: ex.timed ?? false, category: ex.category || "", best: b };
               }
-              return { ...ex, timed: ex.timed ?? false };
+              return { ...ex, timed: ex.timed ?? false, category: ex.category || "" };
             });
           }
         } catch {}
@@ -241,7 +256,7 @@
                 if (!existingNames.has(name.toLowerCase())) {
                   const defBest = {};
                   localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
-                  base.push({ id: nextId++, name, timed: false, best: defBest, history: [] });
+                  base.push({ id: nextId++, name, timed: false, category: "", best: defBest, history: [] });
                   existingNames.add(name.toLowerCase());
                 }
               }
@@ -413,11 +428,19 @@
         const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
         const defBest = {};
         people.forEach(p => { defBest[p.toLowerCase()] = {}; });
-        const updated = [...exercises, {
-          id: maxId + 1, name: newName.trim(), timed: newExTimed, best: defBest, history: [],
-        }].sort((a, b) => a.name.localeCompare(b.name));
+        const newEx = {
+          id: maxId + 1, name: newName.trim(), timed: newExTimed,
+          category: newExCategory, best: defBest, history: [],
+        };
+        const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
         await persist(updated);
-        setNewName(""); setNewExTimed(false);
+        // Save exercise metadata to Sheets (timed flag + category)
+        if (scriptConfigured) {
+          try {
+            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category });
+          } catch { /* non-critical — metadata syncs on next syncAll */ }
+        }
+        setNewName(""); setNewExTimed(false); setNewExCategory("");
         showToast("Exercise added!");
         setView("list");
       };
@@ -689,6 +712,17 @@
                   Tip: you can type plain seconds (e.g. 90) and it'll convert to 1:30.
                 </div>
               )}
+              <div style={s.whoLabel}>CATEGORY (optional)</div>
+              <select
+                style={{ ...s.input, color: newExCategory ? "#ddd" : "#555" }}
+                value={newExCategory}
+                onChange={e => setNewExCategory(e.target.value)}
+              >
+                <option value="">-- None --</option>
+                {EXERCISE_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
               <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
             </div>
             {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
@@ -760,9 +794,12 @@
                 <div key={ex.id} style={s.card}>
                   <div style={s.cardHeader}>
                     <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
-                      <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
-                      {ex.name}
-                      {ex.timed && <span style={s.timedPill}>⏱</span>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                        {ex.name}
+                        {ex.timed && <span style={s.timedPill}>⏱</span>}
+                      </div>
+                      {ex.category && <div style={s.categoryLabel}>{ex.category.toUpperCase()}</div>}
                     </div>
                     <div style={s.cardActions}>
                       <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
@@ -894,7 +931,8 @@
       listWrap:         { flex: 1, overflowY: "auto", padding: "6px 12px 20px", WebkitOverflowScrolling: "touch" },
       card:             { background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 6, overflow: "hidden" },
       cardHeader:       { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px" },
-      cardName:         { flex: 1, fontSize: 12, color: "#e0e0e0", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
+      cardName:         { flex: 1, fontSize: 12, color: "#e0e0e0", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 },
+      categoryLabel:    { fontSize: 8, color: "#555", letterSpacing: 2, paddingLeft: 16 },
       chevron:          { color: "#444", fontSize: 10, minWidth: 10 },
       cardActions:      { display: "flex", gap: 6, alignItems: "center" },
       logBtn:           { background: "#1a1100", border: "1px solid #f97316", borderRadius: 6, color: "#f97316", fontSize: 10, fontWeight: 700, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
