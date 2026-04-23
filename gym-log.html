@@ -78,6 +78,12 @@
       return null;
     }
 
+    // Compatibility shim: the v2 backend returns r13_plus instead of r15_20.
+    // Remap it back to r15_20 so this legacy app displays correctly for current users.
+    function remapToLegacy(range) {
+      return range === "r13_plus" ? "r15_20" : range;
+    }
+
     function todayStr() {
       return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     }
@@ -118,12 +124,27 @@
     function mergeFromSheets(localExercises, sheetsData) {
       const { history: allHistory, best: allBest } = sheetsData;
       return localExercises.map(ex => {
-        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
-        const sheetBest = allBest[ex.name];
+        // Remap r13_plus → r15_20 in history rows so range badges display correctly
+        const sheetHistory = allHistory
+          .filter(h => h.exercise === ex.name)
+          .map(h => ({ ...h, range: remapToLegacy(h.range) }));
+        // Remap r13_plus → r15_20 in best keys so the best grid displays correctly
+        const rawBest = allBest[ex.name];
+        let sheetBest = rawBest || { brian: {}, dad: {} };
+        if (rawBest) {
+          const remapped = {};
+          for (const person of Object.keys(rawBest)) {
+            remapped[person] = {};
+            for (const [key, val] of Object.entries(rawBest[person] || {})) {
+              remapped[person][remapToLegacy(key)] = val;
+            }
+          }
+          sheetBest = remapped;
+        }
         return {
           ...ex,
           history: sheetHistory,
-          best: sheetBest || { brian: {}, dad: {} },
+          best: sheetBest,
         };
       });
     }
