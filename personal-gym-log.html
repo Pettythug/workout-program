@@ -37,6 +37,9 @@
     const PEOPLE_KEY   = "gym-tracker-people-v1"; // separate people roster cache
     const DEFAULT_PEOPLE = ["Brian", "Dad"];
 
+    const LOCATIONS_KEY     = "gym-tracker-locations-v1";
+    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
+
     const EXERCISE_CATEGORIES = [
       "Explosive",
       "Knee Dominant",
@@ -150,9 +153,10 @@
     }
 
     // Merge Sheets data into local exercises; also pick up people roster from Sheets
-    function mergeFromSheets(localExercises, sheetsData, localPeople) {
-      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises } = sheetsData;
-      const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
+    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
+      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetLocations } = sheetsData;
+      const people    = (sheetPeople    && sheetPeople.length    > 0) ? sheetPeople    : localPeople;
+      const locations = (sheetLocations && sheetLocations.length > 0) ? sheetLocations : localLocations;
 
       const makeBest = () => {
         const b = {};
@@ -168,12 +172,13 @@
           ...ex,
           timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
           category: sheetExInfo?.category ?? ex.category ?? "",
+          location: sheetExInfo?.location ?? ex.location ?? "Anywhere",
           history:  sheetHistory,
           best:     sheetBest || makeBest(),
         };
       });
 
-      return { exercises: merged, people };
+      return { exercises: merged, people, locations };
     }
 
     // ── MAIN COMPONENT ────────────────────────────────────────────────────────
@@ -197,8 +202,13 @@
       const [newName,       setNewName]       = useState("");
       const [newExTimed,    setNewExTimed]    = useState(false);
       const [newExCategory, setNewExCategory] = useState("");
+      const [newExLocation, setNewExLocation] = useState("Anywhere");
       const [newPersonName, setNewPersonName] = useState("");
       const [lastSyncTime,  setLastSyncTime]  = useState(null);
+      const [locations,     setLocations]     = useState(DEFAULT_LOCATIONS);
+      const [locationFilter,setLocationFilter]= useState("all");
+      const [categoryFilter,setCategoryFilter]= useState("");
+      const [newLocName,    setNewLocName]    = useState("");
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -211,11 +221,17 @@
 
       // ── LOAD ───────────────────────────────────────────────────────────────
       const loadData = async () => {
-        // Step 1: read people from localStorage
+        // Step 1: read people + locations from localStorage
         let localPeople = DEFAULT_PEOPLE;
         try {
           const sp = JSON.parse(localStorage.getItem(PEOPLE_KEY));
           if (sp && Array.isArray(sp) && sp.length > 0) localPeople = sp;
+        } catch {}
+
+        let localLocations = DEFAULT_LOCATIONS;
+        try {
+          const sl = JSON.parse(localStorage.getItem(LOCATIONS_KEY));
+          if (sl && Array.isArray(sl) && sl.length > 0) localLocations = sl;
         } catch {}
 
         // Step 2: read exercises from localStorage
@@ -227,15 +243,16 @@
               if (!ex.best) {
                 const b = {};
                 localPeople.forEach(p => { b[p.toLowerCase()] = {}; });
-                return { ...ex, timed: ex.timed ?? false, category: ex.category || "", best: b };
+                return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere", best: b };
               }
-              return { ...ex, timed: ex.timed ?? false, category: ex.category || "" };
+              return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere" };
             });
           }
         } catch {}
 
         base = migrateRanges(base);
         setPeople(localPeople);
+        setLocations(localLocations);
         setExercises(base);
         setLoading(false);
 
@@ -257,17 +274,21 @@
                 if (!existingNames.has(name.toLowerCase())) {
                   const defBest = {};
                   localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
-                  base.push({ id: nextId++, name, timed: false, category: "", best: defBest, history: [] });
+                  base.push({ id: nextId++, name, timed: false, category: "", location: "Anywhere", best: defBest, history: [] });
                   existingNames.add(name.toLowerCase());
                 }
               }
               base.sort((a, b) => a.name.localeCompare(b.name));
 
-              const { exercises: merged, people: mergedPeople } = mergeFromSheets(base, sheetsData, localPeople);
+              const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
               const migrated = migrateRanges(merged);
 
               setPeople(mergedPeople);
               setExercises(migrated);
+              if (mergedLocations && mergedLocations.length > 0) {
+                setLocations(mergedLocations);
+                localStorage.setItem(LOCATIONS_KEY, JSON.stringify(mergedLocations));
+              }
               localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
               localStorage.setItem(PEOPLE_KEY, JSON.stringify(mergedPeople));
             }
@@ -432,17 +453,16 @@
         people.forEach(p => { defBest[p.toLowerCase()] = {}; });
         const newEx = {
           id: maxId + 1, name: newName.trim(), timed: newExTimed,
-          category: newExCategory, best: defBest, history: [],
+          category: newExCategory, location: newExLocation, best: defBest, history: [],
         };
         const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
         await persist(updated);
-        // Save exercise metadata to Sheets (timed flag + category)
         if (scriptConfigured) {
           try {
-            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category });
-          } catch { /* non-critical — metadata syncs on next syncAll */ }
+            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+          } catch {}
         }
-        setNewName(""); setNewExTimed(false); setNewExCategory("");
+        setNewName(""); setNewExTimed(false); setNewExCategory(""); setNewExLocation("Anywhere");
         showToast("Exercise added!");
         setView("list");
       };
@@ -469,10 +489,35 @@
         if (people.length <= 1) return showToast("Need at least one person", "error");
         const newPeople = people.filter(p => p !== name);
         await persist(exercises, newPeople, { action: "savePeople", people: newPeople });
-        // Reset whoMode if it was set to the removed person
         if (whoMode === name) setWhoMode("all");
         setConfirmDelete(null);
         showToast(`${name} removed from roster`);
+      };
+
+      // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
+      const addLocation = async () => {
+        if (!newLocName.trim()) return showToast("Name required", "error");
+        const trimmed = newLocName.trim();
+        if (locations.map(l => l.toLowerCase()).includes(trimmed.toLowerCase()))
+          return showToast("Already on the list", "error");
+        const newLocs = [...locations, trimmed];
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (scriptConfigured) {
+          try { await sheetsPost({ action: "syncMeta", people, locations: newLocs, exercises: [] }); } catch {}
+        }
+        setNewLocName("");
+        showToast(`${trimmed} added!`);
+      };
+
+      const removeLocation = (name) => {
+        if (name === "Anywhere") return showToast("Anywhere cannot be removed", "error");
+        const newLocs = locations.filter(l => l !== name);
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (locationFilter === name) setLocationFilter("all");
+        setConfirmDelete(null);
+        showToast(`${name} removed`);
       };
 
       // ── MANUAL SYNC ────────────────────────────────────────────────────────
@@ -496,7 +541,15 @@
         }
       };
 
-      const filtered = exercises.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
+      const filtered = exercises.filter(e => {
+        const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
+        const catMatch  = !categoryFilter || e.category === categoryFilter;
+        const locMatch  = locationFilter === "all"
+          || e.location === locationFilter
+          || !e.location
+          || e.location === "Anywhere";
+        return nameMatch && catMatch && locMatch;
+      });
 
       const syncDot = scriptConfigured ? (
         <div
@@ -546,6 +599,30 @@
                 <button style={s.addPersonBtn} onClick={addPerson}>ADD</button>
               </div>
 
+              <div style={{ ...s.sectionLabel, marginTop: 24 }}>LOCATIONS</div>
+              <div style={s.settingsNote}>
+                Tag exercises to specific gyms. "Anywhere" exercises appear in all location views.
+              </div>
+              {locations.map(loc => (
+                <div key={loc} style={s.personListRow}>
+                  <div style={s.personListName}>{loc}</div>
+                  {loc !== "Anywhere" && (
+                    <button style={s.personRemoveBtn}
+                      onClick={() => setConfirmDelete({ type: "location", name: loc })}>✕</button>
+                  )}
+                </div>
+              ))}
+              <div style={s.addPersonRow}>
+                <input
+                  style={{ ...s.input, flex: 1 }}
+                  placeholder="New location (e.g. Park, Friend's Gym)..."
+                  value={newLocName}
+                  onChange={e => setNewLocName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addLocation()}
+                />
+                <button style={s.addPersonBtn} onClick={addLocation}>ADD</button>
+              </div>
+
               <div style={{ ...s.sectionLabel, marginTop: 24 }}>DATA</div>
               <div style={s.settingsNote}>
                 Pushes all exercises, history, and people to Google Sheets. Use this after adding
@@ -574,6 +651,20 @@
                   <div style={s.modalBtns}>
                     <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
                     <button style={s.confirmBtn} onClick={() => removePerson(confirmDelete.name)}>Remove</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {confirmDelete?.type === "location" && (
+              <div style={s.overlay}>
+                <div style={s.modal}>
+                  <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
+                  <div style={s.modalSub}>
+                    Exercises tagged to this location won't appear in that filter. Their history stays in Sheets.
+                  </div>
+                  <div style={s.modalBtns}>
+                    <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                    <button style={s.confirmBtn} onClick={() => removeLocation(confirmDelete.name)}>Remove</button>
                   </div>
                 </div>
               </div>
@@ -749,6 +840,16 @@
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
+              <div style={s.whoLabel}>LOCATION</div>
+              <select
+                style={{ ...s.input, color: newExLocation !== "Anywhere" ? "#ddd" : "#555" }}
+                value={newExLocation}
+                onChange={e => setNewExLocation(e.target.value)}
+              >
+                {locations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
               <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
             </div>
             {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
@@ -783,7 +884,27 @@
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            <select
+              style={s.categoryFilter}
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {EXERCISE_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
             {search && <button style={s.clearBtn} onClick={() => setSearch("")}>✕</button>}
+          </div>
+          <div style={s.locationTabRow}>
+            <button
+              style={{ ...s.locationTab, ...(locationFilter === "all" ? s.locationTabActive : {}) }}
+              onClick={() => setLocationFilter("all")}>ALL</button>
+            {locations.filter(l => l !== "Anywhere").map(loc => (
+              <button key={loc}
+                style={{ ...s.locationTab, ...(locationFilter === loc ? s.locationTabActive : {}) }}
+                onClick={() => setLocationFilter(loc)}>{loc.toUpperCase()}</button>
+            ))}
           </div>
 
           {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
@@ -1022,6 +1143,10 @@
       addPersonBtn:     { padding: "9px 14px", background: "#f97316", border: "none", borderRadius: 7, color: "#000", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, flexShrink: 0 },
       syncBtn:          { padding: 12, background: "#0a1a0a", border: "1px solid #22c55e", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 2, width: "100%" },
       syncBtnDisabled:  { opacity: 0.5, cursor: "default" },
+      categoryFilter:   { background: "#111", border: "1px solid #1e1e1e", borderRadius: 6, color: "#555", fontSize: 9, fontFamily: "'DM Mono',monospace", padding: "4px 6px", outline: "none", maxWidth: 130 },
+      locationTabRow:   { display: "flex", gap: 5, padding: "2px 12px 8px", overflowX: "auto", WebkitOverflowScrolling: "touch" },
+      locationTab:      { padding: "3px 10px", background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: 20, color: "#444", fontSize: 8, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'DM Mono',monospace", flexShrink: 0 },
+      locationTabActive:{ background: "#1a1100", border: "1px solid #f97316", color: "#f97316" },
     };
 
     ReactDOM.createRoot(document.getElementById("root")).render(<WorkoutTracker />);
