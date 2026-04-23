@@ -154,9 +154,14 @@
 
     // Merge Sheets data into local exercises; also pick up people roster from Sheets
     function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
-      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetLocations } = sheetsData;
-      const people    = (sheetPeople    && sheetPeople.length    > 0) ? sheetPeople    : localPeople;
-      const locations = (sheetLocations && sheetLocations.length > 0) ? sheetLocations : localLocations;
+      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
+      const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
+
+      // Build available locations: localLocations + any locations found on exercises in Sheets
+      const mergedLocs = [...new Set([
+        ...localLocations,
+        ...(sheetDerivedLocs || []),
+      ])];
 
       const makeBest = () => {
         const b = {};
@@ -178,7 +183,7 @@
         };
       });
 
-      return { exercises: merged, people, locations };
+      return { exercises: merged, people, locations: mergedLocs };
     }
 
     // ── MAIN COMPONENT ────────────────────────────────────────────────────────

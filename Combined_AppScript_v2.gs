@@ -26,12 +26,10 @@ const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
 const EXERCISES_TAB = "GymLog_Exercises"; // exercise metadata: timed flag + category
-const LOCATIONS_TAB = "GymLog_Locations"; // gym/location roster
 
 const HISTORY_HEADERS   = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep Range", "Note", "Set #"];
 const BEST_HEADERS      = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS    = ["Name"];
-const LOCATIONS_HEADERS = ["Location"];
 const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
@@ -230,22 +228,17 @@ function gymlog_doGet() {
       location: String(r[3] || "Anywhere").trim() || "Anywhere",
     })).filter(e => e.name);
 
-    // ── Locations (gym roster) ─────────────────────────────────────────
-    const locsSheet     = getOrCreateSheet(LOCATIONS_TAB, LOCATIONS_HEADERS);
-    const locsRaw       = locsSheet.getLastRow() > 1
-      ? locsSheet.getRange(2, 1, locsSheet.getLastRow() - 1, 1).getValues()
-      : [];
-    const locationsMeta   = locsRaw.map(r => String(r[0]).trim()).filter(l => l);
-    const resolvedLocations = locationsMeta.length > 0
-      ? locationsMeta
-      : ["Anywhere", "Home", "24 Hour Fitness"];
+    // Derive unique non-default locations from exercises for the frontend location picker
+    const derivedLocations = [...new Set(
+      exercisesMeta.map(e => e.location).filter(l => l && l !== "Anywhere")
+    )];
 
     return ok({
       history,
       best,
       people:    people.length > 0 ? people : DEFAULT_PEOPLE,
       exercises: exercisesMeta,
-      locations: resolvedLocations,
+      locations: derivedLocations,
     });
 
   } catch (e) {
@@ -362,14 +355,6 @@ function gymlog_handleSyncMeta(payload) {
     const peopleSheet = getOrCreateSheet(PEOPLE_TAB, PEOPLE_HEADERS);
     clearDataRows(peopleSheet);
     payloadPeople.forEach(name => peopleSheet.appendRow([String(name)]));
-  }
-
-  // Save locations roster
-  const { locations: payloadLocations } = payload;
-  if (payloadLocations && payloadLocations.length > 0) {
-    const locsSheet = getOrCreateSheet(LOCATIONS_TAB, LOCATIONS_HEADERS);
-    clearDataRows(locsSheet);
-    payloadLocations.forEach(loc => locsSheet.appendRow([String(loc)]));
   }
 
   // Save exercise metadata (clear + rewrite GymLog_Exercises tab)
