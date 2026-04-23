@@ -490,11 +490,11 @@
 
       const syncDot = scriptConfigured ? (
         <div
-          onClick={syncStatus === "error" ? manualSync : undefined}
-          title={syncStatus === "error" ? "Tap to retry" : syncStatus === "syncing" ? "Syncing..." : "Synced"}
+          onClick={syncStatus !== "syncing" ? manualSync : undefined}
+          title={syncStatus === "error" ? "Tap to retry sync" : syncStatus === "syncing" ? "Syncing..." : "Synced — tap to push all data"}
           style={{
             width: 8, height: 8, borderRadius: "50%", marginLeft: 8,
-            cursor: syncStatus === "error" ? "pointer" : "default",
+            cursor: syncStatus === "syncing" ? "default" : "pointer",
             background: syncStatus === "ok" ? "#22c55e" : syncStatus === "error" ? "#ef4444" : "#f97316",
             animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none", flexShrink: 0,
           }}
