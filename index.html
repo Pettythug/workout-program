@@ -140,6 +140,22 @@
 
     .app-card:nth-child(1) .card-title { color: #f97316; }
     .app-card:nth-child(2) .card-title { color: #ef4444; }
+    .app-card:nth-child(3) .card-title { color: #22c55e; }
+
+    .app-card:nth-child(3)::before { background: #22c55e; }
+
+    .new-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #000;
+      background: #22c55e;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
 
     .card-desc {
       font-size: 13px;
@@ -178,7 +194,13 @@
     <div class="card-container">
       <a href="gym-log.html" class="app-card">
         <div class="card-title">GYM LOG</div>
-        <div class="card-desc">Log your daily sets, reps, and track your all-time PRs.</div>
+        <div class="card-desc">Original gym log for Brian &amp; Dad. Legacy version.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="personal-gym-log.html" class="app-card">
+        <div class="card-title">PERSONAL GYM LOG <span class="new-badge">NEW</span></div>
+        <div class="card-desc">Updated log with timed exercises, 13+ rep range, and multi-person roster management.</div>
         <div class="card-icon">▸</div>
       </a>
 
