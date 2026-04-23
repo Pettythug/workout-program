@@ -198,6 +198,7 @@
       const [newExTimed,    setNewExTimed]    = useState(false);
       const [newExCategory, setNewExCategory] = useState("");
       const [newPersonName, setNewPersonName] = useState("");
+      const [lastSyncTime,  setLastSyncTime]  = useState(null);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -271,6 +272,7 @@
               localStorage.setItem(PEOPLE_KEY, JSON.stringify(mergedPeople));
             }
             setSyncStatus("ok");
+            setLastSyncTime(new Date());
           } catch {
             setSyncStatus("error");
             showToast("Sheets sync failed — working offline", "error");
@@ -475,10 +477,12 @@
 
       // ── MANUAL SYNC ────────────────────────────────────────────────────────
       const manualSync = async () => {
+        if (syncStatus === "syncing") return;
         setSyncStatus("syncing");
         try {
           await sheetsPost({ action: "syncAll", exercises, people });
           setSyncStatus("ok");
+          setLastSyncTime(new Date());
           showToast("Synced to Sheets ✓");
         } catch {
           setSyncStatus("error");
@@ -490,11 +494,10 @@
 
       const syncDot = scriptConfigured ? (
         <div
-          onClick={syncStatus !== "syncing" ? manualSync : undefined}
-          title={syncStatus === "error" ? "Tap to retry sync" : syncStatus === "syncing" ? "Syncing..." : "Synced — tap to push all data"}
+          title={syncStatus === "error" ? "Sync error — go to Settings to retry" : syncStatus === "syncing" ? "Syncing..." : "Synced"}
           style={{
             width: 8, height: 8, borderRadius: "50%", marginLeft: 8,
-            cursor: syncStatus === "syncing" ? "default" : "pointer",
+            cursor: "default",
             background: syncStatus === "ok" ? "#22c55e" : syncStatus === "error" ? "#ef4444" : "#f97316",
             animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none", flexShrink: 0,
           }}
@@ -536,6 +539,23 @@
                 />
                 <button style={s.addPersonBtn} onClick={addPerson}>ADD</button>
               </div>
+
+              <div style={{ ...s.sectionLabel, marginTop: 24 }}>DATA</div>
+              <div style={s.settingsNote}>
+                Pushes all exercises, history, and people to Google Sheets. Use this after adding
+                categories to existing exercises or after restoring from a new device.
+              </div>
+              <button
+                style={{ ...s.syncBtn, ...(syncStatus === "syncing" ? s.syncBtnDisabled : {}) }}
+                onClick={syncStatus !== "syncing" ? manualSync : undefined}
+              >
+                {syncStatus === "syncing" ? "●●● Syncing..." : "↑ Sync All Data to Sheets"}
+              </button>
+              {lastSyncTime && (
+                <div style={{ ...s.settingsNote, marginTop: 6 }}>
+                  Last synced: {lastSyncTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                </div>
+              )}
             </div>
 
             {confirmDelete?.type === "person" && (
@@ -994,6 +1014,8 @@
       personRemoveBtn:  { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 14, padding: "2px 6px" },
       addPersonRow:     { display: "flex", gap: 8 },
       addPersonBtn:     { padding: "9px 14px", background: "#f97316", border: "none", borderRadius: 7, color: "#000", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, flexShrink: 0 },
+      syncBtn:          { padding: 12, background: "#0a1a0a", border: "1px solid #22c55e", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 2, width: "100%" },
+      syncBtnDisabled:  { opacity: 0.5, cursor: "default" },
     };
 
     ReactDOM.createRoot(document.getElementById("root")).render(<WorkoutTracker />);
