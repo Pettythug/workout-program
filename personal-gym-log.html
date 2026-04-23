@@ -480,7 +480,12 @@
         if (syncStatus === "syncing") return;
         setSyncStatus("syncing");
         try {
-          const exMeta = exercises.map(ex => ({ name: ex.name, timed: ex.timed, category: ex.category || "" }));
+          // Only send exercises that have non-default metadata (timed or category).
+          // Exercises with timed=false and no category don't need a row in GymLog_Exercises.
+          // This keeps the URL payload small regardless of total exercise count.
+          const exMeta = exercises
+            .filter(ex => ex.timed || (ex.category && ex.category.trim()))
+            .map(ex => ({ name: ex.name, timed: ex.timed, category: ex.category || "" }));
           await sheetsPost({ action: "syncMeta", people, exercises: exMeta });
           setSyncStatus("ok");
           setLastSyncTime(new Date());
