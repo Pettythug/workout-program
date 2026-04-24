@@ -39,6 +39,7 @@
 
     const LOCATIONS_KEY     = "gym-tracker-locations-v1";
     const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
+    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1"; // per-device only, never synced
 
     const EXERCISE_CATEGORIES = [
       "Explosive",
@@ -214,6 +215,7 @@
       const [locationFilter,setLocationFilter]= useState("all");
       const [categoryFilter,setCategoryFilter]= useState("");
       const [newLocName,    setNewLocName]    = useState("");
+      const [hiddenPeople,  setHiddenPeople]  = useState([]);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -256,8 +258,15 @@
         } catch {}
 
         base = migrateRanges(base);
+        let localHidden = [];
+        try {
+          const lh = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY));
+          if (lh && Array.isArray(lh)) localHidden = lh;
+        } catch {}
+
         setPeople(localPeople);
         setLocations(localLocations);
+        setHiddenPeople(localHidden);
         setExercises(base);
         setLoading(false);
 
@@ -499,6 +508,17 @@
         showToast(`${name} removed from roster`);
       };
 
+      const togglePersonVisibility = (name) => {
+        const isHidden = hiddenPeople.includes(name);
+        const newHidden = isHidden
+          ? hiddenPeople.filter(h => h !== name)
+          : [...hiddenPeople, name];
+        setHiddenPeople(newHidden);
+        localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(newHidden));
+        if (!isHidden && whoMode === name) setWhoMode("all");
+        showToast(isHidden ? `${name} shown on this device` : `${name} hidden on this device`);
+      };
+
       // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
       const addLocation = async () => {
         if (!newLocName.trim()) return showToast("Name required", "error");
@@ -543,6 +563,8 @@
         }
       };
 
+      const activePeople = people.filter(p => !hiddenPeople.includes(p));
+
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
         const catMatch  = !categoryFilter || e.category === categoryFilter;
@@ -581,15 +603,26 @@
             <div style={s.formWrap}>
               <div style={s.sectionLabel}>PEOPLE</div>
               <div style={s.settingsNote}>
-                Removing a person hides them from the workout selector. Their history stays in Sheets.
+                <strong style={{color:"#f97316"}}>This device:</strong> {activePeople.join(", ") || "Nobody active"}.
+                Toggle ●/○ to show/hide per device. Remove ✕ affects all devices.
               </div>
-              {people.map(person => (
-                <div key={person} style={s.personListRow}>
-                  <div style={s.personListName}>{person}</div>
-                  <button style={s.personRemoveBtn}
-                    onClick={() => setConfirmDelete({ type: "person", name: person })}>✕</button>
-                </div>
-              ))}
+              {people.map(person => {
+                const isHidden = hiddenPeople.includes(person);
+                return (
+                  <div key={person} style={s.personListRow}>
+                    <div style={{ ...s.personListName, opacity: isHidden ? 0.4 : 1 }}>{person}</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button
+                        style={{ ...s.deviceToggleBtn, ...(isHidden ? s.deviceToggleOff : s.deviceToggleOn) }}
+                        onClick={() => togglePersonVisibility(person)}>
+                        {isHidden ? "○ HIDDEN" : "● THIS DEVICE"}
+                      </button>
+                      <button style={s.personRemoveBtn}
+                        onClick={() => setConfirmDelete({ type: "person", name: person })}>✕</button>
+                    </div>
+                  </div>
+                );
+              })}
               <div style={s.addPersonRow}>
                 <input
                   style={{ ...s.input, flex: 1 }}
@@ -696,11 +729,11 @@
 
               <div style={s.whoLabel}>WHO'S WORKING OUT?</div>
               <div style={s.segmented}>
-                {people.length > 1 && (
+                {activePeople.length > 1 && (
                   <button style={{ ...s.segBtn, ...(whoMode === "all" ? s.segActive : {}) }}
                     onClick={() => setWhoMode("all")}>All</button>
                 )}
-                {people.map(p => (
+                {activePeople.map(p => (
                   <button key={p}
                     style={{ ...s.segBtn, ...(whoMode === p ? s.segActive : {}) }}
                     onClick={() => setWhoMode(p)}>{p}</button>
@@ -870,7 +903,7 @@
                 <div style={s.title}>GYM LOG</div>
                 {syncDot}
               </div>
-              <div style={s.subtitle}>{people.join(" & ")} · {exercises.length} exercises</div>
+              <div style={s.subtitle}>{activePeople.join(" & ")} · {exercises.length} exercises</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={s.addIconBtn} onClick={() => setView("settings")} title="Settings">⚙️</button>
@@ -938,7 +971,7 @@
           <div style={s.listWrap}>
             {filtered.map(ex => {
               const isExpanded = expanded === ex.id;
-              const hasData = people.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
+              const hasData = activePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
               return (
                 <div key={ex.id} style={s.card}>
                   <div style={s.cardHeader}>
@@ -967,7 +1000,7 @@
                             <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
                             <div style={s.rangeColHeader}>WEIGHT</div>
                           </div>
-                          {people.map(person => {
+                          {activePeople.map(person => {
                             const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
                             return (
                               <div key={person} style={s.rangeRow}>
@@ -989,7 +1022,7 @@
                             <div style={s.personCol} />
                             {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
                           </div>
-                          {people.map(person => (
+                          {activePeople.map(person => (
                             <div key={person} style={s.rangeRow}>
                               <div style={s.personCol}>{person}</div>
                               {REP_RANGES.map(r => {
@@ -1143,6 +1176,9 @@
       personRemoveBtn:  { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 14, padding: "2px 6px" },
       addPersonRow:     { display: "flex", gap: 8 },
       addPersonBtn:     { padding: "9px 14px", background: "#f97316", border: "none", borderRadius: 7, color: "#000", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, flexShrink: 0 },
+      deviceToggleBtn:  { fontSize: 8, padding: "3px 8px", borderRadius: 4, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700, border: "1px solid transparent", flexShrink: 0 },
+      deviceToggleOn:   { background: "#0a1a0a", color: "#22c55e", borderColor: "#22c55e40" },
+      deviceToggleOff:  { background: "#111", color: "#444", borderColor: "#33333360" },
       syncBtn:          { padding: 12, background: "#0a1a0a", border: "1px solid #22c55e", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 2, width: "100%" },
       syncBtnDisabled:  { opacity: 0.5, cursor: "default" },
       categoryFilter:   { background: "#111", border: "1px solid #1e1e1e", borderRadius: 6, color: "#555", fontSize: 9, fontFamily: "'DM Mono',monospace", padding: "4px 6px", outline: "none", maxWidth: 130 },
