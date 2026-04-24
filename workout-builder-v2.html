@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Workout Program</title>
+    <title>BUILDER BETA</title>
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet">
@@ -169,7 +169,7 @@
 
         .exercise-card {
             background: var(--surface);
-            border: 1px solid var(--border);
+            border: 1px solid var(--accent);
             border-radius: var(--radius);
             margin-bottom: 10px;
             overflow: hidden;
@@ -268,19 +268,32 @@
             margin-bottom: 12px;
         }
 
+                .person-block {
+            background: #0e0e0e;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .person-label {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-family: var(--mono);
+        }
+
         .set-row {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 8px;
         }
 
         .set-num {
-            font-family: var(--mono);
-            font-size: 12px;
-            color: var(--muted);
-            width: 20px;
-            flex-shrink: 0;
+            display: none;
         }
 
         .set-input-group {
@@ -292,7 +305,7 @@
 
         .set-input {
             background: #0c0c0c;
-            border: 1px solid var(--border);
+            border: 1px solid var(--accent);
             border-radius: 8px;
             padding: 8px;
             width: 70px;
@@ -365,16 +378,13 @@
         
 
         .skip-btn {
-            background: var(--skip-light);
-            color: var(--skip);
-            border: 1px solid var(--border);
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid #ef4444;
             border-radius: 8px;
             padding: 10px 16px;
-            font-family: var(--sans);
-            font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            transition: opacity 0.15s;
         }
 
         .mark-done-btn:active,
@@ -384,18 +394,16 @@
 
         .complete-btn {
             width: 100%;
-            background: var(--text);
-            color: white;
-            border: none;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent);
             border-radius: var(--radius);
             padding: 16px;
-            font-family: var(--sans);
-            font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
             margin-top: 16px;
-            letter-spacing: -0.2px;
-            transition: opacity 0.15s;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         .complete-btn:active {
@@ -428,16 +436,14 @@
 
         .more-time-btn {
             width: 100%;
-            background: transparent;
-            color: var(--muted);
-            border: 1px dashed var(--border);
+            background: rgba(249, 115, 22, 0.05);
+            color: var(--accent);
+            border: 1px dashed var(--accent);
             border-radius: var(--radius);
             padding: 12px;
-            font-family: var(--sans);
             font-size: 13px;
             cursor: pointer;
             margin-top: 8px;
-            transition: all 0.15s;
         }
 
         .more-time-btn:active {
@@ -686,7 +692,7 @@
     <div id="app" style="display:none;">
         <div class="header">
             <div class="header-left">
-                <h1>Today's Workout</h1>
+                <h1>BUILDER BETA</h1>
                 <p id="headerSub">Loading...</p>
             </div>
             <div class="header-right">
@@ -1008,12 +1014,14 @@
                 const curSetNum = exerciseSetCounters[idx] || 1;
 
                 let inputsHTML = activePeople.map(p => `
-                    <div class="set-row">
-                        <div class="set-num" style="width:40px;">${p}</div>
-                        <div class="set-input-group">
-                          <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
-                          <span class="set-separator">×</span>
-                          <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
+                    <div class="person-block">
+                        <div class="person-label">${p}</div>
+                        <div class="set-row">
+                            <div class="set-input-group">
+                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
+                              <span class="set-separator">×</span>
+                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
+                            </div>
                         </div>
                     </div>
                 `).join('');
@@ -1328,12 +1336,14 @@
             
             const accList = document.getElementById('accSetsList');
             accList.innerHTML = activePeople.map(p => `
-                <div class="set-row">
-                    <div class="set-num" style="width:40px;">${p}</div>
-                    <div class="set-input-group">
-                      <input type="number" class="set-input" id="acc-reps-${p}" placeholder="reps" min="1" max="99">
-                      <span class="set-separator">×</span>
-                      <input type="number" class="set-input" id="acc-weight-${p}" placeholder="lbs" min="0" max="9999">
+                <div class="person-block">
+                    <div class="person-label">${p}</div>
+                    <div class="set-row">
+                        <div class="set-input-group">
+                          <input type="number" class="set-input" id="acc-reps-${p}" placeholder="reps" min="1" max="99">
+                          <span class="set-separator">×</span>
+                          <input type="number" class="set-input" id="acc-weight-${p}" placeholder="lbs" min="0" max="9999">
+                        </div>
                     </div>
                 </div>
             `).join('');
