@@ -826,7 +826,6 @@
         function openSettings() {
             document.getElementById('settingsUrlInput').value = API_URL;
             
-            // Build checklists
             const container = document.getElementById('activePeopleCheckboxes');
             const allPeople = globalData.people || ['Brian'];
             container.innerHTML = allPeople.map(p => `
@@ -855,9 +854,7 @@
             localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(activePeople));
             
             closeSettingsModal();
-            // Re-render workout with new people
             if (currentWorkout) {
-                // repopulate maxes
                 currentMaxes = {};
                 currentWorkout.exercises.forEach(e => {
                     currentMaxes[e.name] = {};
@@ -946,7 +943,7 @@
              currentWorkout = {
                  type: type,
                  workoutNum: num,
-                 repRange: '8-12', // standard target
+                 repRange: '8-12', 
                  exercises: genExercises
              };
              
@@ -979,13 +976,10 @@
             const list = document.getElementById('exerciseList');
             list.innerHTML = '';
             
-            // Build swap dropdown options natively
-            const loc = document.getElementById('locationSelect').value;
-            const availableSwapProps = (globalData.exercises || []).filter(e => (e.location === 'Anywhere' || e.location === loc || !e.location));
-            let selectOptionsBase = `<option value="custom">-- Type Custom Machine --</option>`;
-            availableSwapProps.sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
-                selectOptionsBase += `<option value="${e.name}">${e.name} (${e.category})</option>`;
-            });
+            // Build Location Options for Custom Machine Injection
+            const activeLoc = document.getElementById('locationSelect').value;
+            const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
+            const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
 
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
@@ -994,7 +988,18 @@
                 if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
                 if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
 
-                // Header section
+                // Filter Swaps by Current Exercise Category
+                const availableSwapProps = (globalData.exercises || []).filter(e => 
+                    e.category === ex.category && 
+                    (e.location === 'Anywhere' || e.location === activeLoc || !e.location) &&
+                    e.name !== ex.name
+                );
+                
+                let selectOptions = `<option value="custom" selected>-- Type Custom Machine --</option>`;
+                availableSwapProps.sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
+                    selectOptions += `<option value="${e.name}">${e.name}</option>`;
+                });
+
                 let headerHTML = `
                 <div class="exercise-header" onclick="toggleCard(${idx})">
                   <div class="exercise-info">
@@ -1003,7 +1008,6 @@
                     <div class="exercise-max">
                 `;
                 
-                // Add tiny max labels
                 activePeople.forEach(p => {
                     const maxData = currentMaxes[ex.name]?.[p] || {};
                     const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
@@ -1053,11 +1057,17 @@
                 <div class="swap-ui" id="swap-ui-${idx}" style="display:none; padding:16px;">
                    <p style="margin-bottom:8px; font-size:12px; color:var(--muted);">Select Replacement Exercise:</p>
                    <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
-                      ${selectOptionsBase}
+                      ${selectOptions}
                    </select>
-                   <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="Type new machine name..." style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                   <div id="swap-custom-block-${idx}" style="margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px;">
+                       <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="New Machine Name..." style="width:100%; margin-bottom:8px; font-size:14px; padding:8px;">
+                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface);">
+                          ${customLocDropdownHTML}
+                       </select>
+                       <p style="font-size:10px; color:var(--muted); margin-top:6px;">Saving as a <span style="font-weight:600;">${ex.category}</span> exercise.</p>
+                   </div>
                    <div style="display:flex; gap:8px;">
-                     <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" onclick="confirmSwap(${idx})">Confirm Swap</button>
+                     <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm</button>
                      <button class="skip-btn" style="flex:1; padding:8px; font-size:14px;" onclick="hideSwap(${idx})">Cancel</button>
                    </div>
                 </div>
@@ -1070,7 +1080,6 @@
             document.getElementById('workoutContent').style.display = 'block';
         }
 
-        // SWAP CONTROLLERS
         function showSwap(idx) {
             document.getElementById(`logger-${idx}`).style.display = 'none';
             document.getElementById(`swap-ui-${idx}`).style.display = 'block';
@@ -1085,20 +1094,51 @@
         
         function checkCustom(idx) {
             const val = document.getElementById(`swap-select-${idx}`).value;
-            const customInput = document.getElementById(`swap-custom-${idx}`);
-            if (val === 'custom') customInput.style.display = 'block';
-            else customInput.style.display = 'none';
+            const customBlock = document.getElementById(`swap-custom-block-${idx}`);
+            if (val === 'custom') customBlock.style.display = 'block';
+            else customBlock.style.display = 'none';
         }
         
-        function confirmSwap(idx) {
+        async function confirmSwap(idx) {
+            const btn = document.getElementById(`confirm-swap-btn-${idx}`);
             const selectVal = document.getElementById(`swap-select-${idx}`).value;
             let newName = '';
             let newCat = currentWorkout.exercises[idx].category;
             
             if (selectVal === 'custom') {
                 const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
+                let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
                 if (!typed) { alert('Please enter a custom machine name.'); return; }
+                
                 newName = typed;
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
+                
+                const req = {
+                   action: "saveExercise",
+                   exercise: newName,
+                   category: newCat,
+                   location: selectedLoc,
+                   timed: false
+                };
+                
+                try {
+                    await sheetsPost(req);
+                    // Add directly to in-memory global data so algorithm recognizes it immediately
+                    globalData.exercises.push({
+                        name: newName,
+                        category: newCat,
+                        location: selectedLoc,
+                        timed: false
+                    });
+                } catch(e) {
+                    console.error(e);
+                    alert("Warning: Could not save the new exercise to the master database. It will still swap for this session.");
+                }
+                
+                btn.textContent = 'Confirm';
+                btn.disabled = false;
+                
             } else {
                 newName = selectVal;
                 const found = globalData.exercises.find(e => e.name === newName);
@@ -1108,7 +1148,6 @@
             const oldName = currentWorkout.exercises[idx].name;
             currentWorkout.exercises[idx] = { name: newName, category: newCat };
             
-            // Re-allocate memory states
             delete exerciseStatus[oldName];
             exerciseStatus[newName] = 'pending';
             exerciseSetCounters[idx] = 1;
@@ -1118,9 +1157,8 @@
                  currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
             });
             
-            // Visual rerender
             renderWorkout(currentWorkout, currentWorkout.exercises);
-            toggleCard(idx); // re-expand card since we just swapped it
+            toggleCard(idx);
         }
 
         function toggleCard(idx) {
@@ -1183,7 +1221,6 @@
                    timed: false
                 });
                 
-                // Max Check natively
                 const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
                 let isNew = !existing;
                 if (existing) {
@@ -1223,7 +1260,6 @@
                     if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
                 }
                 
-                // Clear inputs
                 activePeople.forEach(p => {
                     const rEl = document.getElementById(`reps-${cardIdx}-${p}`);
                     const wEl = document.getElementById(`weight-${cardIdx}-${p}`);
@@ -1407,21 +1443,9 @@
             }
         }
 
-        function showLoading() {
-            document.getElementById('loadingState').style.display = 'block';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('workoutContent').style.display = 'none';
-            document.getElementById('successState').style.display = 'none';
-        }
-
+        function showLoading() { document.getElementById('loadingState').style.display = 'block'; document.getElementById('errorState').style.display = 'none'; document.getElementById('workoutContent').style.display = 'none'; document.getElementById('successState').style.display = 'none'; }
         function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
-
-        function showError(msg) {
-            hideLoading();
-            const el = document.getElementById('errorState');
-            el.style.display = 'block';
-            el.textContent = msg;
-        }
+        function showError(msg) { hideLoading(); document.getElementById('errorState').style.display = 'block'; document.getElementById('errorState').textContent = msg; }
 
         init();
 
