@@ -686,13 +686,17 @@
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
+        <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
         <div class="modal">
             <h3>Settings</h3>
             <div class="modal-label">Apps Script URL</div>
             <input type="text" class="modal-input" id="settingsUrlInput"
                 placeholder="https://script.google.com/macros/s/..." />
+
+            <div class="modal-label" style="margin-top:12px;">Active People (Who is working out?)</div>
+            <div id="activePeopleCheckboxes" style="margin-bottom:20px;"></div>
+
             <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
             <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
         </div>
@@ -706,7 +710,7 @@
                 <p id="headerSub">Loading...</p>
             </div>
             <div class="header-right">
-                <select id="personSelect" class="header-select" onchange="changePerson()" style="display:none;"></select>
+                
                 <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
                 <div id="workoutBadge" class="workout-badge"></div>
                 <button class="settings-btn" onclick="openSettings()">⚙️</button>
@@ -773,44 +777,9 @@
                         </div>
                         <div class="set-logger" id="accessoryLogger" style="display:none;">
                             <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
-                            <div class="sets-list">
-                                <div class="set-row">
-                                    <div class="set-num">1</div>
-                                    <div class="set-input-group">
-                                        <input type="number" class="set-input" id="acc-reps-1" placeholder="reps"
-                                            min="1" max="99">
-                                        <span class="set-separator">×</span>
-                                        <input type="number" class="set-input" id="acc-weight-1" placeholder="lbs"
-                                            min="0" max="9999">
-                                    </div>
-                                    <button class="set-log-btn" id="acc-logbtn-1"
-                                        onclick="logAccessorySet(1)">Log</button>
-                                </div>
-                                <div class="set-row">
-                                    <div class="set-num">2</div>
-                                    <div class="set-input-group">
-                                        <input type="number" class="set-input" id="acc-reps-2" placeholder="reps"
-                                            min="1" max="99">
-                                        <span class="set-separator">×</span>
-                                        <input type="number" class="set-input" id="acc-weight-2" placeholder="lbs"
-                                            min="0" max="9999">
-                                    </div>
-                                    <button class="set-log-btn" id="acc-logbtn-2"
-                                        onclick="logAccessorySet(2)">Log</button>
-                                </div>
-                                <div class="set-row">
-                                    <div class="set-num">3</div>
-                                    <div class="set-input-group">
-                                        <input type="number" class="set-input" id="acc-reps-3" placeholder="reps"
-                                            min="1" max="99">
-                                        <span class="set-separator">×</span>
-                                        <input type="number" class="set-input" id="acc-weight-3" placeholder="lbs"
-                                            min="0" max="9999">
-                                    </div>
-                                    <button class="set-log-btn" id="acc-logbtn-3"
-                                        onclick="logAccessorySet(3)">Log</button>
-                                </div>
+                                                        <div class="sets-list" id="accSetsList">
                             </div>
+                            <button class="complete-btn" style="padding:12px; margin-top:8px; margin-bottom:12px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
                             <div class="new-max-banner" id="acc-maxbanner"></div>
                             <div class="exercise-actions">
                                 <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
@@ -830,13 +799,16 @@
         const TYPE_KEY = 'builder_last_workout_type';
         const NUM_KEY = 'builder_workout_num';
         const LOC_KEY = 'builder_location';
-        const PERSON_KEY = 'builder_person';
-
+        const ACTIVE_PEOPLE_KEY = 'builder_active_people';
+        
         let API_URL = '';
         let currentWorkout = null;
         let exerciseStatus = {};
         let currentMaxes = {};
         let currentAccessory = null;
+        let activePeople = [];
+        let exerciseSetCounters = {}; // tracks setNum per exercise idx
+        let accessorySetCounter = 1;
         
         let globalData = null;
 
@@ -851,18 +823,19 @@
             loadDataAndWorkout();
         }
 
-        function saveConfig() {
-            const url = document.getElementById('apiUrlInput').value.trim();
-            if (!url) return;
-            localStorage.setItem(STORAGE_KEY, url);
-            API_URL = url;
-            document.getElementById('configScreen').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            loadDataAndWorkout();
-        }
-
         function openSettings() {
             document.getElementById('settingsUrlInput').value = API_URL;
+            
+            // Build checklists
+            const container = document.getElementById('activePeopleCheckboxes');
+            const allPeople = globalData.people || ['Brian'];
+            container.innerHTML = allPeople.map(p => `
+                <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
+                    <input type="checkbox" value="${p}" class="person-cb" ${activePeople.includes(p) ? 'checked' : ''} /> 
+                    ${p}
+                </label>
+            `).join('');
+            
             document.getElementById('settingsModal').classList.add('open');
         }
 
@@ -871,15 +844,32 @@
 
         function saveSettings() {
             const url = document.getElementById('settingsUrlInput').value.trim();
-            if (!url) return;
-            localStorage.setItem(STORAGE_KEY, url);
-            API_URL = url;
+            if (url) API_URL = url;
+            
+            const cbs = document.querySelectorAll('.person-cb');
+            let selected = [];
+            cbs.forEach(cb => { if (cb.checked) selected.push(cb.value); });
+            if (selected.length === 0) selected = [(globalData.people || ['Brian'])[0]];
+            
+            activePeople = selected;
+            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(activePeople));
+            
             closeSettingsModal();
-            loadDataAndWorkout();
+            // Re-render workout with new people
+            if (currentWorkout) {
+                // repopulate maxes
+                currentMaxes = {};
+                currentWorkout.exercises.forEach(e => {
+                    currentMaxes[e.name] = {};
+                    activePeople.forEach(p => {
+                        currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
+                    });
+                });
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+            }
         }
 
         async function sheetsPost(payload) {
-            // Replicate exactly Gym Log Pro's post shape
             const pStr = JSON.stringify(payload);
             const encoded = encodeURIComponent(pStr);
             const res = await fetch(API_URL + "?payload=" + encoded);
@@ -894,6 +884,14 @@
                 const json = await res.json();
                 if (json.status !== "ok") throw new Error("API Error");
                 globalData = json.data;
+                
+                try {
+                    const savedP = JSON.parse(localStorage.getItem(ACTIVE_PEOPLE_KEY));
+                    if (savedP && Array.isArray(savedP) && savedP.length > 0) activePeople = savedP;
+                    else activePeople = [(globalData.people || ['Brian'])[0]];
+                } catch {
+                    activePeople = [(globalData.people || ['Brian'])[0]];
+                }
                 
                 setupSelectors();
                 generateWorkout();
@@ -910,22 +908,10 @@
             const savedLoc = localStorage.getItem(LOC_KEY) || 'Anywhere';
             if(locOptions.includes(savedLoc)) locSelect.value = savedLoc;
             locSelect.style.display = 'inline-block';
-
-            const pSelect = document.getElementById('personSelect');
-            const pOptions = globalData.people || ['Brian'];
-            pSelect.innerHTML = pOptions.map(p => `<option value="${p}">${p}</option>`).join('');
-            const savedPerson = localStorage.getItem(PERSON_KEY) || (pOptions.length > 0 ? pOptions[0] : 'Brian');
-            if(pOptions.includes(savedPerson)) pSelect.value = savedPerson;
-            pSelect.style.display = 'inline-block';
         }
 
         function changeLocation() {
             localStorage.setItem(LOC_KEY, document.getElementById('locationSelect').value);
-            generateWorkout();
-        }
-
-        function changePerson() {
-            localStorage.setItem(PERSON_KEY, document.getElementById('personSelect').value);
             generateWorkout();
         }
 
@@ -965,12 +951,18 @@
              };
              
              exerciseStatus = {};
-             genExercises.forEach(e => { exerciseStatus[e.name] = 'pending'; });
+             exerciseSetCounters = {};
+             genExercises.forEach((e, idx) => { 
+                 exerciseStatus[e.name] = 'pending'; 
+                 exerciseSetCounters[idx] = 1;
+             });
              
-             const personKey = document.getElementById('personSelect').value.toLowerCase();
              currentMaxes = {};
              genExercises.forEach(e => {
-                 currentMaxes[e.name] = globalData.best?.[e.name]?.[personKey] || {};
+                 currentMaxes[e.name] = {};
+                 activePeople.forEach(p => {
+                     currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
+                 });
              });
              
              renderWorkout(currentWorkout, genExercises);
@@ -988,49 +980,65 @@
             list.innerHTML = '';
 
             exercises.forEach((ex, idx) => {
-                const maxData = currentMaxes[ex.name] || {};
-                const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
-
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
                 card.id = `card-${idx}`;
 
-                card.innerHTML = `
-        <div class="exercise-header" onclick="toggleCard(${idx})">
-          <div class="exercise-info">
-            <div class="exercise-category">${ex.category}</div>
-            <div class="exercise-name">${ex.name}</div>
-            <div class="exercise-max">${workout.repRange} max: <span id="maxval-${idx}">${currentMax}</span></div>
-          </div>
-          <div class="exercise-status" id="status-icon-${idx}"></div>
-          <div class="expand-icon">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </div>
-        <div class="set-logger">
-          <div class="rep-range-hint">Target: <strong>${workout.repRange} reps</strong></div>
-          <div class="sets-list">
-            ${[1, 2, 3].map(s => `
-              <div class="set-row">
-                <div class="set-num">${s}</div>
-                <div class="set-input-group">
-                  <input type="number" class="set-input" id="reps-${idx}-${s}" placeholder="reps" min="1" max="99">
-                  <span class="set-separator">×</span>
-                  <input type="number" class="set-input" id="weight-${idx}-${s}" placeholder="lbs" min="0" max="9999">
-                </div>
-                <button class="set-log-btn" id="logbtn-${idx}-${s}" onclick="logSet(${idx}, ${s}, '${ex.name.replace(/'/g, "\\'")}')">Log</button>
-              </div>
-            `).join('')}
-          </div>
-          <div class="new-max-banner" id="maxbanner-${idx}"></div>
-          <div class="exercise-actions">
-            <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
-            <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
-          </div>
-        </div>
-      `;
+                // Header section
+                let headerHTML = `
+                <div class="exercise-header" onclick="toggleCard(${idx})">
+                  <div class="exercise-info">
+                    <div class="exercise-category">${ex.category}</div>
+                    <div class="exercise-name">${ex.name}</div>
+                    <div class="exercise-max">
+                `;
+                
+                // Add tiny max labels
+                activePeople.forEach(p => {
+                    const maxData = currentMaxes[ex.name]?.[p] || {};
+                    const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
+                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
+                });
+                
+                headerHTML += `
+                    </div>
+                  </div>
+                  <div class="exercise-status" id="status-icon-${idx}"></div>
+                  <div class="expand-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </div>`;
+                
+                const curSetNum = exerciseSetCounters[idx] || 1;
+
+                let inputsHTML = activePeople.map(p => `
+                    <div class="set-row">
+                        <div class="set-num" style="width:40px;">${p}</div>
+                        <div class="set-input-group">
+                          <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
+                          <span class="set-separator">×</span>
+                          <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
+                        </div>
+                    </div>
+                `).join('');
+
+                card.innerHTML = headerHTML + `
+                <div class="set-logger" id="logger-${idx}">
+                  <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
+                  
+                  <div class="sets-list">
+                    ${inputsHTML}
+                    <button class="complete-btn" style="padding:12px; margin-top:8px; font-size:14px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
+                  </div>
+                  <div class="new-max-banner" id="maxbanner-${idx}"></div>
+                  <div class="exercise-actions" style="margin-top:16px;">
+                    <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
+                    <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+                  </div>
+                </div>`;
+                
                 list.appendChild(card);
             });
 
@@ -1065,59 +1073,96 @@
             return 'r13_plus';
         }
 
-        async function logSet(cardIdx, setNum, exerciseName) {
-            const reps = parseInt(document.getElementById(`reps-${cardIdx}-${setNum}`).value);
-            const weight = parseFloat(document.getElementById(`weight-${cardIdx}-${setNum}`).value);
-            if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+        async function logSet(cardIdx, exerciseName) {
+            const setNum = exerciseSetCounters[cardIdx] || 1;
+            const btn = document.getElementById(`logbtn-${cardIdx}`);
+            btn.textContent = 'Saving...'; 
+            btn.disabled = true;
 
-            const btn = document.getElementById(`logbtn-${cardIdx}-${setNum}`);
-            btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
-
-            const repRange = getRangeForReps(reps);
-            const rangeKey = getRangeKey(repRange);
-            const personKey = document.getElementById('personSelect').value.toLowerCase();
+            const entries = [];
             const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             
-            const req = {
-               action: "logSet",
-               exercise: exerciseName,
-               entries: [{
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
+                const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                const weight = parseFloat(weightVal) || 0;
+                
+                const repRange = getRangeForReps(reps);
+                const rangeKey = getRangeKey(repRange);
+                
+                entries.push({
                    date: dateStr,
-                   person: personKey,
+                   person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weight || "",
+                   weight: weightVal || "",
                    range: rangeKey,
                    note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
-               }]
+                });
+                
+                // Max Check natively
+                const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
+                let isNew = !existing;
+                if (existing) {
+                    if (weight > parseFloat(existing.weight)) isNew = true;
+                }
+                if (isNew) {
+                    if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
+                    if(!currentMaxes[exerciseName][p]) currentMaxes[exerciseName][p] = {};
+                    currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
+                    const newMaxStr = `${reps}x${weight}`;
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
+                    if (rangeKey === 'r8_12') {
+                        const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
+                        if(valId) valId.textContent = newMaxStr;
+                    }
+                }
+            }
+
+            if (entries.length === 0) {
+                alert('Please enter reps for at least one person.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+                return;
+            }
+
+            const req = {
+               action: "batchLog", // Gym Log Pro uses logSet... actually wait. Gym Log Pro uses logSet for batching. It just loops through entries! "logSet" takes an array or single. Actually "logSet" script in Pro just loops `payload.entries`. Let's confirm that. Yes.
+               exercise: exerciseName,
+               entries: entries
             };
             
             try {
-                await sheetsPost(req);
-                checkAndUpdateMax(cardIdx, exerciseName, reps, weight, rangeKey);
+                // To be safe, make multiple separate requests if batch fails, 
+                // but GymLogPro's "logSet" handles multiple entries perfectly.
+                await sheetsPost({...req, action: "logSet"});
+                
+                if (bannerMsg) {
+                    const banner = document.getElementById(`maxbanner-${cardIdx}`);
+                    if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
+                }
+                
+                // Clear inputs
+                activePeople.forEach(p => {
+                    document.getElementById(`reps-${cardIdx}-${p}`).value = '';
+                    document.getElementById(`weight-${cardIdx}-${p}`).value = '';
+                });
+                
+                exerciseSetCounters[cardIdx] = setNum + 1;
+                btn.textContent = `Log Set ${exerciseSetCounters[cardIdx]}`;
+                btn.disabled = false;
+                
             } catch(e) {
                 console.error(e);
                 alert('Failed to log set. Check console.');
-            }
-        }
-
-        function checkAndUpdateMax(cardIdx, exerciseName, reps, weight, rangeKey) {
-            const existing = currentMaxes[exerciseName]?.[rangeKey];
-            let isNew = !existing;
-            if (existing) {
-                if (weight > parseFloat(existing.weight)) isNew = true;
-            }
-            if (isNew) {
-                if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
-                currentMaxes[exerciseName][rangeKey] = {reps, weight};
-                const newMaxStr = `${reps}x${weight}`;
-                const banner = document.getElementById(`maxbanner-${cardIdx}`);
-                if (banner) { banner.style.display = 'block'; banner.textContent = `🏆 New max: ${newMaxStr}`; }
-                if (rangeKey === 'r8_12') {
-                    const val = document.getElementById(`maxval-${cardIdx}`);
-                    if (val) val.textContent = newMaxStr;
-                }
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
             }
         }
 
@@ -1150,8 +1195,6 @@
             localStorage.setItem(NUM_KEY, currentWorkout.workoutNum.toString());
             document.getElementById('workoutContent').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
-            
-            // Mark the optional accessory as complete just to hide it safely
             markAccessoryDone();
         }
 
@@ -1177,58 +1220,111 @@
             const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
             currentAccessory = picked.name;
             
+            accessorySetCounter = 1;
+            
             document.getElementById('accessoryName').textContent = currentAccessory;
             document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
 
-            const personKey = document.getElementById('personSelect').value.toLowerCase();
-            const accMaxObj = globalData.best?.[currentAccessory]?.[personKey] || {};
-            const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
-            document.getElementById('accessoryMax').innerHTML = `8-12 max: <span style="color:var(--accent);font-weight:500">${accMax}</span>`;
-
-            [1, 2, 3].forEach(s => {
-                document.getElementById(`acc-reps-${s}`).value = '';
-                document.getElementById(`acc-weight-${s}`).value = '';
-                const btn = document.getElementById(`acc-logbtn-${s}`);
-                btn.textContent = 'Log'; btn.classList.remove('logged'); btn.disabled = false;
+            let maxInfo = '';
+            activePeople.forEach(p => {
+                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
+                maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
             });
+            document.getElementById('accessoryMax').innerHTML = maxInfo;
+            
+            const accList = document.getElementById('accSetsList');
+            accList.innerHTML = activePeople.map(p => `
+                <div class="set-row">
+                    <div class="set-num" style="width:40px;">${p}</div>
+                    <div class="set-input-group">
+                      <input type="number" class="set-input" id="acc-reps-${p}" placeholder="reps" min="1" max="99">
+                      <span class="set-separator">×</span>
+                      <input type="number" class="set-input" id="acc-weight-${p}" placeholder="lbs" min="0" max="9999">
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById(`acc-logbtn`).textContent = 'Log Set 1';
+            document.getElementById(`acc-logbtn`).disabled = false;
             document.getElementById('acc-maxbanner').style.display = 'none';
         }
 
-        async function logAccessorySet(setNum) {
-            const reps = parseInt(document.getElementById(`acc-reps-${setNum}`).value);
-            const weight = parseFloat(document.getElementById(`acc-weight-${setNum}`).value);
-            if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+        async function logAccessorySet() {
+            const btn = document.getElementById(`acc-logbtn`);
+            const setNum = accessorySetCounter;
+            btn.textContent = 'Saving...'; btn.disabled = true;
 
-            const btn = document.getElementById(`acc-logbtn-${setNum}`);
-            btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
-
-            const repRange = getRangeForReps(reps);
-            const rangeKey = getRangeKey(repRange);
-            const personKey = document.getElementById('personSelect').value.toLowerCase();
+            const entries = [];
             const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             
-            const req = {
-               action: "logSet",
-               exercise: currentAccessory,
-               entries: [{
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`acc-reps-${p}`).value;
+                const weightVal = document.getElementById(`acc-weight-${p}`).value;
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                const weight = parseFloat(weightVal) || 0;
+                const repRange = getRangeForReps(reps);
+                const rangeKey = getRangeKey(repRange);
+                
+                entries.push({
                    date: dateStr,
-                   person: personKey,
+                   person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weight || "",
+                   weight: weightVal || "",
                    range: rangeKey,
                    note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
-               }]
+                });
+                
+                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const existing = accMaxObj[rangeKey];
+                let isNew = !existing;
+                if (existing && weight > parseFloat(existing.weight)) isNew = true;
+                
+                if (isNew) {
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${reps}x${weight}<br>`;
+                }
+            }
+            
+            if(entries.length === 0){
+                alert('Please enter reps.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+                return;
+            }
+
+            const req = {
+               action: "logSet",
+               exercise: currentAccessory,
+               entries: entries
             };
             
             try {
                 await sheetsPost(req);
-                const banner = document.getElementById('acc-maxbanner');
-                banner.style.display = 'block';
-                banner.textContent = `Set logged successfully!`;
+                if (bannerMsg) {
+                    const banner = document.getElementById('acc-maxbanner');
+                    banner.style.display = 'block';
+                    banner.innerHTML = bannerMsg;
+                }
+                
+                activePeople.forEach(p => {
+                    document.getElementById(`acc-reps-${p}`).value = '';
+                    document.getElementById(`acc-weight-${p}`).value = '';
+                });
+                
+                accessorySetCounter++;
+                btn.textContent = `Log Set ${accessorySetCounter}`;
+                btn.disabled = false;
+                
             } catch(e) {
                 alert('Failed to log accessory set.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
             }
         }
 
