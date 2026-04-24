@@ -297,6 +297,15 @@
               const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
               const migrated = migrateRanges(merged);
 
+              // Auto-hide any new people that arrived from Sheets (meaning they were added on another device)
+              const incomingPeople = mergedPeople.filter(p => !localPeople.map(x => x.toLowerCase()).includes(p.toLowerCase()));
+              let nextHidden = localHidden;
+              if (incomingPeople.length > 0) {
+                nextHidden = [...new Set([...localHidden, ...incomingPeople])];
+                setHiddenPeople(nextHidden);
+                localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(nextHidden));
+              }
+
               setPeople(mergedPeople);
               setExercises(migrated);
               if (mergedLocations && mergedLocations.length > 0) {
