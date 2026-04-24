@@ -840,14 +840,15 @@
         
         let globalData = null;
 
+        // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+        // ────────────────────────────────────────────────────────────────────────
+
         function init() {
-            API_URL = localStorage.getItem(STORAGE_KEY) || '';
-            if (!API_URL) {
-                document.getElementById('configScreen').style.display = 'block';
-            } else {
-                document.getElementById('app').style.display = 'block';
-                loadDataAndWorkout();
-            }
+            API_URL = SCRIPT_URL;
+            document.getElementById('configScreen').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            loadDataAndWorkout();
         }
 
         function saveConfig() {
