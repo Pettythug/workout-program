@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Workout Program</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #F7F6F3;
+            --surface: #FFFFFF;
+            --border: #E8E6E1;
+            --text: #1A1916;
+            --muted: #8A887F;
+            --accent: #2D5BE3;
+            --accent-light: #EEF2FF;
+            --success: #1A7A4A;
+            --success-light: #EDFAF3;
+            --warning: #B45309;
+            --warning-light: #FEF3C7;
+            --skip: #6B7280;
+            --skip-light: #F3F4F6;
+            --push: #2D5BE3;
+            --pull: #7C3AED;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --radius: 12px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 0 80px;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .header-left p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+            font-family: var(--mono);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workout-badge {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .badge-push {
+            background: var(--accent-light);
+            color: var(--push);
+        }
+
+        .badge-pull {
+            background: #F3EEFF;
+            color: var(--pull);
+        }
+
+        .settings-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--muted);
+        }
+
+        .header-select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .main {
+            padding: 16px 16px 0;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .info-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .info-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .info-item .label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: var(--mono);
+        }
+
+        .info-item .value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 2px;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        .exercise-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .exercise-card.done {
+            opacity: 0.6;
+            border-color: var(--success);
+        }
+
+        .exercise-card.skipped {
+            opacity: 0.5;
+            border-color: var(--skip);
+        }
+
+        .exercise-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .exercise-header:active {
+            background: var(--bg);
+        }
+
+        .exercise-info {
+            flex: 1;
+        }
+
+        .exercise-category {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .exercise-name {
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+        }
+
+        .exercise-max {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .exercise-max span {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .exercise-status {
+            font-size: 18px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .expand-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            margin-left: 4px;
+        }
+
+        .exercise-card.open .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .set-logger {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 14px 16px;
+            background: var(--bg);
+        }
+
+        .exercise-card.open .set-logger {
+            display: block;
+        }
+
+        .sets-list {
+            margin-bottom: 12px;
+        }
+
+        .set-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .set-num {
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+            width: 20px;
+            flex-shrink: 0;
+        }
+
+        .set-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .set-input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-family: var(--mono);
+            font-size: 14px;
+            color: var(--text);
+            text-align: center;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .set-input:focus {
+            border-color: var(--accent);
+        }
+
+        .set-input::placeholder {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .set-separator {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .set-log-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: var(--sans);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .set-log-btn:active {
+            opacity: 0.8;
+        }
+
+        .set-log-btn.logged {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .rep-range-hint {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .rep-range-hint strong {
+            color: var(--accent);
+        }
+
+        .new-max-banner {
+            background: var(--warning-light);
+            border: 1px solid #FDE68A;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--warning);
+            font-family: var(--mono);
+            margin-top: 8px;
+            display: none;
+        }
+
+        .exercise-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .mark-done-btn {
+            flex: 1;
+            background: var(--success-light);
+            color: var(--success);
+            border: 1px solid #A7F3C9;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .skip-btn {
+            background: var(--skip-light);
+            color: var(--skip);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-family: var(--sans);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .mark-done-btn:active,
+        .skip-btn:active {
+            opacity: 0.7;
+        }
+
+        .complete-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 16px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            letter-spacing: -0.2px;
+            transition: opacity 0.15s;
+        }
+
+        .complete-btn:active {
+            opacity: 0.85;
+        }
+
+        .complete-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .got-more-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent-light);
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.15s;
+        }
+
+        .got-more-btn:active {
+            background: var(--accent-light);
+        }
+
+        .more-time-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--muted);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            font-family: var(--sans);
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: all 0.15s;
+        }
+
+        .more-time-btn:active {
+            background: var(--bg);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .loading-dot {
+            display: inline-block;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0.3;
+            }
+
+            40% {
+                opacity: 1;
+            }
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #DC2626;
+            font-size: 13px;
+        }
+
+        .success-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .success-state .check {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .success-state h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .success-state p {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 40px;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .modal h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .modal-label {
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .modal-input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--text);
+            outline: none;
+            margin-bottom: 16px;
+        }
+
+        .modal-input:focus {
+            border-color: var(--accent);
+        }
+
+        .modal-save-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .modal-cancel-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--muted);
+            border: none;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .config-screen {
+            padding: 40px 20px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .config-screen h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.4px;
+        }
+
+        .config-screen p {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .config-label {
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .config-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .config-input:focus {
+            border-color: var(--accent);
+        }
+
+        .config-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .config-note {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 12px;
+            text-align: center;
+            font-family: var(--mono);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- CONFIG SCREEN -->
+    <div id="configScreen" style="display:none;">
+        <div class="config-screen">
+            <h2>Setup</h2>
+            <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
+            <div class="config-label">Deployment URL</div>
+            <input type="text" class="config-input" id="apiUrlInput"
+                placeholder="https://script.google.com/macros/s/..." />
+            <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
+            <p class="config-note">Saved locally on your device only.</p>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
+        <div class="modal">
+            <h3>Settings</h3>
+            <div class="modal-label">Apps Script URL</div>
+            <input type="text" class="modal-input" id="settingsUrlInput"
+                placeholder="https://script.google.com/macros/s/..." />
+            <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
+            <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="app" style="display:none;">
+        <div class="header">
+            <div class="header-left">
+                <h1>Today's Workout</h1>
+                <p id="headerSub">Loading...</p>
+            </div>
+            <div class="header-right">
+                <select id="personSelect" class="header-select" onchange="changePerson()" style="display:none;"></select>
+                <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
+                <div id="workoutBadge" class="workout-badge"></div>
+                <button class="settings-btn" onclick="openSettings()">⚙️</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div id="loadingState" class="loading">
+                <span class="loading-dot">●</span>
+                <span class="loading-dot">●</span>
+                <span class="loading-dot">●</span>
+            </div>
+
+            <div id="errorState" class="error-state" style="display:none;"></div>
+
+            <div id="successState" class="success-state" style="display:none;">
+                <div class="check">✓</div>
+                <h2>Workout Complete!</h2>
+                <p>Great work. Come back for your next session.</p>
+            </div>
+
+            <div id="workoutContent" style="display:none;">
+                <div class="info-bar">
+                    <div class="info-item">
+                        <div class="label">Workout</div>
+                        <div class="value" id="infoWorkoutNum">—</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Reps</div>
+                        <div class="value" id="infoRepRange">—</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Sets</div>
+                        <div class="value">3</div>
+                    </div>
+                </div>
+
+                <div class="section-label">Exercises</div>
+                <div id="exerciseList"></div>
+
+                <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
+                    Complete Workout
+                </button>
+
+                <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
+                    + Got more time? Suggest an accessory
+                </button>
+
+                <div id="accessorySection" style="display:none; margin-top: 16px;">
+                    <div class="section-label">Accessory — Optional</div>
+                    <div class="exercise-card" id="accessoryCard">
+                        <div class="exercise-header" onclick="toggleAccessory()">
+                            <div class="exercise-info">
+                                <div class="exercise-category">Accessory</div>
+                                <div class="exercise-name" id="accessoryName">—</div>
+                                <div class="exercise-max" id="accessoryMax"></div>
+                            </div>
+                            <div class="expand-icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5"
+                                        stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="set-logger" id="accessoryLogger" style="display:none;">
+                            <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
+                            <div class="sets-list">
+                                <div class="set-row">
+                                    <div class="set-num">1</div>
+                                    <div class="set-input-group">
+                                        <input type="number" class="set-input" id="acc-reps-1" placeholder="reps"
+                                            min="1" max="99">
+                                        <span class="set-separator">×</span>
+                                        <input type="number" class="set-input" id="acc-weight-1" placeholder="lbs"
+                                            min="0" max="9999">
+                                    </div>
+                                    <button class="set-log-btn" id="acc-logbtn-1"
+                                        onclick="logAccessorySet(1)">Log</button>
+                                </div>
+                                <div class="set-row">
+                                    <div class="set-num">2</div>
+                                    <div class="set-input-group">
+                                        <input type="number" class="set-input" id="acc-reps-2" placeholder="reps"
+                                            min="1" max="99">
+                                        <span class="set-separator">×</span>
+                                        <input type="number" class="set-input" id="acc-weight-2" placeholder="lbs"
+                                            min="0" max="9999">
+                                    </div>
+                                    <button class="set-log-btn" id="acc-logbtn-2"
+                                        onclick="logAccessorySet(2)">Log</button>
+                                </div>
+                                <div class="set-row">
+                                    <div class="set-num">3</div>
+                                    <div class="set-input-group">
+                                        <input type="number" class="set-input" id="acc-reps-3" placeholder="reps"
+                                            min="1" max="99">
+                                        <span class="set-separator">×</span>
+                                        <input type="number" class="set-input" id="acc-weight-3" placeholder="lbs"
+                                            min="0" max="9999">
+                                    </div>
+                                    <button class="set-log-btn" id="acc-logbtn-3"
+                                        onclick="logAccessorySet(3)">Log</button>
+                                </div>
+                            </div>
+                            <div class="new-max-banner" id="acc-maxbanner"></div>
+                            <div class="exercise-actions">
+                                <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different
+                        Exercise</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'workout_api_url';
+        const TYPE_KEY = 'builder_last_workout_type';
+        const NUM_KEY = 'builder_workout_num';
+        const LOC_KEY = 'builder_location';
+        const PERSON_KEY = 'builder_person';
+
+        let API_URL = '';
+        let currentWorkout = null;
+        let exerciseStatus = {};
+        let currentMaxes = {};
+        let currentAccessory = null;
+        
+        let globalData = null;
+
+        function init() {
+            API_URL = localStorage.getItem(STORAGE_KEY) || '';
+            if (!API_URL) {
+                document.getElementById('configScreen').style.display = 'block';
+            } else {
+                document.getElementById('app').style.display = 'block';
+                loadDataAndWorkout();
+            }
+        }
+
+        function saveConfig() {
+            const url = document.getElementById('apiUrlInput').value.trim();
+            if (!url) return;
+            localStorage.setItem(STORAGE_KEY, url);
+            API_URL = url;
+            document.getElementById('configScreen').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            loadDataAndWorkout();
+        }
+
+        function openSettings() {
+            document.getElementById('settingsUrlInput').value = API_URL;
+            document.getElementById('settingsModal').classList.add('open');
+        }
+
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+        function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
+
+        function saveSettings() {
+            const url = document.getElementById('settingsUrlInput').value.trim();
+            if (!url) return;
+            localStorage.setItem(STORAGE_KEY, url);
+            API_URL = url;
+            closeSettingsModal();
+            loadDataAndWorkout();
+        }
+
+        async function sheetsPost(payload) {
+            // Replicate exactly Gym Log Pro's post shape
+            const pStr = JSON.stringify(payload);
+            const encoded = encodeURIComponent(pStr);
+            const res = await fetch(API_URL + "?payload=" + encoded);
+            const json = await res.json();
+            return json;
+        }
+
+        async function loadDataAndWorkout() {
+            showLoading();
+            try {
+                const res = await fetch(API_URL);
+                const json = await res.json();
+                if (json.status !== "ok") throw new Error("API Error");
+                globalData = json.data;
+                
+                setupSelectors();
+                generateWorkout();
+            } catch (err) {
+                showError('Could not connect to your sheet. Check your URL in settings.');
+                console.error(err);
+            }
+        }
+
+        function setupSelectors() {
+            const locSelect = document.getElementById('locationSelect');
+            const locOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
+            locSelect.innerHTML = locOptions.map(l => `<option value="${l}">${l}</option>`).join('');
+            const savedLoc = localStorage.getItem(LOC_KEY) || 'Anywhere';
+            if(locOptions.includes(savedLoc)) locSelect.value = savedLoc;
+            locSelect.style.display = 'inline-block';
+
+            const pSelect = document.getElementById('personSelect');
+            const pOptions = globalData.people || ['Brian'];
+            pSelect.innerHTML = pOptions.map(p => `<option value="${p}">${p}</option>`).join('');
+            const savedPerson = localStorage.getItem(PERSON_KEY) || (pOptions.length > 0 ? pOptions[0] : 'Brian');
+            if(pOptions.includes(savedPerson)) pSelect.value = savedPerson;
+            pSelect.style.display = 'inline-block';
+        }
+
+        function changeLocation() {
+            localStorage.setItem(LOC_KEY, document.getElementById('locationSelect').value);
+            generateWorkout();
+        }
+
+        function changePerson() {
+            localStorage.setItem(PERSON_KEY, document.getElementById('personSelect').value);
+            generateWorkout();
+        }
+
+        function generateWorkout() {
+             const loc = document.getElementById('locationSelect').value;
+             let lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
+             let type = lastType === 'Push' ? 'Pull' : 'Push';
+             let num = parseInt(localStorage.getItem(NUM_KEY) || '0') + 1;
+             
+             const available = (globalData.exercises || []).filter(e => !e.timed && (e.location === 'Anywhere' || e.location === loc || !e.location));
+             
+             const pick = (categories) => {
+                 const subset = available.filter(e => categories.includes(e.category));
+                 if(subset.length === 0) return {name: `No ${categories[0]}`, category: categories[0]};
+                 return subset[Math.floor(Math.random() * subset.length)];
+             };
+             
+             const genExercises = type === 'Push' ? [
+                 pick(['Explosive']),
+                 pick(['Knee Dominant']),
+                 pick(['Vertical Push']),
+                 pick(['Horizontal Push']),
+                 pick(['Rotational Core', 'Plank Core']),
+             ] : [
+                 pick(['Explosive']),
+                 pick(['Hip Dominant']),
+                 pick(['Vertical Pull']),
+                 pick(['Horizontal Pull']),
+                 pick(['Plank Core', 'Rotational Core']),
+             ];
+             
+             currentWorkout = {
+                 type: type,
+                 workoutNum: num,
+                 repRange: '8-12', // standard target
+                 exercises: genExercises
+             };
+             
+             exerciseStatus = {};
+             genExercises.forEach(e => { exerciseStatus[e.name] = 'pending'; });
+             
+             const personKey = document.getElementById('personSelect').value.toLowerCase();
+             currentMaxes = {};
+             genExercises.forEach(e => {
+                 currentMaxes[e.name] = globalData.best?.[e.name]?.[personKey] || {};
+             });
+             
+             renderWorkout(currentWorkout, genExercises);
+        }
+
+        function renderWorkout(workout, exercises) {
+            document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
+            const badge = document.getElementById('workoutBadge');
+            badge.textContent = workout.type;
+            badge.className = `workout-badge badge-${workout.type.toLowerCase()}`;
+            document.getElementById('infoWorkoutNum').textContent = workout.workoutNum;
+            document.getElementById('infoRepRange').textContent = workout.repRange;
+
+            const list = document.getElementById('exerciseList');
+            list.innerHTML = '';
+
+            exercises.forEach((ex, idx) => {
+                const maxData = currentMaxes[ex.name] || {};
+                const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
+
+                const card = document.createElement('div');
+                card.className = 'exercise-card';
+                card.id = `card-${idx}`;
+
+                card.innerHTML = `
+        <div class="exercise-header" onclick="toggleCard(${idx})">
+          <div class="exercise-info">
+            <div class="exercise-category">${ex.category}</div>
+            <div class="exercise-name">${ex.name}</div>
+            <div class="exercise-max">${workout.repRange} max: <span id="maxval-${idx}">${currentMax}</span></div>
+          </div>
+          <div class="exercise-status" id="status-icon-${idx}"></div>
+          <div class="expand-icon">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <div class="set-logger">
+          <div class="rep-range-hint">Target: <strong>${workout.repRange} reps</strong></div>
+          <div class="sets-list">
+            ${[1, 2, 3].map(s => `
+              <div class="set-row">
+                <div class="set-num">${s}</div>
+                <div class="set-input-group">
+                  <input type="number" class="set-input" id="reps-${idx}-${s}" placeholder="reps" min="1" max="99">
+                  <span class="set-separator">×</span>
+                  <input type="number" class="set-input" id="weight-${idx}-${s}" placeholder="lbs" min="0" max="9999">
+                </div>
+                <button class="set-log-btn" id="logbtn-${idx}-${s}" onclick="logSet(${idx}, ${s}, '${ex.name.replace(/'/g, "\\'")}')">Log</button>
+              </div>
+            `).join('')}
+          </div>
+          <div class="new-max-banner" id="maxbanner-${idx}"></div>
+          <div class="exercise-actions">
+            <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
+            <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+          </div>
+        </div>
+      `;
+                list.appendChild(card);
+            });
+
+            hideLoading();
+            document.getElementById('workoutContent').style.display = 'block';
+        }
+
+        function toggleCard(idx) {
+            const card = document.getElementById(`card-${idx}`);
+            if (card.classList.contains('done') || card.classList.contains('skipped')) return;
+            card.classList.toggle('open');
+        }
+
+        function toggleAccessory() {
+            const logger = document.getElementById('accessoryLogger');
+            const card = document.getElementById('accessoryCard');
+            card.classList.toggle('open');
+            logger.style.display = card.classList.contains('open') ? 'block' : 'none';
+        }
+
+        function getRangeForReps(reps) {
+            if (reps <= 3) return '1-3';
+            if (reps <= 7) return '4-7';
+            if (reps <= 12) return '8-12';
+            return '13+';
+        }
+        
+        function getRangeKey(rangeLabel) {
+            if (rangeLabel === '1-3') return 'r1_3';
+            if (rangeLabel === '4-7') return 'r4_7';
+            if (rangeLabel === '8-12') return 'r8_12';
+            return 'r13_plus';
+        }
+
+        async function logSet(cardIdx, setNum, exerciseName) {
+            const reps = parseInt(document.getElementById(`reps-${cardIdx}-${setNum}`).value);
+            const weight = parseFloat(document.getElementById(`weight-${cardIdx}-${setNum}`).value);
+            if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+
+            const btn = document.getElementById(`logbtn-${cardIdx}-${setNum}`);
+            btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
+
+            const repRange = getRangeForReps(reps);
+            const rangeKey = getRangeKey(repRange);
+            const personKey = document.getElementById('personSelect').value.toLowerCase();
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            const req = {
+               action: "logSet",
+               exercise: exerciseName,
+               entries: [{
+                   date: dateStr,
+                   person: personKey,
+                   reps: reps.toString(),
+                   weight: weight || "",
+                   range: rangeKey,
+                   note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
+                   setNum: setNum,
+                   timed: false
+               }]
+            };
+            
+            try {
+                await sheetsPost(req);
+                checkAndUpdateMax(cardIdx, exerciseName, reps, weight, rangeKey);
+            } catch(e) {
+                console.error(e);
+                alert('Failed to log set. Check console.');
+            }
+        }
+
+        function checkAndUpdateMax(cardIdx, exerciseName, reps, weight, rangeKey) {
+            const existing = currentMaxes[exerciseName]?.[rangeKey];
+            let isNew = !existing;
+            if (existing) {
+                if (weight > parseFloat(existing.weight)) isNew = true;
+            }
+            if (isNew) {
+                if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
+                currentMaxes[exerciseName][rangeKey] = {reps, weight};
+                const newMaxStr = `${reps}x${weight}`;
+                const banner = document.getElementById(`maxbanner-${cardIdx}`);
+                if (banner) { banner.style.display = 'block'; banner.textContent = `🏆 New max: ${newMaxStr}`; }
+                if (rangeKey === 'r8_12') {
+                    const val = document.getElementById(`maxval-${cardIdx}`);
+                    if (val) val.textContent = newMaxStr;
+                }
+            }
+        }
+
+        function markDone(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'done';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('done');
+            document.getElementById(`status-icon-${idx}`).textContent = '✓';
+            checkAllComplete();
+        }
+
+        function skipExercise(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'skipped';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('skipped');
+            document.getElementById(`status-icon-${idx}`).textContent = '—';
+            checkAllComplete();
+        }
+
+        function checkAllComplete() {
+            const allResolved = Object.values(exerciseStatus).every(s => s === 'done' || s === 'skipped');
+            document.getElementById('completeBtn').disabled = !allResolved;
+            if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
+        }
+
+        function completeWorkout() {
+            localStorage.setItem(TYPE_KEY, currentWorkout.type);
+            localStorage.setItem(NUM_KEY, currentWorkout.workoutNum.toString());
+            document.getElementById('workoutContent').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+            
+            // Mark the optional accessory as complete just to hide it safely
+            markAccessoryDone();
+        }
+
+        function markAccessoryDone() {
+            const card = document.getElementById('accessoryCard');
+            card.classList.remove('open');
+            card.classList.add('done');
+            document.getElementById('accessoryLogger').style.display = 'none';
+            document.getElementById('suggestDiffBtn').style.display = 'none';
+        }
+
+        function getAccessory() {
+            document.getElementById('gotMoreBtn').style.display = 'none';
+            document.getElementById('accessorySection').style.display = 'block';
+            
+            const loc = document.getElementById('locationSelect').value;
+            const availableAcc = (globalData.exercises || []).filter(e => e.category === 'Accessory' && (e.location === 'Anywhere' || e.location === loc || !e.location));
+            
+            if(availableAcc.length === 0) {
+                document.getElementById('accessoryName').textContent = 'No accessories available';
+                return;
+            }
+            const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
+            currentAccessory = picked.name;
+            
+            document.getElementById('accessoryName').textContent = currentAccessory;
+            document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
+
+            const personKey = document.getElementById('personSelect').value.toLowerCase();
+            const accMaxObj = globalData.best?.[currentAccessory]?.[personKey] || {};
+            const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
+            document.getElementById('accessoryMax').innerHTML = `8-12 max: <span style="color:var(--accent);font-weight:500">${accMax}</span>`;
+
+            [1, 2, 3].forEach(s => {
+                document.getElementById(`acc-reps-${s}`).value = '';
+                document.getElementById(`acc-weight-${s}`).value = '';
+                const btn = document.getElementById(`acc-logbtn-${s}`);
+                btn.textContent = 'Log'; btn.classList.remove('logged'); btn.disabled = false;
+            });
+            document.getElementById('acc-maxbanner').style.display = 'none';
+        }
+
+        async function logAccessorySet(setNum) {
+            const reps = parseInt(document.getElementById(`acc-reps-${setNum}`).value);
+            const weight = parseFloat(document.getElementById(`acc-weight-${setNum}`).value);
+            if (!reps || isNaN(weight)) { alert('Please enter reps and weight.'); return; }
+
+            const btn = document.getElementById(`acc-logbtn-${setNum}`);
+            btn.textContent = '✓'; btn.classList.add('logged'); btn.disabled = true;
+
+            const repRange = getRangeForReps(reps);
+            const rangeKey = getRangeKey(repRange);
+            const personKey = document.getElementById('personSelect').value.toLowerCase();
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            const req = {
+               action: "logSet",
+               exercise: currentAccessory,
+               entries: [{
+                   date: dateStr,
+                   person: personKey,
+                   reps: reps.toString(),
+                   weight: weight || "",
+                   range: rangeKey,
+                   note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
+                   setNum: setNum,
+                   timed: false
+               }]
+            };
+            
+            try {
+                await sheetsPost(req);
+                const banner = document.getElementById('acc-maxbanner');
+                banner.style.display = 'block';
+                banner.textContent = `Set logged successfully!`;
+            } catch(e) {
+                alert('Failed to log accessory set.');
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('workoutContent').style.display = 'none';
+            document.getElementById('successState').style.display = 'none';
+        }
+
+        function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
+
+        function showError(msg) {
+            hideLoading();
+            const el = document.getElementById('errorState');
+            el.style.display = 'block';
+            el.textContent = msg;
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>
