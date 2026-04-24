@@ -563,7 +563,7 @@
         }
       };
 
-      const activePeople = people.filter(p => !hiddenPeople.includes(p));
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
 
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
@@ -603,7 +603,7 @@
             <div style={s.formWrap}>
               <div style={s.sectionLabel}>PEOPLE</div>
               <div style={s.settingsNote}>
-                <strong style={{color:"#f97316"}}>This device:</strong> {activePeople.join(", ") || "Nobody active"}.
+                <strong style={{color:"#f97316"}}>This device:</strong> {visiblePeople.join(", ") || "Nobody active"}.
                 Toggle ●/○ to show/hide per device. Remove ✕ affects all devices.
               </div>
               {people.map(person => {
@@ -729,11 +729,11 @@
 
               <div style={s.whoLabel}>WHO'S WORKING OUT?</div>
               <div style={s.segmented}>
-                {activePeople.length > 1 && (
+                {visiblePeople.length > 1 && (
                   <button style={{ ...s.segBtn, ...(whoMode === "all" ? s.segActive : {}) }}
                     onClick={() => setWhoMode("all")}>All</button>
                 )}
-                {activePeople.map(p => (
+                {visiblePeople.map(p => (
                   <button key={p}
                     style={{ ...s.segBtn, ...(whoMode === p ? s.segActive : {}) }}
                     onClick={() => setWhoMode(p)}>{p}</button>
@@ -760,7 +760,7 @@
                 </div>
               )}
 
-              {activePeople.map(person => {
+              {visiblePeople.map(person => {
                 const key      = person.toLowerCase();
                 const input    = logInputs[key] || {};
                 const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
@@ -903,7 +903,7 @@
                 <div style={s.title}>GYM LOG</div>
                 {syncDot}
               </div>
-              <div style={s.subtitle}>{activePeople.join(" & ")} · {exercises.length} exercises</div>
+              <div style={s.subtitle}>{visiblePeople.join(" & ")} · {exercises.length} exercises</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={s.addIconBtn} onClick={() => setView("settings")} title="Settings">⚙️</button>
@@ -971,7 +971,7 @@
           <div style={s.listWrap}>
             {filtered.map(ex => {
               const isExpanded = expanded === ex.id;
-              const hasData = activePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
+              const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
               return (
                 <div key={ex.id} style={s.card}>
                   <div style={s.cardHeader}>
@@ -1000,7 +1000,7 @@
                             <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
                             <div style={s.rangeColHeader}>WEIGHT</div>
                           </div>
-                          {activePeople.map(person => {
+                          {visiblePeople.map(person => {
                             const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
                             return (
                               <div key={person} style={s.rangeRow}>
@@ -1022,7 +1022,7 @@
                             <div style={s.personCol} />
                             {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
                           </div>
-                          {activePeople.map(person => (
+                          {visiblePeople.map(person => (
                             <div key={person} style={s.rangeRow}>
                               <div style={s.personCol}>{person}</div>
                               {REP_RANGES.map(r => {
