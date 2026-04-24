@@ -526,20 +526,17 @@
       };
 
       // ── MANUAL SYNC ────────────────────────────────────────────────────────
+      // Only syncs the people roster. Exercise metadata (location, category, timed)
+      // syncs individually via saveExercise on add/edit to avoid overwriting
+      // data set directly in the sheet or on another device.
       const manualSync = async () => {
         if (syncStatus === "syncing") return;
         setSyncStatus("syncing");
         try {
-          // Only send exercises that have non-default metadata (timed or category).
-          // Exercises with timed=false and no category don't need a row in GymLog_Exercises.
-          // This keeps the URL payload small regardless of total exercise count.
-          const exMeta = exercises
-            .filter(ex => ex.timed || (ex.category && ex.category.trim()))
-            .map(ex => ({ name: ex.name, timed: ex.timed, category: ex.category || "" }));
-          await sheetsPost({ action: "syncMeta", people, exercises: exMeta });
+          await sheetsPost({ action: "savePeople", people });
           setSyncStatus("ok");
           setLastSyncTime(new Date());
-          showToast("Synced to Sheets ✓");
+          showToast("Roster synced to Sheets ✓");
         } catch (e) {
           setSyncStatus("error");
           showToast("Sync failed: " + (e?.message || "unknown error"), "error");
@@ -630,8 +627,8 @@
 
               <div style={{ ...s.sectionLabel, marginTop: 24 }}>DATA</div>
               <div style={s.settingsNote}>
-                Pushes all exercises, history, and people to Google Sheets. Use this after adding
-                categories to existing exercises or after restoring from a new device.
+                Pushes the people roster to Google Sheets. Exercise metadata (category, location)
+                syncs automatically when you add or edit an exercise.
               </div>
               <button
                 style={{ ...s.syncBtn, ...(syncStatus === "syncing" ? s.syncBtnDisabled : {}) }}
@@ -651,11 +648,11 @@
                 <div style={s.modal}>
                   <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
                   <div style={s.modalSub}>
-                    They'll be hidden from the workout selector. All their results stay in Sheets.
+                    This removes them from <strong style={{color:"#f97316"}}>all devices</strong>. Their workout history stays in Sheets.
                   </div>
                   <div style={s.modalBtns}>
                     <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-                    <button style={s.confirmBtn} onClick={() => removePerson(confirmDelete.name)}>Remove</button>
+                    <button style={s.confirmBtn} onClick={() => removePerson(confirmDelete.name)}>Remove from All Devices</button>
                   </div>
                 </div>
               </div>
