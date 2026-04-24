@@ -109,14 +109,14 @@
       left: 0;
       width: 4px;
       height: 100%;
-      background: #f97316;
+      background: #888;
       opacity: 0.5;
       transition: opacity 0.3s ease;
     }
 
-    .app-card:nth-child(2)::before {
-      background: #ef4444;
-    }
+    .app-card:nth-child(2)::before { background: #f97316; }
+    .app-card:nth-child(3)::before { background: #3b82f6; }
+    .app-card:nth-child(4)::before { background: #22c55e; }
 
     .app-card:hover, .app-card:focus {
       outline: none;
@@ -138,11 +138,10 @@
       margin-bottom: 8px;
     }
 
-    .app-card:nth-child(1) .card-title { color: #f97316; }
-    .app-card:nth-child(2) .card-title { color: #ef4444; }
-    .app-card:nth-child(3) .card-title { color: #22c55e; }
-
-    .app-card:nth-child(3)::before { background: #22c55e; }
+    .app-card:nth-child(1) .card-title { color: #888; }
+    .app-card:nth-child(2) .card-title { color: #f97316; }
+    .app-card:nth-child(3) .card-title { color: #3b82f6; }
+    .app-card:nth-child(4) .card-title { color: #22c55e; }
 
     .new-badge {
       display: inline-block;
@@ -193,14 +192,20 @@
 
     <div class="card-container">
       <a href="gym-log.html" class="app-card">
-        <div class="card-title">GYM LOG</div>
+        <div class="card-title">ORIGINAL GYM LOG</div>
         <div class="card-desc">Original gym log for Brian &amp; Dad. Legacy version.</div>
         <div class="card-icon">▸</div>
       </a>
 
       <a href="personal-gym-log.html" class="app-card">
-        <div class="card-title">PERSONAL GYM LOG <span class="new-badge">NEW</span></div>
+        <div class="card-title">GYM LOG PRO</div>
         <div class="card-desc">Updated log with timed exercises, 13+ rep range, and multi-person roster management.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="personal-gym-log-v3.html" class="app-card">
+        <div class="card-title">GYM LOG BETA <span class="new-badge" style="background:#3b82f6;color:#fff">DEV</span></div>
+        <div class="card-desc">Active development version testing new features.</div>
         <div class="card-icon">▸</div>
       </a>
 
