@@ -990,6 +990,7 @@
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
+                card.id = `card-${idx}`;
                 if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
                 if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
 
