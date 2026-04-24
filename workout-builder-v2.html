@@ -10,25 +10,25 @@
         rel="stylesheet">
     <style>
         :root {
-            --bg: #F7F6F3;
-            --surface: #FFFFFF;
-            --border: #E8E6E1;
-            --text: #1A1916;
-            --muted: #8A887F;
-            --accent: #2D5BE3;
-            --accent-light: #EEF2FF;
-            --success: #1A7A4A;
-            --success-light: #EDFAF3;
-            --warning: #B45309;
-            --warning-light: #FEF3C7;
-            --skip: #6B7280;
-            --skip-light: #F3F4F6;
-            --push: #2D5BE3;
-            --pull: #7C3AED;
+            --bg: #0c0c0c;
+            --surface: #111111;
+            --border: #1a1a1a;
+            --text: #e0e0e0;
+            --muted: #555555;
+            --accent: #f97316;
+            --accent-light: rgba(249, 115, 22, 0.1);
+            --success: #22c55e;
+            --success-light: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-light: rgba(245, 158, 11, 0.1);
+            --skip: #444444;
+            --skip-light: #161616;
+            --push: #f97316;
+            --pull: #c084fc;
             --mono: 'DM Mono', monospace;
             --sans: 'DM Sans', sans-serif;
             --radius: 12px;
-            --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
         * {
@@ -63,6 +63,8 @@
             letter-spacing: -0.3px;
         }
 
+        
+
         .header-left p {
             font-size: 12px;
             color: var(--muted);
@@ -85,13 +87,15 @@
         }
 
         .badge-push {
-            background: var(--accent-light);
+            background: rgba(249, 115, 22, 0.1);
             color: var(--push);
+            border: 1px solid rgba(249, 115, 22, 0.2);
         }
 
         .badge-pull {
-            background: #F3EEFF;
+            background: rgba(192, 132, 252, 0.1);
             color: var(--pull);
+            border: 1px solid rgba(192, 132, 252, 0.2);
         }
 
         .settings-btn {
@@ -287,21 +291,21 @@
         }
 
         .set-input {
-            flex: 1;
-            background: var(--surface);
+            background: #0c0c0c;
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 8px 10px;
-            font-family: var(--mono);
-            font-size: 14px;
-            color: var(--text);
+            padding: 8px;
+            width: 70px;
             text-align: center;
+            font-size: 16px;
+            font-family: var(--mono);
+            color: var(--text);
             outline: none;
-            -webkit-appearance: none;
         }
 
         .set-input:focus {
             border-color: var(--accent);
+            background: #161616;
         }
 
         .set-input::placeholder {
@@ -350,17 +354,7 @@
             color: var(--accent);
         }
 
-        .new-max-banner {
-            background: var(--warning-light);
-            border: 1px solid #FDE68A;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px;
-            color: var(--warning);
-            font-family: var(--mono);
-            margin-top: 8px;
-            display: none;
-        }
+        
 
         .exercise-actions {
             display: flex;
@@ -368,19 +362,7 @@
             margin-top: 12px;
         }
 
-        .mark-done-btn {
-            flex: 1;
-            background: var(--success-light);
-            color: var(--success);
-            border: 1px solid #A7F3C9;
-            border-radius: 8px;
-            padding: 10px;
-            font-family: var(--sans);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.15s;
-        }
+        
 
         .skip-btn {
             background: var(--skip-light);
@@ -534,49 +516,47 @@
             justify-content: center;
         }
 
-        .modal-overlay.open {
-            display: flex;
-        }
+        .modal-overlay.open { display: flex; }
 
         .modal {
-            background: var(--surface);
+            background: #141414;
+            border: 1px solid #2a2a2a;
             border-radius: 20px 20px 0 0;
             padding: 24px 20px 40px;
             width: 100%;
             max-width: 480px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
         }
-
         .modal h3 {
             font-size: 17px;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            color: var(--accent);
+            letter-spacing: 1px;
         }
-
         .modal-label {
-            font-size: 12px;
-            font-family: var(--mono);
-            color: var(--muted);
+            font-size: 10px;
+            color: #444;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
             margin-bottom: 8px;
+            font-family: var(--mono);
         }
-
         .modal-input {
             width: 100%;
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-            font-family: var(--mono);
-            font-size: 12px;
+            background: #0c0c0c;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 12px;
             color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            margin-bottom: 20px;
             outline: none;
-            margin-bottom: 16px;
         }
+        .modal-input:focus { border-color: var(--accent); }
 
-        .modal-input:focus {
-            border-color: var(--accent);
-        }
+        
 
         .modal-save-btn {
             width: 100%;
