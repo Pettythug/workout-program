@@ -978,11 +978,20 @@
 
             const list = document.getElementById('exerciseList');
             list.innerHTML = '';
+            
+            // Build swap dropdown options natively
+            const loc = document.getElementById('locationSelect').value;
+            const availableSwapProps = (globalData.exercises || []).filter(e => (e.location === 'Anywhere' || e.location === loc || !e.location));
+            let selectOptionsBase = `<option value="custom">-- Type Custom Machine --</option>`;
+            availableSwapProps.sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
+                selectOptionsBase += `<option value="${e.name}">${e.name} (${e.category})</option>`;
+            });
 
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
-                card.id = `card-${idx}`;
+                if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
+                if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
 
                 // Header section
                 let headerHTML = `
@@ -1003,7 +1012,7 @@
                 headerHTML += `
                     </div>
                   </div>
-                  <div class="exercise-status" id="status-icon-${idx}"></div>
+                  <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
                   <div class="expand-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1036,14 +1045,81 @@
                   <div class="exercise-actions" style="margin-top:16px;">
                     <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
                     <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+                    <button class="more-time-btn" onclick="showSwap(${idx})">↺ Swap</button>
                   </div>
-                </div>`;
+                </div>
+                
+                <div class="swap-ui" id="swap-ui-${idx}" style="display:none; padding:16px;">
+                   <p style="margin-bottom:8px; font-size:12px; color:var(--muted);">Select Replacement Exercise:</p>
+                   <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
+                      ${selectOptionsBase}
+                   </select>
+                   <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="Type new machine name..." style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                   <div style="display:flex; gap:8px;">
+                     <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" onclick="confirmSwap(${idx})">Confirm Swap</button>
+                     <button class="skip-btn" style="flex:1; padding:8px; font-size:14px;" onclick="hideSwap(${idx})">Cancel</button>
+                   </div>
+                </div>
+                `;
                 
                 list.appendChild(card);
             });
 
             hideLoading();
             document.getElementById('workoutContent').style.display = 'block';
+        }
+
+        // SWAP CONTROLLERS
+        function showSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'none';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'block';
+            document.getElementById(`swap-select-${idx}`).value = 'custom';
+            checkCustom(idx);
+        }
+        
+        function hideSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'block';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'none';
+        }
+        
+        function checkCustom(idx) {
+            const val = document.getElementById(`swap-select-${idx}`).value;
+            const customInput = document.getElementById(`swap-custom-${idx}`);
+            if (val === 'custom') customInput.style.display = 'block';
+            else customInput.style.display = 'none';
+        }
+        
+        function confirmSwap(idx) {
+            const selectVal = document.getElementById(`swap-select-${idx}`).value;
+            let newName = '';
+            let newCat = currentWorkout.exercises[idx].category;
+            
+            if (selectVal === 'custom') {
+                const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
+                if (!typed) { alert('Please enter a custom machine name.'); return; }
+                newName = typed;
+            } else {
+                newName = selectVal;
+                const found = globalData.exercises.find(e => e.name === newName);
+                if(found) newCat = found.category;
+            }
+            
+            const oldName = currentWorkout.exercises[idx].name;
+            currentWorkout.exercises[idx] = { name: newName, category: newCat };
+            
+            // Re-allocate memory states
+            delete exerciseStatus[oldName];
+            exerciseStatus[newName] = 'pending';
+            exerciseSetCounters[idx] = 1;
+
+            currentMaxes[newName] = {};
+            activePeople.forEach(p => {
+                 currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
+            });
+            
+            // Visual rerender
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx); // re-expand card since we just swapped it
         }
 
         function toggleCard(idx) {
@@ -1133,15 +1209,13 @@
             }
 
             const req = {
-               action: "batchLog", // Gym Log Pro uses logSet... actually wait. Gym Log Pro uses logSet for batching. It just loops through entries! "logSet" takes an array or single. Actually "logSet" script in Pro just loops `payload.entries`. Let's confirm that. Yes.
+               action: "logSet",
                exercise: exerciseName,
                entries: entries
             };
             
             try {
-                // To be safe, make multiple separate requests if batch fails, 
-                // but GymLogPro's "logSet" handles multiple entries perfectly.
-                await sheetsPost({...req, action: "logSet"});
+                await sheetsPost(req);
                 
                 if (bannerMsg) {
                     const banner = document.getElementById(`maxbanner-${cardIdx}`);
@@ -1150,8 +1224,10 @@
                 
                 // Clear inputs
                 activePeople.forEach(p => {
-                    document.getElementById(`reps-${cardIdx}-${p}`).value = '';
-                    document.getElementById(`weight-${cardIdx}-${p}`).value = '';
+                    const rEl = document.getElementById(`reps-${cardIdx}-${p}`);
+                    const wEl = document.getElementById(`weight-${cardIdx}-${p}`);
+                    if (rEl) rEl.value = '';
+                    if (wEl) wEl.value = '';
                 });
                 
                 exerciseSetCounters[cardIdx] = setNum + 1;
@@ -1313,8 +1389,10 @@
                 }
                 
                 activePeople.forEach(p => {
-                    document.getElementById(`acc-reps-${p}`).value = '';
-                    document.getElementById(`acc-weight-${p}`).value = '';
+                    const rEl = document.getElementById(`acc-reps-${p}`);
+                    const wEl = document.getElementById(`acc-weight-${p}`);
+                    if (rEl) rEl.value = '';
+                    if (wEl) wEl.value = '';
                 });
                 
                 accessorySetCounter++;
