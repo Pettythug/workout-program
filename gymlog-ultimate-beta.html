@@ -1279,18 +1279,22 @@
             drawer.style.display = 'block';
             content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
             
-            const exData = globalData.exercises.find(ex => ex.name === exerciseName);
-            const history = exData ? (exData.history || []) : [];
+            const history = (globalData.history || []).filter(h => 
+                h.exercise === exerciseName && 
+                h.person &&
+                activePeople.map(p => p.toLowerCase()).includes(h.person.toLowerCase())
+            );
             
-            const activeHistory = history.filter(h => activePeople.map(p=>p.toLowerCase()).includes(h.person.toLowerCase()));
-            
-            if (activeHistory.length === 0) {
+            if (history.length === 0) {
                 content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);">No history found for active people.</div>';
                 return;
             }
             
             let html = '';
-            activeHistory.slice(0, 10).forEach(h => {
+            // Get last 10 entries, reversed
+            const recent = history.slice(-10).reverse();
+            recent.forEach(h => {
+                const exData = globalData.exercises.find(ex => ex.name === exerciseName) || {};
                 const isTimed = exData.timed;
                 let resultText = '';
                 if (isTimed) {
