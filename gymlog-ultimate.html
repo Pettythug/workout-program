@@ -954,10 +954,10 @@
             }
         }
 
-        async function loadDataAndWorkout(preFetchedData = null) {
+        async function loadDataAndWorkout() {
             showLoading();
             try {
-                const json = preFetchedData || await sheetsGet();
+                const json = await sheetsGet();
                 globalData = json;
                 
                 try {
@@ -977,13 +977,6 @@
                 console.error(err);
             }
         }
-
-        // Global hook for React to push data to the Builder
-        window.updatePlanData = (data) => {
-            if (typeof loadDataAndWorkout === 'function') {
-                loadDataAndWorkout(data);
-            }
-        };
 
         function setupSelectors() {
             const locSelect = document.getElementById('locationSelect');
@@ -1761,7 +1754,6 @@
             }
             setSyncStatus("ok");
             setLastSyncTime(new Date());
-            if (window.updatePlanData) window.updatePlanData(json.data);
           } catch {
             setSyncStatus("error");
             showToast("Sheets sync failed — working offline", "error");
