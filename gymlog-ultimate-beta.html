@@ -11,6 +11,7 @@
   <title>LIFT (BETA)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="gym-core.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
@@ -859,8 +860,8 @@
 
     function syncPeopleToBuilder() {
         try {
-            const all = JSON.parse(localStorage.getItem('gym-tracker-people-v1')) || [];
-            const hidden = JSON.parse(localStorage.getItem('gym-tracker-hidden-people-v1')) || [];
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || [];
+            const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
             const visible = all.filter(p => !hidden.includes(p));
             if (visible.length > 0) {
                 activePeople = visible;
@@ -871,13 +872,10 @@
         } catch(e) {}
     }
     
-        const BUILDER_STORAGE_KEY = 'gym-tracker-script-url-v1';
         const TYPE_KEY = 'builder_last_workout_type';
         const NUM_KEY = 'builder_workout_num';
         const LOC_KEY = 'builder_location';
         const ACTIVE_PEOPLE_KEY = 'builder_active_people';
-        const B_HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
-        const B_PEOPLE_KEY        = "gym-tracker-people-v1";
         
         let API_URL = '';
         let currentWorkout = null;
@@ -890,24 +888,21 @@
         
         let globalData = null;
 
-        // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
-        const BUILDER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
-        // ────────────────────────────────────────────────────────────────────────
+
 
         function initBuilder() {
-            API_URL = BUILDER_SCRIPT_URL;
             document.getElementById('configScreen').style.display = 'none';
             loadDataAndWorkout();
         }
 
         function openSettings() {
-            document.getElementById('settingsUrlInput').value = API_URL;
+            document.getElementById('settingsUrlInput').value = SCRIPT_URL;
             
             const container = document.getElementById('activePeopleCheckboxes');
             const allPeople = globalData.people || ['Brian'];
             // Load fresh hidden list
             let hidden = [];
-            try { hidden = JSON.parse(localStorage.getItem(B_HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
+            try { hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
 
             container.innerHTML = allPeople.map(p => `
                 <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
@@ -940,11 +935,11 @@
             }
             
             activePeople = selected;
-            localStorage.setItem(B_HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
+            localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
             localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected)); // Keep for legacy compatibility if needed
             
             // Notify other components (like React) that settings changed
-            window.dispatchEvent(new Event('gym-settings-updated'));
+            notifySettingsUpdated();
             
             closeSettingsModal();
             if (currentWorkout) {
@@ -959,24 +954,14 @@
             }
         }
 
-        async function sheetsPost(payload) {
-            const pStr = JSON.stringify(payload);
-            const encoded = encodeURIComponent(pStr);
-            const res = await fetch(API_URL + "?payload=" + encoded);
-            const json = await res.json();
-            return json;
-        }
-
         async function loadDataAndWorkout() {
             showLoading();
             try {
-                const res = await fetch(API_URL);
-                const json = await res.json();
-                if (json.status !== "ok") throw new Error("API Error");
-                globalData = json.data;
+                const json = await sheetsGet();
+                globalData = json;
                 
                 try {
-                    const hidden = JSON.parse(localStorage.getItem(B_HIDDEN_PEOPLE_KEY)) || [];
+                    const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
                     const all = globalData.people || ['Brian'];
                     const visible = all.filter(p => !hidden.includes(p));
                     if (visible.length > 0) activePeople = visible;
@@ -1622,163 +1607,7 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
-    // ────────────────────────────────────────────────────────────────────────
-
-    const STORAGE_KEY  = "gym-tracker-v4";      // reuse existing exercise cache
-    const PEOPLE_KEY   = "gym-tracker-people-v1"; // separate people roster cache
-    const DEFAULT_PEOPLE = ["Brian", "Dad"];
-
-    const LOCATIONS_KEY     = "gym-tracker-locations-v1";
-    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
-    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1"; // per-device only, never synced
-
-    const EXERCISE_CATEGORIES = [
-      "Explosive",
-      "Knee Dominant",
-      "Hip Dominant",
-      "Horizontal Push",
-      "Horizontal Pull",
-      "Vertical Push",
-      "Vertical Pull",
-      "Rotational Core",
-      "Plank Core",
-      "Accessory",
-    ];
-
-    // ── REP RANGES (15-20 replaced by 13+) ───────────────────────────────────
-    const REP_RANGES = [
-      { key: "r1_3",     label: "1-3"  },
-      { key: "r4_7",     label: "4-7"  },
-      { key: "r8_12",    label: "8-12" },
-      { key: "r13_plus", label: "13+"  },
-    ];
-
-    // Maps a rep count to its bucket key
-    function getRange(reps) {
-      const n = parseInt(reps);
-      if (isNaN(n)) return null;
-      if (n >= 1  && n <= 3)  return "r1_3";
-      if (n >= 4  && n <= 7)  return "r4_7";
-      if (n >= 8  && n <= 12) return "r8_12";
-      if (n >= 13)            return "r13_plus";
-      return null;
-    }
-
-    // ── TIME UTILITIES ────────────────────────────────────────────────────────
-    // Parse "1:30" or "90" → total seconds
-    function parseTime(val) {
-      const str = String(val || "").trim();
-      if (!str) return 0;
-      if (str.includes(":")) {
-        const [m, s] = str.split(":");
-        return (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
-      }
-      return parseInt(str) || 0;
-    }
-
-    // Format total seconds → "m:ss"
-    function formatTime(totalSeconds) {
-      const s = Math.max(0, parseInt(totalSeconds) || 0);
-      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-    }
-
-    // If user typed plain seconds (e.g. "90"), convert to "1:30"; otherwise leave as-is
-    function normalizeTimeInput(val) {
-      const str = String(val || "").trim();
-      if (!str) return str;
-      if (/^\d+$/.test(str)) return formatTime(parseInt(str));
-      return str;
-    }
-
-    function todayStr() {
-      return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    }
-
-    function parseWeight(w) {
-      const n = parseFloat(String(w).replace(/[^0-9.\-]/g, ""));
-      return isNaN(n) ? 0 : n;
-    }
-
-    // Determine if a new entry beats the stored best
-    function isBetter(newEntry, oldEntry, timed) {
-      if (timed) return parseTime(newEntry.reps) > parseTime(oldEntry?.reps || "0:00");
-      return parseWeight(newEntry.weight) > parseWeight(oldEntry?.weight || 0);
-    }
-
-    // ── MIGRATION: r15_20 → r13_plus ─────────────────────────────────────────
-    function migrateRanges(exercises) {
-      return exercises.map(ex => {
-        // Migrate best records
-        const newBest = {};
-        for (const person of Object.keys(ex.best || {})) {
-          newBest[person] = {};
-          for (const [key, val] of Object.entries(ex.best[person] || {})) {
-            const nk = key === "r15_20" ? "r13_plus" : key;
-            // Keep whichever is heavier if both exist
-            if (!newBest[person][nk] || parseWeight(val?.weight) > parseWeight(newBest[person][nk]?.weight)) {
-              newBest[person][nk] = val;
-            }
-          }
-        }
-        // Migrate history rows
-        const newHistory = (ex.history || []).map(h =>
-          h.range === "r15_20" ? { ...h, range: "r13_plus" } : h
-        );
-        return { ...ex, best: newBest, history: newHistory };
-      });
-    }
-
-    // ── SHEETS API ────────────────────────────────────────────────────────────
-    async function sheetsGet() {
-      const res  = await fetch(SCRIPT_URL);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error(json.message);
-      return json.data;
-    }
-
-    async function sheetsPost(payload) {
-      const encoded = encodeURIComponent(JSON.stringify(payload));
-      const res  = await fetch(SCRIPT_URL + "?payload=" + encoded);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error(json.message);
-      return json.data;
-    }
-
-    // Merge Sheets data into local exercises; also pick up people roster from Sheets
-    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
-      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
-      const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
-
-      // Build available locations: localLocations + any locations found on exercises in Sheets
-      const mergedLocs = [...new Set([
-        ...localLocations,
-        ...(sheetDerivedLocs || []),
-      ])];
-
-      const makeBest = () => {
-        const b = {};
-        people.forEach(p => { b[p.toLowerCase()] = {}; });
-        return b;
-      };
-
-      const merged = localExercises.map(ex => {
-        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
-        const sheetBest    = allBest[ex.name];
-        const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
-        return {
-          ...ex,
-          timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
-          category: sheetExInfo?.category ?? ex.category ?? "",
-          location: sheetExInfo?.location ?? ex.location ?? "Anywhere",
-          history:  sheetHistory,
-          best:     sheetBest || makeBest(),
-        };
-      });
-
-      return { exercises: merged, people, locations: mergedLocs };
-    }
+    const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
     // ── MAIN COMPONENT ────────────────────────────────────────────────────────
     function WorkoutTracker() {

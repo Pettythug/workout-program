@@ -10,6 +10,7 @@
   <title>GYM LOG BETA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="gym-core.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
@@ -29,163 +30,11 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
-    // ────────────────────────────────────────────────────────────────────────
+    const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
-    const STORAGE_KEY  = "gym-tracker-v3";      // reuse existing exercise cache
-    const PEOPLE_KEY   = "gym-tracker-people-v3"; // separate people roster cache
-    const DEFAULT_PEOPLE = ["Brian", "Dad"];
 
-    const LOCATIONS_KEY     = "gym-tracker-locations-v3";
-    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
-    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v3"; // per-device only, never synced
 
-    const EXERCISE_CATEGORIES = [
-      "Explosive",
-      "Knee Dominant",
-      "Hip Dominant",
-      "Horizontal Push",
-      "Horizontal Pull",
-      "Vertical Push",
-      "Vertical Pull",
-      "Rotational Core",
-      "Plank Core",
-      "Accessory",
-    ];
 
-    // ── REP RANGES (15-20 replaced by 13+) ───────────────────────────────────
-    const REP_RANGES = [
-      { key: "r1_3",     label: "1-3"  },
-      { key: "r4_7",     label: "4-7"  },
-      { key: "r8_12",    label: "8-12" },
-      { key: "r13_plus", label: "13+"  },
-    ];
-
-    // Maps a rep count to its bucket key
-    function getRange(reps) {
-      const n = parseInt(reps);
-      if (isNaN(n)) return null;
-      if (n >= 1  && n <= 3)  return "r1_3";
-      if (n >= 4  && n <= 7)  return "r4_7";
-      if (n >= 8  && n <= 12) return "r8_12";
-      if (n >= 13)            return "r13_plus";
-      return null;
-    }
-
-    // ── TIME UTILITIES ────────────────────────────────────────────────────────
-    // Parse "1:30" or "90" → total seconds
-    function parseTime(val) {
-      const str = String(val || "").trim();
-      if (!str) return 0;
-      if (str.includes(":")) {
-        const [m, s] = str.split(":");
-        return (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
-      }
-      return parseInt(str) || 0;
-    }
-
-    // Format total seconds → "m:ss"
-    function formatTime(totalSeconds) {
-      const s = Math.max(0, parseInt(totalSeconds) || 0);
-      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-    }
-
-    // If user typed plain seconds (e.g. "90"), convert to "1:30"; otherwise leave as-is
-    function normalizeTimeInput(val) {
-      const str = String(val || "").trim();
-      if (!str) return str;
-      if (/^\d+$/.test(str)) return formatTime(parseInt(str));
-      return str;
-    }
-
-    function todayStr() {
-      return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    }
-
-    function parseWeight(w) {
-      const n = parseFloat(String(w).replace(/[^0-9.\-]/g, ""));
-      return isNaN(n) ? 0 : n;
-    }
-
-    // Determine if a new entry beats the stored best
-    function isBetter(newEntry, oldEntry, timed) {
-      if (timed) return parseTime(newEntry.reps) > parseTime(oldEntry?.reps || "0:00");
-      return parseWeight(newEntry.weight) > parseWeight(oldEntry?.weight || 0);
-    }
-
-    // ── MIGRATION: r15_20 → r13_plus ─────────────────────────────────────────
-    function migrateRanges(exercises) {
-      return exercises.map(ex => {
-        // Migrate best records
-        const newBest = {};
-        for (const person of Object.keys(ex.best || {})) {
-          newBest[person] = {};
-          for (const [key, val] of Object.entries(ex.best[person] || {})) {
-            const nk = key === "r15_20" ? "r13_plus" : key;
-            // Keep whichever is heavier if both exist
-            if (!newBest[person][nk] || parseWeight(val?.weight) > parseWeight(newBest[person][nk]?.weight)) {
-              newBest[person][nk] = val;
-            }
-          }
-        }
-        // Migrate history rows
-        const newHistory = (ex.history || []).map(h =>
-          h.range === "r15_20" ? { ...h, range: "r13_plus" } : h
-        );
-        return { ...ex, best: newBest, history: newHistory };
-      });
-    }
-
-    // ── SHEETS API ────────────────────────────────────────────────────────────
-    async function sheetsGet() {
-      const res  = await fetch(SCRIPT_URL);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error(json.message);
-      return json.data;
-    }
-
-    async function sheetsPost(payload) {
-      const encoded = encodeURIComponent(JSON.stringify(payload));
-      const res  = await fetch(SCRIPT_URL + "?payload=" + encoded);
-      const json = await res.json();
-      if (json.status !== "ok") throw new Error(json.message);
-      return json.data;
-    }
-
-    // Merge Sheets data into local exercises; also pick up people roster from Sheets
-    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
-      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
-      const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
-
-      // Build available locations: localLocations + any locations found on exercises in Sheets
-      const mergedLocs = [...new Set([
-        ...localLocations,
-        ...(sheetDerivedLocs || []),
-      ])];
-
-      const makeBest = () => {
-        const b = {};
-        people.forEach(p => { b[p.toLowerCase()] = {}; });
-        return b;
-      };
-
-      const merged = localExercises.map(ex => {
-        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
-        const sheetBest    = allBest[ex.name];
-        const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
-        return {
-          ...ex,
-          timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
-          category: sheetExInfo?.category ?? ex.category ?? "",
-          location: sheetExInfo?.location ?? ex.location ?? "Anywhere",
-          history:  sheetHistory,
-          best:     sheetBest || makeBest(),
-        };
-      });
-
-      return { exercises: merged, people, locations: mergedLocs };
-    }
 
     // ── MAIN COMPONENT ────────────────────────────────────────────────────────
     function WorkoutTracker() {
@@ -220,7 +69,16 @@
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
       const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
 
-      useEffect(() => { loadData(); }, []);
+      useEffect(() => { 
+        loadData(); 
+        
+        const handleSync = () => {
+          const localHidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+          setHiddenPeople(localHidden);
+        };
+        window.addEventListener('gym-settings-updated', handleSync);
+        return () => window.removeEventListener('gym-settings-updated', handleSync);
+      }, []);
 
       const showToast = (msg, type = "success") => {
         setToast({ msg, type });
@@ -528,6 +386,7 @@
         localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(newHidden));
         if (!isHidden && whoMode === name) setWhoMode("all");
         showToast(isHidden ? `${name} shown on this device` : `${name} hidden on this device`);
+        notifySettingsUpdated();
       };
 
       // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
