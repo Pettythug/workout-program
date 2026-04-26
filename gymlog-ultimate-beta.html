@@ -838,9 +838,7 @@
   <!-- Babel Standalone for JSX in browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-
+  <script>
     function switchView(view) {
        // Sync people and location from LIFT to PLAN
        if (view === 'builder') {
@@ -1587,8 +1585,12 @@
                 btn.textContent = `Log Set ${accessorySetCounter}`;
                 btn.disabled = false;
             }
-        }
-    
+    }
+  </script>
+
+  <!-- Tracker Section (React) -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
     // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
