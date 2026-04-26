@@ -1779,6 +1779,7 @@
       const [hiddenPeople,  setHiddenPeople]  = useState([]);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
 
       useEffect(() => { loadData(); }, []);
 
@@ -2134,8 +2135,6 @@
           showToast("Sync failed: " + (e?.message || "unknown error"), "error");
         }
       };
-
-      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
 
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());

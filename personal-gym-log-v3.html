@@ -218,6 +218,7 @@
       const [hiddenPeople,  setHiddenPeople]  = useState([]);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
 
       useEffect(() => { loadData(); }, []);
 
