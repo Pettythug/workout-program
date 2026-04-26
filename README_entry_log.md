@@ -9,12 +9,12 @@ This is a quick reference for what's in the folder and what's active vs archived
 | File | Status | Notes |
 |---|---|---|
 | `index.html` | ✅ Active | The main landing page for everything. |
-| `personal-gym-log.html` | ✅ Active (v2) | GYM LOG PRO. Dynamic people, timed stuff, dark mode. |
-| `workout-builder-pro.html` | ✅ Active (PRO) | THE NEON PRO. Latest approved version with orange outlines and cards. |
+| `personal-gym-log.html` | ✅ Active (v3) | GYM LOG PRO. Powered by gym-core.js. Synced roster. |
+| `workout-builder-pro.html` | ✅ Active (PRO) | THE NEON PRO. Powered by gym-core.js. Includes Detailed History. |
 | `workout-builder-v2.html` | ✅ Active (BETA) | Based on V3 logic. Experimental stuff goes here first. |
 | `workout-builder.html` | ✅ Active (Legacy) | BUILDER CLASSIC. Light themed original. |
 | `Combined_AppScript_v2.gs` | ✅ Active | Unified backend. Handles Best Rec recalculations on the fly. |
-| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. Now includes fix for hidden people and synced roster. |
+| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. Powered by gym-core.js. Unified Roster/History. |
 | `gymlog-ultimate-beta.html` | 🧪 Beta | Testing architectural split and core logic separation. |
 | `files/` | 📦 Archive | Old versions kept for safekeeping. |
 
@@ -31,7 +31,7 @@ This is a quick reference for what's in the folder and what's active vs archived
 
 ## The Roadmap (Upcoming Features)
 
-- **History View**: Adding a clock icon to the builder so you can see past lifts for a machine without switching apps.
+- **History View**: ✅ COMPLETED. Detailed history drawer with notes and rep ranges integrated into the builder.
 - **Edit/Delete History**: Adding the ability to fix a typo or delete a set directly from the builder.
 - **Push/Pull Swap**: A manual toggle in the header so you can switch your routine on the fly if you aren't doing the suggested workout.
 

@@ -8,6 +8,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet">
+    <script src="gym-core.js"></script>
     <style>
         :root {
             --bg: #0c0c0c;
@@ -781,7 +782,6 @@
     </div>
 
     <script>
-        const STORAGE_KEY = 'gym-tracker-script-url-v1';
         const TYPE_KEY = 'builder_last_workout_type';
         const NUM_KEY = 'builder_workout_num';
         const LOC_KEY = 'builder_location';
@@ -798,25 +798,25 @@
         
         let globalData = null;
 
-        // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
-        // ────────────────────────────────────────────────────────────────────────
+
 
         function init() {
-            API_URL = SCRIPT_URL;
             document.getElementById('configScreen').style.display = 'none';
             document.getElementById('app').style.display = 'block';
             loadDataAndWorkout();
         }
 
         function openSettings() {
-            document.getElementById('settingsUrlInput').value = API_URL;
+            document.getElementById('settingsUrlInput').value = SCRIPT_URL;
             
             const container = document.getElementById('activePeopleCheckboxes');
             const allPeople = globalData.people || ['Brian'];
+            let hidden = [];
+            try { hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
+
             container.innerHTML = allPeople.map(p => `
                 <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
-                    <input type="checkbox" value="${p}" class="person-cb" ${activePeople.includes(p) ? 'checked' : ''} /> 
+                    <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
                     ${p}
                 </label>
             `).join('');
@@ -828,16 +828,23 @@
         function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
 
         function saveSettings() {
-            const url = document.getElementById('settingsUrlInput').value.trim();
-            if (url) API_URL = url;
-            
             const cbs = document.querySelectorAll('.person-cb');
             let selected = [];
-            cbs.forEach(cb => { if (cb.checked) selected.push(cb.value); });
-            if (selected.length === 0) selected = [(globalData.people || ['Brian'])[0]];
+            let hidden = [];
+            cbs.forEach(cb => { 
+                if (cb.checked) selected.push(cb.value); 
+                else hidden.push(cb.value);
+            });
+            
+            if (selected.length === 0) {
+                selected = [(globalData.people || ['Brian'])[0]];
+                hidden = hidden.filter(h => h !== selected[0]);
+            }
             
             activePeople = selected;
-            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(activePeople));
+            localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
+            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected));
+            notifySettingsUpdated();
             
             closeSettingsModal();
             if (currentWorkout) {
@@ -852,26 +859,20 @@
             }
         }
 
-        async function sheetsPost(payload) {
-            const pStr = JSON.stringify(payload);
-            const encoded = encodeURIComponent(pStr);
-            const res = await fetch(API_URL + "?payload=" + encoded);
-            const json = await res.json();
-            return json;
-        }
+
 
         async function loadDataAndWorkout() {
             showLoading();
             try {
-                const res = await fetch(API_URL);
-                const json = await res.json();
-                if (json.status !== "ok") throw new Error("API Error");
-                globalData = json.data;
+                const json = await sheetsGet();
+                globalData = json;
                 
                 try {
-                    const savedP = JSON.parse(localStorage.getItem(ACTIVE_PEOPLE_KEY));
-                    if (savedP && Array.isArray(savedP) && savedP.length > 0) activePeople = savedP;
-                    else activePeople = [(globalData.people || ['Brian'])[0]];
+                    const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+                    const all = globalData.people || ['Brian'];
+                    const visible = all.filter(p => !hidden.includes(p));
+                    if (visible.length > 0) activePeople = visible;
+                    else activePeople = [all[0]];
                 } catch {
                     activePeople = [(globalData.people || ['Brian'])[0]];
                 }
@@ -1004,6 +1005,9 @@
                     </div>
                   </div>
                   <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
+                  <button class="history-btn" onclick="toggleHistory(event, ${idx}, '${ex.name.replace(/'/g, "\\\\'")}')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </button>
                   <div class="expand-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1027,6 +1031,10 @@
                 `).join('');
 
                 card.innerHTML = headerHTML + `
+                <div class="history-drawer" id="history-drawer-${idx}">
+                   <div style="font-size:11px; color:var(--muted); margin-bottom:8px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px;">Recent History</div>
+                   <div id="history-list-${idx}">Loading...</div>
+                </div>
                 <div class="set-logger" id="logger-${idx}">
                   <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
                   
@@ -1153,6 +1161,58 @@
             const card = document.getElementById(`card-${idx}`);
             if (card.classList.contains('done') || card.classList.contains('skipped')) return;
             card.classList.toggle('open');
+        }
+
+        function toggleHistory(e, idx, exerciseName) {
+            e.stopPropagation();
+            const drawer = document.getElementById(`history-drawer-${idx}`);
+            const list = document.getElementById(`history-list-${idx}`);
+            
+            if (drawer.style.display === 'block') {
+                drawer.style.display = 'none';
+                return;
+            }
+            
+            drawer.style.display = 'block';
+            
+            const history = (globalData.history || []).filter(h => 
+                h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
+                h.person && 
+                activePeople.map(p => p.toLowerCase().trim()).includes(h.person.toLowerCase().trim())
+            );
+            
+            const recent = history.slice(-10).reverse();
+            
+            if (recent.length === 0) {
+                list.innerHTML = `<div style="font-size:12px; color:var(--muted);">No history found for ${activePeople.join(', ')}</div>`;
+                return;
+            }
+            
+            list.innerHTML = recent.map(h => {
+                const exData = globalData.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
+                const isTimed = exData.timed;
+                let resultText = '';
+                if (isTimed) {
+                     resultText = h.reps + (h.weight ? ` · ${h.weight}lbs` : '');
+                } else {
+                     resultText = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
+                }
+                
+                const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
+                
+                return `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                   <div style="flex:1;">
+                       <div style="font-size:10px; color:var(--muted);">${h.date}</div>
+                       <div style="font-weight:600; font-size:11px; color:var(--accent);">${h.person.toUpperCase()}</div>
+                       ${h.note ? `<div style="font-size:9px; color:var(--muted); font-style:italic;">${h.note}</div>` : ''}
+                   </div>
+                   <div style="text-align:right;">
+                       <div style="font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text);">${resultText}</div>
+                       <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                   </div>
+                </div>`;
+            }).join('');
         }
 
         function toggleAccessory() {

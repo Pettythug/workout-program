@@ -1176,9 +1176,9 @@
             drawer.style.display = 'block';
             
             const history = (globalData.history || []).filter(h => 
-                h.exercise === exerciseName && 
+                h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
                 h.person && 
-                activePeople.map(p => p.toLowerCase()).includes(h.person.toLowerCase())
+                activePeople.map(p => p.toLowerCase().trim()).includes(h.person.toLowerCase().trim())
             );
             
             const recent = history.slice(-10).reverse();
@@ -1189,22 +1189,29 @@
             }
             
             list.innerHTML = recent.map(h => {
-                const result = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
-                let rangeLabel = '';
-                if (h.range === 'r13_plus') rangeLabel = '13+';
-                else if (h.range) rangeLabel = h.range.replace('r', '').replace('_', '-');
+                const exData = globalData.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
+                const isTimed = exData.timed;
+                let resultText = '';
+                if (isTimed) {
+                     resultText = h.reps + (h.weight ? ` · ${h.weight}lbs` : '');
+                } else {
+                     resultText = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
+                }
+                
+                const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
                 
                 return `
-                <div class="history-item">
-                    <div class="history-item-left">
-                        <span class="history-date">${h.date}</span>
-                        <span class="history-person">${h.person.toUpperCase()}</span>
-                    </div>
-                    <div class="history-result">
-                        ${result} <span style="color:var(--muted); font-size:10px; font-weight:normal; margin-left:4px;">(${rangeLabel})</span>
-                    </div>
-                </div>
-                `;
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                   <div style="flex:1;">
+                       <div style="font-size:10px; color:var(--muted);">${h.date}</div>
+                       <div style="font-weight:600; font-size:11px; color:var(--accent);">${h.person.toUpperCase()}</div>
+                       ${h.note ? `<div style="font-size:9px; color:var(--muted); font-style:italic;">${h.note}</div>` : ''}
+                   </div>
+                   <div style="text-align:right;">
+                       <div style="font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text);">${resultText}</div>
+                       <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                   </div>
+                </div>`;
             }).join('');
         }
 

@@ -1280,9 +1280,9 @@
             content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
             
             const history = (globalData.history || []).filter(h => 
-                h.exercise === exerciseName && 
+                h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
                 h.person &&
-                activePeople.map(p => p.toLowerCase()).includes(h.person.toLowerCase())
+                activePeople.map(p => p.toLowerCase().trim()).includes(h.person.toLowerCase().trim())
             );
             
             if (history.length === 0) {
@@ -1294,7 +1294,7 @@
             // Get last 10 entries, reversed
             const recent = history.slice(-10).reverse();
             recent.forEach(h => {
-                const exData = globalData.exercises.find(ex => ex.name === exerciseName) || {};
+                const exData = globalData.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
                 const isTimed = exData.timed;
                 let resultText = '';
                 if (isTimed) {
