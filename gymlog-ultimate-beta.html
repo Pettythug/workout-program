@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0c0c0c" />
+  <title>LIFT (BETA)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
+    #root { height: 100%; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  
+
+        :root {
+            --bg: #0c0c0c;
+            --surface: #111111;
+            --border: #1a1a1a;
+            --text: #e0e0e0;
+            --muted: #555555;
+            --accent: #f97316;
+            --accent-light: rgba(249, 115, 22, 0.1);
+            --success: #22c55e;
+            --success-light: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-light: rgba(245, 158, 11, 0.1);
+            --skip: #444444;
+            --skip-light: #161616;
+            --push: #f97316;
+            --pull: #c084fc;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 0 80px;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        
+
+        .header-left p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+            font-family: var(--mono);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workout-badge {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .badge-push {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--push);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .badge-pull {
+            background: rgba(192, 132, 252, 0.1);
+            color: var(--pull);
+            border: 1px solid rgba(192, 132, 252, 0.2);
+        }
+
+        .settings-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--muted);
+        }
+
+        .header-select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .main {
+            padding: 16px 16px 0;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .info-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .info-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .info-item .label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: var(--mono);
+        }
+
+        .info-item .value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 2px;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        .exercise-card {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .exercise-card.done {
+            opacity: 0.6;
+            border-color: var(--success);
+        }
+
+        .exercise-card.skipped {
+            opacity: 0.5;
+            border-color: var(--skip);
+        }
+
+        .exercise-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .exercise-header:active {
+            background: var(--bg);
+        }
+
+        .exercise-info {
+            flex: 1;
+        }
+
+        .exercise-category {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .exercise-name {
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+        }
+
+        .exercise-max {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .exercise-max span {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .exercise-status {
+            font-size: 18px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .expand-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            margin-left: 4px;
+        }
+
+        .exercise-card.open .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .set-logger {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 14px 16px;
+            background: var(--bg);
+        }
+
+        .exercise-card.open .set-logger {
+            display: block;
+        }
+
+        .sets-list {
+            margin-bottom: 12px;
+        }
+
+                .person-block {
+            background: #0e0e0e;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .person-label {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-family: var(--mono);
+        }
+
+        .set-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .set-num {
+            display: none;
+        }
+
+        .set-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .set-input {
+            background: #0c0c0c;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 8px;
+            width: 70px;
+            text-align: center;
+            font-size: 16px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+        }
+
+        .set-input:focus {
+            border-color: var(--accent);
+            background: #161616;
+        }
+
+        .set-input::placeholder {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .set-separator {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .set-log-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: var(--sans);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .set-log-btn:active {
+            opacity: 0.8;
+        }
+
+        .set-log-btn.logged {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .rep-range-hint {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .rep-range-hint strong {
+            color: var(--accent);
+        }
+
+        
+
+        .exercise-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        
+
+        .skip-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .mark-done-btn:active,
+        .skip-btn:active {
+            opacity: 0.7;
+        }
+
+        .complete-btn {
+            width: 100%;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .complete-btn:active {
+            opacity: 0.85;
+        }
+
+        .complete-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .got-more-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent-light);
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.15s;
+        }
+
+        .got-more-btn:active {
+            background: var(--accent-light);
+        }
+
+        .more-time-btn {
+            width: 100%;
+            background: rgba(249, 115, 22, 0.05);
+            color: var(--accent);
+            border: 1px dashed var(--accent);
+            border-radius: var(--radius);
+            padding: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .more-time-btn:active {
+            background: var(--bg);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .loading-dot {
+            display: inline-block;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0.3;
+            }
+
+            40% {
+                opacity: 1;
+            }
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #DC2626;
+            font-size: 13px;
+        }
+
+        .success-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .success-state .check {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .success-state h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .success-state p {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 40px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        .modal h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+        .modal-label {
+            font-size: 10px;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-family: var(--mono);
+        }
+        .modal-input {
+            width: 100%;
+            background: #0c0c0c;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+        .modal-input:focus { border-color: var(--accent); }
+
+        
+
+        .modal-save-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .modal-cancel-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--muted);
+            border: none;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .config-screen {
+            padding: 40px 20px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .config-screen h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.4px;
+        }
+
+        .config-screen p {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .config-label {
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .config-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .config-input:focus {
+            border-color: var(--accent);
+        }
+
+        .config-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .config-note {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 12px;
+            text-align: center;
+            font-family: var(--mono);
+        }
+    
+</style>
+</head>
+
+<body>
+    <style>
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #0c0c0c;
+      border-top: 1px solid #1a1a1a;
+      display: flex;
+      z-index: 1000;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 16px;
+      background: transparent;
+      color: #555;
+      border: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-btn.active {
+      color: #f97316;
+      border-top: 2px solid #f97316;
+      background: #111;
+    }
+    #tracker-root, #builder-root {
+      height: 100%;
+      padding-bottom: 60px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    #tracker-root { display: block; }
+    #builder-root { display: none; }
+  </style>
+
+  <div id="tracker-root"></div>
+  
+  <div id="builder-root">
+    
+    <div id="configScreen" style="display:none;">
+        <div class="config-screen">
+            <h2>Setup</h2>
+            <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
+            <div class="config-label">Deployment URL</div>
+            <input type="text" class="config-input" id="apiUrlInput"
+                placeholder="https://script.google.com/macros/s/..." />
+            <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
+            <p class="config-note">Saved locally on your device only.</p>
+        </div>
+    </div>
+
+        <!-- SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
+        <div class="modal">
+            <h3>Settings</h3>
+            <div class="modal-label">Apps Script URL</div>
+            <input type="text" class="modal-input" id="settingsUrlInput"
+                placeholder="https://script.google.com/macros/s/..." />
+
+            <div class="modal-label" style="margin-top:12px;">Active People (Who is working out?)</div>
+            <div id="activePeopleCheckboxes" style="margin-bottom:20px;"></div>
+
+            <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
+            <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
+        </div>
+    </div>
+
+    
+        <div class="header">
+            <div class="header-left">
+                <h1>PLAN</h1>
+                <p id="headerSub">Loading...</p>
+            </div>
+            <div class="header-right">
+                
+                <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
+                <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
+                <button class="settings-btn" onclick="openSettings()">⚙️</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div id="loadingState" class="loading">
+                <span class="loading-dot">●</span>
+                <span class="loading-dot">●</span>
+                <span class="loading-dot">●</span>
+            </div>
+
+            <div id="errorState" class="error-state" style="display:none;"></div>
+
+            <div id="successState" class="success-state" style="display:none;">
+                <div class="check">✓</div>
+                <h2>Workout Complete!</h2>
+                <p>Great work. Come back for your next session.</p>
+            </div>
+
+            <div id="workoutContent" style="display:none;">
+                <div class="info-bar">
+                    <div class="info-item">
+                        <div class="label">Workout</div>
+                        <div class="value" id="infoWorkoutNum">—</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Reps</div>
+                        <div class="value" id="infoRepRange">—</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="label">Sets</div>
+                        <div class="value">3</div>
+                    </div>
+                </div>
+
+                <div class="section-label">Exercises</div>
+                <div id="exerciseList"></div>
+
+                <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
+                    Complete Workout
+                </button>
+
+                <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
+                    + Got more time? Suggest an accessory
+                </button>
+
+                <div id="accessorySection" style="display:none; margin-top:24px;">
+                    <div class="section-label">Accessory</div>
+                    <div class="exercise-card" id="accessoryCard">
+                        <div class="exercise-header" onclick="toggleAccessory()">
+                            <div class="exercise-info">
+                                <div class="exercise-category">ACCESSORY</div>
+                                <div class="exercise-name" id="accessoryName">Loading...</div>
+                                <div class="exercise-max" id="accessoryMax"></div>
+                            </div>
+                            <div class="expand-icon">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="set-logger" id="accessoryLogger" style="display:none;">
+                           <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong id="accessoryRepRange">—</strong></div>
+                           <div class="sets-list" id="accSetsList"></div>
+                           <div id="acc-maxbanner" class="new-max-banner" style="display:none;"></div>
+                           <button class="complete-btn" style="padding:12px; margin-top:8px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Accessory Set 1</button>
+                           <button class="got-more-btn" id="suggestDiffBtn" onclick="getAccessory()" style="margin-top:12px; border:1px dashed var(--muted); color:var(--muted);">Suggest Something Else</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button id="nav-tracker" class="nav-btn active" onclick="switchView('tracker')">LIFT</button>
+    <button id="nav-builder" class="nav-btn" onclick="switchView('builder')">PLAN</button>
+  </nav>
+
+  <!-- React 18 & ReactDOM 18 CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- Babel Standalone for JSX in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function switchView(view) {
+       // Sync people and location from LIFT to PLAN
+       if (view === 'builder') {
+           try {
+               const people = JSON.parse(localStorage.getItem('gym-tracker-people-v1'));
+               if (people && Array.isArray(people)) {
+                   localStorage.setItem('builder_active_people', JSON.stringify(people));
+                   if (typeof activePeople !== 'undefined') activePeople = people;
+               }
+           } catch(e) {}
+       }
+       document.getElementById('tracker-root').style.display = view === 'tracker' ? 'block' : 'none';
+       document.getElementById('builder-root').style.display = view === 'builder' ? 'block' : 'none';
+       document.getElementById('nav-tracker').classList.toggle('active', view === 'tracker');
+       document.getElementById('nav-builder').classList.toggle('active', view === 'builder');
+       if(view === 'builder' && typeof initBuilder === 'function' && !window.builderInitialized) {
+           initBuilder();
+           window.builderInitialized = true;
+       }
+    }
+    
+        const BUILDER_STORAGE_KEY = 'gym-tracker-script-url-v1';
+        const TYPE_KEY = 'builder_last_workout_type';
+        const NUM_KEY = 'builder_workout_num';
+        const LOC_KEY = 'builder_location';
+        const ACTIVE_PEOPLE_KEY = 'builder_active_people';
+        
+        let API_URL = '';
+        let currentWorkout = null;
+        let exerciseStatus = {};
+        let currentMaxes = {};
+        let currentAccessory = null;
+        let activePeople = [];
+        let exerciseSetCounters = {}; // tracks setNum per exercise idx
+        let accessorySetCounter = 1;
+        
+        let globalData = null;
+
+        // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
+        const BUILDER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+        // ────────────────────────────────────────────────────────────────────────
+
+        function initBuilder() {
+            API_URL = BUILDER_SCRIPT_URL;
+            document.getElementById('configScreen').style.display = 'none';
+            loadDataAndWorkout();
+        }
+
+        function openSettings() {
+            document.getElementById('settingsUrlInput').value = API_URL;
+            
+            const container = document.getElementById('activePeopleCheckboxes');
+            const allPeople = globalData.people || ['Brian'];
+            container.innerHTML = allPeople.map(p => `
+                <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
+                    <input type="checkbox" value="${p}" class="person-cb" ${activePeople.includes(p) ? 'checked' : ''} /> 
+                    ${p}
+                </label>
+            `).join('');
+            
+            document.getElementById('settingsModal').classList.add('open');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').classList.remove('open');
+        }
+
+        function closeSettings(e) {
+            if (e.target.id === 'settingsModal') closeSettingsModal();
+        }
+
+        function saveSettings() {
+            const newUrl = document.getElementById('settingsUrlInput').value.trim();
+            const checked = Array.from(document.querySelectorAll('.person-cb:checked')).map(cb => cb.value);
+            
+            if (newUrl) {
+                API_URL = newUrl;
+                localStorage.setItem(BUILDER_STORAGE_KEY, newUrl);
+            }
+            if (checked.length > 0) {
+                activePeople = checked;
+                localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(checked));
+            }
+            
+            closeSettingsModal();
+            loadDataAndWorkout();
+        }
+
+        async function sheetsPost(payload) {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (json.status !== 'ok') throw new Error(json.message);
+            return json.data;
+        }
+
+        function showLoading() {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('workoutContent').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+            document.getElementById('successState').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingState').style.display = 'none';
+        }
+
+        function showError(msg) {
+            hideLoading();
+            const errEl = document.getElementById('errorState');
+            errEl.style.display = 'block';
+            errEl.textContent = msg;
+        }
+
+        async function loadDataAndWorkout() {
+            showLoading();
+            try {
+                // 1. Load data from shared script URL (history, best, people, exercises)
+                const res = await fetch(API_URL);
+                const json = await res.json();
+                if (json.status !== "ok") throw new Error("API Error");
+                globalData = json.data;
+
+                // 2. Setup active people
+                const savedP = JSON.parse(localStorage.getItem(ACTIVE_PEOPLE_KEY));
+                if (savedP && Array.isArray(savedP) && savedP.length > 0) {
+                    activePeople = savedP;
+                } else {
+                    activePeople = globalData.people.slice(0, 1); // Default to first person
+                    localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(activePeople));
+                }
+
+                // 3. Setup Locations
+                const locSelect = document.getElementById('locationSelect');
+                const uniqueLocs = ['Anywhere', ...(globalData.locations || [])];
+                locSelect.innerHTML = uniqueLocs.map(l => `<option value="${l}">${l}</option>`).join('');
+                const savedLoc = localStorage.getItem(LOC_KEY);
+                if (savedLoc) locSelect.value = savedLoc;
+
+                // 4. Determine next workout
+                generateWorkout();
+
+            } catch (e) {
+                console.error(e);
+                showError("Failed to load workout data. Check your URL and connection.");
+            }
+        }
+
+        function changeLocation() {
+            localStorage.setItem(LOC_KEY, document.getElementById('locationSelect').value);
+            generateWorkout();
+        }
+
+        function togglePushPull() {
+            if(!currentWorkout || !currentWorkout.type) return;
+            const newType = currentWorkout.type === 'Push' ? 'Pull' : 'Push';
+            localStorage.setItem(TYPE_KEY, currentWorkout.type);
+            generateWorkout();
+        }
+
+        function generateWorkout() {
+             const loc = document.getElementById('locationSelect').value;
+             let lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
+             let type = lastType === 'Push' ? 'Pull' : 'Push';
+             let lastNum = parseInt(localStorage.getItem(NUM_KEY)) || 0;
+             let num = lastNum + 1;
+
+             function pick(categories) {
+                 const available = (globalData.exercises || []).filter(e => 
+                    categories.includes(e.category) && 
+                    (e.location === 'Anywhere' || e.location === loc || !e.location)
+                 );
+                 if (available.length === 0) return { name: "Rest or Custom", category: categories[0] };
+                 return available[Math.floor(Math.random() * available.length)];
+             }
+             
+             const genExercises = type === 'Push' ? [
+                 pick(['Explosive']),
+                 pick(['Knee Dominant']),
+                 pick(['Vertical Push']),
+                 pick(['Horizontal Push']),
+                 pick(['Rotational Core', 'Plank Core']),
+             ] : [
+                 pick(['Explosive']),
+                 pick(['Hip Dominant']),
+                 pick(['Vertical Pull']),
+                 pick(['Horizontal Pull']),
+                 pick(['Plank Core', 'Rotational Core']),
+             ];
+             
+             currentWorkout = {
+                 type: type,
+                 workoutNum: num,
+                 repRange: '8-12', 
+                 exercises: genExercises
+             };
+             
+             exerciseStatus = {};
+             exerciseSetCounters = {};
+             genExercises.forEach((e, idx) => { 
+                 exerciseStatus[e.name] = 'pending'; 
+                 exerciseSetCounters[idx] = 1;
+             });
+             
+             currentMaxes = {};
+             genExercises.forEach(e => {
+                 currentMaxes[e.name] = {};
+                 activePeople.forEach(p => {
+                     currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
+                 });
+             });
+             
+             renderWorkout(currentWorkout, genExercises);
+        }
+
+        function renderWorkout(workout, exercises) {
+            document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
+            const badge = document.getElementById('workoutBadge');
+            badge.textContent = workout.type;
+            badge.className = `workout-badge badge-${workout.type.toLowerCase()}`;
+            document.getElementById('infoWorkoutNum').textContent = workout.workoutNum;
+            document.getElementById('infoRepRange').textContent = workout.repRange;
+
+            const list = document.getElementById('exerciseList');
+            list.innerHTML = '';
+            
+            // Build Location Options for Custom Machine Injection
+            const activeLoc = document.getElementById('locationSelect').value;
+            const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
+            const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
+
+            exercises.forEach((ex, idx) => {
+                const card = document.createElement('div');
+                card.className = 'exercise-card';
+                card.id = `card-${idx}`;
+                if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
+                if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
+
+                // Filter Swaps by Current Exercise Category
+                const availableSwapProps = (globalData.exercises || []).filter(e => 
+                    e.category === ex.category && 
+                    (e.location === 'Anywhere' || e.location === activeLoc || !e.location) &&
+                    e.name !== ex.name
+                );
+                
+                let selectOptions = `<option value="custom" selected>-- Type Custom Machine --</option>`;
+                availableSwapProps.sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
+                    selectOptions += `<option value="${e.name}">${e.name}</option>`;
+                });
+
+                let headerHTML = `
+                <div class="exercise-header" onclick="toggleCard(${idx})">
+                  <div class="exercise-info">
+                    <div class="exercise-category">${ex.category}</div>
+                    <div class="exercise-name">${ex.name}</div>
+                    <div class="exercise-max">
+                `;
+                
+                activePeople.forEach(p => {
+                    const maxData = currentMaxes[ex.name]?.[p] || {};
+                    const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
+                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
+                });
+                
+                headerHTML += `
+                    </div>
+                  </div>
+                  <div class="history-icon" onclick="toggleHistory(event, ${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="margin-right: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
+                  <div class="expand-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
+                    <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
+                    <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
+                </div>`;
+                
+                const curSetNum = exerciseSetCounters[idx] || 1;
+
+                let inputsHTML = activePeople.map(p => `
+                    <div class="person-block">
+                        <div class="person-label">${p}</div>
+                        <div class="set-row">
+                            <div class="set-input-group">
+                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
+                              <span class="set-separator">×</span>
+                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                card.innerHTML = headerHTML + `
+                <div class="set-logger" id="logger-${idx}">
+                  <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
+                  
+                  <div class="sets-list">
+                    ${inputsHTML}
+                    <button class="complete-btn" style="padding:12px; margin-top:8px; font-size:14px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
+                  </div>
+                  <div class="new-max-banner" id="maxbanner-${idx}"></div>
+                  <div class="exercise-actions" style="margin-top:16px;">
+                    <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
+                    <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+                    <button class="more-time-btn" onclick="showSwap(${idx})">↺ Swap</button>
+                  </div>
+                </div>
+                
+                <div class="swap-ui" id="swap-ui-${idx}" style="display:none; padding:16px;">
+                   <p style="margin-bottom:8px; font-size:12px; color:var(--muted);">Select Replacement Exercise:</p>
+                   <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
+                      ${selectOptions}
+                   </select>
+                   <div id="swap-custom-block-${idx}" style="margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px;">
+                       <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="New Machine Name..." style="width:100%; margin-bottom:8px; font-size:14px; padding:8px;">
+                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface);">
+                          ${customLocDropdownHTML}
+                       </select>
+                       <p style="font-size:10px; color:var(--muted); margin-top:6px;">Saving as a <span style="font-weight:600;">${ex.category}</span> exercise.</p>
+                   </div>
+                   <div style="display:flex; gap:8px;">
+                     <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm</button>
+                     <button class="skip-btn" style="flex:1; padding:8px; font-size:14px;" onclick="hideSwap(${idx})">Cancel</button>
+                   </div>
+                </div>
+                `;
+                
+                list.appendChild(card);
+            });
+
+            hideLoading();
+            document.getElementById('workoutContent').style.display = 'block';
+        }
+
+        function showSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'none';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'block';
+            document.getElementById(`swap-select-${idx}`).value = 'custom';
+            checkCustom(idx);
+        }
+        
+        function hideSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'block';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'none';
+        }
+        
+        function checkCustom(idx) {
+            const val = document.getElementById(`swap-select-${idx}`).value;
+            const customBlock = document.getElementById(`swap-custom-block-${idx}`);
+            if (val === 'custom') customBlock.style.display = 'block';
+            else customBlock.style.display = 'none';
+        }
+        
+        async function confirmSwap(idx) {
+            const btn = document.getElementById(`confirm-swap-btn-${idx}`);
+            const selectVal = document.getElementById(`swap-select-${idx}`).value;
+            let newName = '';
+            let newCat = currentWorkout.exercises[idx].category;
+            
+            if (selectVal === 'custom') {
+                const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
+                let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
+                if (!typed) { alert('Please enter a custom machine name.'); return; }
+                
+                newName = typed;
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
+                
+                const req = {
+                   action: "saveExercise",
+                   exercise: newName,
+                   category: newCat,
+                   location: selectedLoc,
+                   timed: false
+                };
+                
+                try {
+                    await sheetsPost(req);
+                    // Add directly to in-memory global data so algorithm recognizes it immediately
+                    globalData.exercises.push({
+                        name: newName,
+                        category: newCat,
+                        location: selectedLoc,
+                        timed: false
+                    });
+                } catch(e) {
+                    console.error(e);
+                    alert("Warning: Could not save the new exercise to the master database. It will still swap for this session.");
+                }
+                
+                btn.textContent = 'Confirm';
+                btn.disabled = false;
+                
+            } else {
+                newName = selectVal;
+                const found = globalData.exercises.find(e => e.name === newName);
+                if(found) newCat = found.category;
+            }
+            
+            const oldName = currentWorkout.exercises[idx].name;
+            currentWorkout.exercises[idx] = { name: newName, category: newCat };
+            
+            delete exerciseStatus[oldName];
+            exerciseStatus[newName] = 'pending';
+            exerciseSetCounters[idx] = 1;
+
+            currentMaxes[newName] = {};
+            activePeople.forEach(p => {
+                 currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
+            });
+            
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx);
+        }
+
+        function toggleCard(idx) {
+            const card = document.getElementById(`card-${idx}`);
+            if (card.classList.contains('done') || card.classList.contains('skipped')) return;
+            card.classList.toggle('open');
+        }
+
+        function toggleHistory(e, idx, exerciseName) {
+            e.stopPropagation();
+            const drawer = document.getElementById(`history-drawer-${idx}`);
+            const content = document.getElementById(`history-content-${idx}`);
+            
+            if (drawer.style.display === 'block') {
+                drawer.style.display = 'none';
+                return;
+            }
+            
+            drawer.style.display = 'block';
+            content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
+            
+            const exData = globalData.exercises.find(ex => ex.name === exerciseName);
+            const history = exData ? (exData.history || []) : [];
+            
+            const activeHistory = history.filter(h => activePeople.map(p=>p.toLowerCase()).includes(h.person.toLowerCase()));
+            
+            if (activeHistory.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);">No history found for active people.</div>';
+                return;
+            }
+            
+            let html = '';
+            activeHistory.slice(0, 10).forEach(h => {
+                const isTimed = exData.timed;
+                let resultText = '';
+                if (isTimed) {
+                     resultText = h.reps + (h.weight ? ` · ${h.weight}lbs` : '');
+                } else {
+                     resultText = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
+                }
+                
+                const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
+                
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                   <div style="flex:1;">
+                      <div style="font-size:10px; color:var(--muted);">${h.date || 'Unknown Date'}</div>
+                      <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person.toUpperCase()}</div>
+                      ${h.note ? `<div style="font-size:10px; color:var(--muted); font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                   </div>
+                   <div style="text-align:right;">
+                      <span style="font-size:10px; color:var(--muted); background:#161616; padding:2px 6px; border-radius:4px; margin-right:6px;">${rangeLabel}</span>
+                      <span style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</span>
+                   </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        }
+
+        function toggleAccessory() {
+            const logger = document.getElementById('accessoryLogger');
+            const card = document.getElementById('accessoryCard');
+            card.classList.toggle('open');
+            logger.style.display = card.classList.contains('open') ? 'block' : 'none';
+        }
+
+        function getRangeForReps(reps) {
+            if (reps <= 3) return '1-3';
+            if (reps <= 7) return '4-7';
+            if (reps <= 12) return '8-12';
+            return '13+';
+        }
+        
+        function getRangeKey(rangeLabel) {
+            if (rangeLabel === '1-3') return 'r1_3';
+            if (rangeLabel === '4-7') return 'r4_7';
+            if (rangeLabel === '8-12') return 'r8_12';
+            return 'r13_plus';
+        }
+
+        async function logSet(cardIdx, exerciseName) {
+            const setNum = exerciseSetCounters[cardIdx] || 1;
+            const btn = document.getElementById(`logbtn-${cardIdx}`);
+            btn.textContent = 'Saving...'; 
+            btn.disabled = true;
+
+            const entries = [];
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
+                const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                const weight = parseFloat(weightVal) || 0;
+                
+                const repRange = getRangeForReps(reps);
+                const rangeKey = getRangeKey(repRange);
+                
+                entries.push({
+                   date: dateStr,
+                   person: p.toLowerCase(),
+                   reps: reps.toString(),
+                   weight: weightVal || "",
+                   range: rangeKey,
+                   note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
+                   setNum: setNum,
+                   timed: false
+                });
+                
+                const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
+                let isNew = !existing;
+                if (existing) {
+                    if (weight > parseFloat(existing.weight)) isNew = true;
+                }
+                if (isNew) {
+                    if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
+                    if(!currentMaxes[exerciseName][p]) currentMaxes[exerciseName][p] = {};
+                    currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
+                    const newMaxStr = `${reps}x${weight}`;
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
+                    if (rangeKey === 'r8_12') {
+                        const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
+                        if(valId) valId.textContent = newMaxStr;
+                    }
+                }
+            }
+
+            if (entries.length === 0) {
+                alert('Please enter reps for at least one person.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+                return;
+            }
+
+            const req = {
+               action: "logSet",
+               exercise: exerciseName,
+               entries: entries
+            };
+            
+            try {
+                await sheetsPost(req);
+                
+                if (bannerMsg) {
+                    const banner = document.getElementById(`maxbanner-${cardIdx}`);
+                    if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
+                }
+                
+                activePeople.forEach(p => {
+                    const rEl = document.getElementById(`reps-${cardIdx}-${p}`);
+                    const wEl = document.getElementById(`weight-${cardIdx}-${p}`);
+                    if (rEl) rEl.value = '';
+                    if (wEl) wEl.value = '';
+                });
+                
+                exerciseSetCounters[cardIdx] = setNum + 1;
+                btn.textContent = `Log Set ${exerciseSetCounters[cardIdx]}`;
+                btn.disabled = false;
+                
+            } catch(e) {
+                console.error(e);
+                alert('Failed to log set. Check console.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+            }
+        }
+
+        function markDone(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'done';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('done');
+            document.getElementById(`status-icon-${idx}`).textContent = '✓';
+            checkAllComplete();
+        }
+
+        function skipExercise(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'skipped';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('skipped');
+            document.getElementById(`status-icon-${idx}`).textContent = '—';
+            checkAllComplete();
+        }
+
+        function checkAllComplete() {
+            const allResolved = Object.values(exerciseStatus).every(s => s === 'done' || s === 'skipped');
+            document.getElementById('completeBtn').disabled = !allResolved;
+            if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
+        }
+
+        function completeWorkout() {
+            localStorage.setItem(TYPE_KEY, currentWorkout.type);
+            localStorage.setItem(NUM_KEY, currentWorkout.workoutNum.toString());
+            document.getElementById('workoutContent').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+            markAccessoryDone();
+        }
+
+        function markAccessoryDone() {
+            const card = document.getElementById('accessoryCard');
+            card.classList.remove('open');
+            card.classList.add('done');
+            document.getElementById('accessoryLogger').style.display = 'none';
+            document.getElementById('suggestDiffBtn').style.display = 'none';
+        }
+
+        function getAccessory() {
+            document.getElementById('gotMoreBtn').style.display = 'none';
+            document.getElementById('accessorySection').style.display = 'block';
+            
+            const loc = document.getElementById('locationSelect').value;
+            const availableAcc = (globalData.exercises || []).filter(e => e.category === 'Accessory' && (e.location === 'Anywhere' || e.location === loc || !e.location));
+            
+            if(availableAcc.length === 0) {
+                document.getElementById('accessoryName').textContent = 'No accessories available';
+                return;
+            }
+            const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
+            currentAccessory = picked.name;
+            
+            accessorySetCounter = 1;
+            
+            document.getElementById('accessoryName').textContent = currentAccessory;
+            document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
+
+            let maxInfo = '';
+            activePeople.forEach(p => {
+                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
+                maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
+            });
+            document.getElementById('accessoryMax').innerHTML = maxInfo;
+            
+            const accList = document.getElementById('accSetsList');
+            accList.innerHTML = activePeople.map(p => `
+                <div class="person-block">
+                    <div class="person-label">${p}</div>
+                    <div class="set-row">
+                        <div class="set-input-group">
+                          <input type="number" class="set-input" id="acc-reps-${p}" placeholder="reps" min="1" max="99">
+                          <span class="set-separator">×</span>
+                          <input type="number" class="set-input" id="acc-weight-${p}" placeholder="lbs" min="0" max="9999">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById(`acc-logbtn`).textContent = 'Log Set 1';
+            document.getElementById(`acc-logbtn`).disabled = false;
+            document.getElementById('acc-maxbanner').style.display = 'none';
+        }
+
+        async function logAccessorySet() {
+            const btn = document.getElementById(`acc-logbtn`);
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            const entries = [];
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`acc-reps-${p}`).value;
+                const weightVal = document.getElementById(`acc-weight-${p}`).value;
+                if (!repsVal) continue;
+
+                const reps = parseInt(repsVal);
+                const weight = parseFloat(weightVal) || 0;
+                const repRange = getRangeForReps(reps);
+                const rangeKey = getRangeKey(repRange);
+
+                entries.push({
+                   date: dateStr,
+                   person: p.toLowerCase(),
+                   reps: reps.toString(),
+                   weight: weightVal || "",
+                   range: rangeKey,
+                   note: `Accessory Set ${accessorySetCounter} (Builder #${currentWorkout.workoutNum})`,
+                   setNum: accessorySetCounter,
+                   timed: false
+                });
+
+                const existing = globalData.best?.[currentAccessory]?.[p.toLowerCase()]?.[rangeKey];
+                let isNew = !existing;
+                if (existing) {
+                    if (weight > parseFloat(existing.weight)) isNew = true;
+                }
+                if (isNew) {
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${reps}x${weight}<br>`;
+                }
+            }
+
+            if (entries.length === 0) {
+                alert('Please enter reps.');
+                btn.textContent = `Log Set ${accessorySetCounter}`;
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                await sheetsPost({ action: "logSet", exercise: currentAccessory, entries: entries });
+                if (bannerMsg) {
+                    const banner = document.getElementById('acc-maxbanner');
+                    banner.style.display = 'block'; banner.innerHTML = bannerMsg;
+                }
+                activePeople.forEach(p => {
+                    document.getElementById(`acc-reps-${p}`).value = '';
+                    document.getElementById(`acc-weight-${p}`).value = '';
+                });
+                accessorySetCounter++;
+                btn.textContent = `Log Set ${accessorySetCounter}`;
+                btn.disabled = false;
+            } catch(e) {
+                console.error(e);
+                alert('Failed to log accessory.');
+                btn.textContent = `Log Set ${accessorySetCounter}`;
+                btn.disabled = false;
+            }
+        }
+    
+
+    // ── PASTE YOUR APPS SCRIPT DEPLOYMENT URL HERE ──────────────────────────
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+    // ────────────────────────────────────────────────────────────────────────
+
+    const STORAGE_KEY  = "gym-tracker-v4";      // reuse existing exercise cache
+    const PEOPLE_KEY   = "gym-tracker-people-v1"; // separate people roster cache
+    const DEFAULT_PEOPLE = ["Brian", "Dad"];
+
+    const LOCATIONS_KEY     = "gym-tracker-locations-v1";
+    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
+    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1"; // per-device only, never synced
+
+    const EXERCISE_CATEGORIES = [
+      "Explosive",
+      "Knee Dominant",
+      "Hip Dominant",
+      "Horizontal Push",
+      "Horizontal Pull",
+      "Vertical Push",
+      "Vertical Pull",
+      "Rotational Core",
+      "Plank Core",
+      "Accessory",
+    ];
+
+    // ── REP RANGES (15-20 replaced by 13+) ───────────────────────────────────
+    const REP_RANGES = [
+      { key: "r1_3",     label: "1-3"  },
+      { key: "r4_7",     label: "4-7"  },
+      { key: "r8_12",    label: "8-12" },
+      { key: "r13_plus", label: "13+"  },
+    ];
+
+    // Maps a rep count to its bucket key
+    function getRange(reps) {
+      const n = parseInt(reps);
+      if (isNaN(n)) return null;
+      if (n >= 1  && n <= 3)  return "r1_3";
+      if (n >= 4  && n <= 7)  return "r4_7";
+      if (n >= 8  && n <= 12) return "r8_12";
+      if (n >= 13)            return "r13_plus";
+      return null;
+    }
+
+    // ── TIME UTILITIES ────────────────────────────────────────────────────────
+    // Parse "1:30" or "90" → total seconds
+    function parseTime(val) {
+      const str = String(val || "").trim();
+      if (!str) return 0;
+      if (str.includes(":")) {
+        const [m, s] = str.split(":");
+        return (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+      }
+      return parseInt(str) || 0;
+    }
+
+    // Format total seconds → "m:ss"
+    function formatTime(totalSeconds) {
+      const s = Math.max(0, parseInt(totalSeconds) || 0);
+      return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    }
+
+    // If user typed plain seconds (e.g. "90"), convert to "1:30"; otherwise leave as-is
+    function normalizeTimeInput(val) {
+      const str = String(val || "").trim();
+      if (!str) return str;
+      if (/^\d+$/.test(str)) return formatTime(parseInt(str));
+      return str;
+    }
+
+    function todayStr() {
+      return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function parseWeight(w) {
+      const n = parseFloat(String(w).replace(/[^0-9.\-]/g, ""));
+      return isNaN(n) ? 0 : n;
+    }
+
+    // Determine if a new entry beats the stored best
+    function isBetter(newEntry, oldEntry, timed) {
+      if (timed) return parseTime(newEntry.reps) > parseTime(oldEntry?.reps || "0:00");
+      return parseWeight(newEntry.weight) > parseWeight(oldEntry?.weight || 0);
+    }
+
+    // ── MIGRATION: r15_20 → r13_plus ─────────────────────────────────────────
+    function migrateRanges(exercises) {
+      return exercises.map(ex => {
+        // Migrate best records
+        const newBest = {};
+        for (const person of Object.keys(ex.best || {})) {
+          newBest[person] = {};
+          for (const [key, val] of Object.entries(ex.best[person] || {})) {
+            const nk = key === "r15_20" ? "r13_plus" : key;
+            // Keep whichever is heavier if both exist
+            if (!newBest[person][nk] || parseWeight(val?.weight) > parseWeight(newBest[person][nk]?.weight)) {
+              newBest[person][nk] = val;
+            }
+          }
+        }
+        // Migrate history rows
+        const newHistory = (ex.history || []).map(h =>
+          h.range === "r15_20" ? { ...h, range: "r13_plus" } : h
+        );
+        return { ...ex, best: newBest, history: newHistory };
+      });
+    }
+
+    // ── SHEETS API ────────────────────────────────────────────────────────────
+    async function sheetsGet() {
+      const res  = await fetch(SCRIPT_URL);
+      const json = await res.json();
+      if (json.status !== "ok") throw new Error(json.message);
+      return json.data;
+    }
+
+    async function sheetsPost(payload) {
+      const encoded = encodeURIComponent(JSON.stringify(payload));
+      const res  = await fetch(SCRIPT_URL + "?payload=" + encoded);
+      const json = await res.json();
+      if (json.status !== "ok") throw new Error(json.message);
+      return json.data;
+    }
+
+    // Merge Sheets data into local exercises; also pick up people roster from Sheets
+    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
+      const { history: allHistory, best: allBest, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
+      const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
+
+      // Build available locations: localLocations + any locations found on exercises in Sheets
+      const mergedLocs = [...new Set([
+        ...localLocations,
+        ...(sheetDerivedLocs || []),
+      ])];
+
+      const makeBest = () => {
+        const b = {};
+        people.forEach(p => { b[p.toLowerCase()] = {}; });
+        return b;
+      };
+
+      const merged = localExercises.map(ex => {
+        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
+        const sheetBest    = allBest[ex.name];
+        const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
+        return {
+          ...ex,
+          timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
+          category: sheetExInfo?.category ?? ex.category ?? "",
+          location: sheetExInfo?.location ?? ex.location ?? "Anywhere",
+          history:  sheetHistory,
+          best:     sheetBest || makeBest(),
+        };
+      });
+
+      return { exercises: merged, people, locations: mergedLocs };
+    }
+
+    // ── MAIN COMPONENT ────────────────────────────────────────────────────────
+    function WorkoutTracker() {
+      const [exercises,     setExercises]     = useState([]);
+      const [people,        setPeople]        = useState(DEFAULT_PEOPLE);
+      const [loading,       setLoading]       = useState(true);
+      const [syncStatus,    setSyncStatus]    = useState("idle");
+      const [search,        setSearch]        = useState("");
+      const [view,          setView]          = useState("list");
+      const [expanded,      setExpanded]      = useState(null);
+      const [toast,         setToast]         = useState(null);
+      const [confirmDelete, setConfirmDelete] = useState(null);
+      const [whoMode,       setWhoMode]       = useState("all");
+      const [logExId,       setLogExId]       = useState(null);
+      const [sets,          setSets]          = useState([]);
+      const [logInputs,     setLogInputs]     = useState({});   // keyed by person.toLowerCase()
+      const [logNote,       setLogNote]       = useState("");
+      const [logError,      setLogError]      = useState("");
+      const [setCount,      setSetCount]      = useState(1);
+      const [newName,       setNewName]       = useState("");
+      const [newExTimed,    setNewExTimed]    = useState(false);
+      const [newExCategory, setNewExCategory] = useState("");
+      const [newExLocation, setNewExLocation] = useState("Anywhere");
+      const [newPersonName, setNewPersonName] = useState("");
+      const [lastSyncTime,  setLastSyncTime]  = useState(null);
+      const [locations,     setLocations]     = useState(DEFAULT_LOCATIONS);
+      const [locationFilter,setLocationFilter]= useState("all");
+      const [categoryFilter,setCategoryFilter]= useState("");
+      const [newLocName,    setNewLocName]    = useState("");
+      const [hiddenPeople,  setHiddenPeople]  = useState([]);
+
+      const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+
+      useEffect(() => { loadData(); }, []);
+
+      const showToast = (msg, type = "success") => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 2400);
+      };
+
+      // ── LOAD ───────────────────────────────────────────────────────────────
+      const loadData = async () => {
+        // Step 1: read people + locations from localStorage
+        let localPeople = DEFAULT_PEOPLE;
+        try {
+          const sp = JSON.parse(localStorage.getItem(PEOPLE_KEY));
+          if (sp && Array.isArray(sp) && sp.length > 0) localPeople = sp;
+        } catch {}
+
+        let localLocations = DEFAULT_LOCATIONS;
+        try {
+          const sl = JSON.parse(localStorage.getItem(LOCATIONS_KEY));
+          if (sl && Array.isArray(sl) && sl.length > 0) localLocations = sl;
+        } catch {}
+
+        // Step 2: read exercises from localStorage
+        let base = [];
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (saved && Array.isArray(saved)) {
+            base = saved.map(ex => {
+              if (!ex.best) {
+                const b = {};
+                localPeople.forEach(p => { b[p.toLowerCase()] = {}; });
+                return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere", best: b };
+              }
+              return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere" };
+            });
+          }
+        } catch {}
+
+        base = migrateRanges(base);
+        let localHidden = [];
+        try {
+          const lh = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY));
+          if (lh && Array.isArray(lh)) localHidden = lh;
+        } catch {}
+
+        setPeople(localPeople);
+        setLocations(localLocations);
+        setHiddenPeople(localHidden);
+        setExercises(base);
+        setLoading(false);
+
+        // Step 3: sync from Sheets
+        if (scriptConfigured) {
+          setSyncStatus("syncing");
+          try {
+            const sheetsData = await sheetsGet();
+            const hasData = sheetsData.history.length > 0 || Object.keys(sheetsData.best).length > 0;
+            if (hasData) {
+              // Add exercises in Sheets that aren't local
+              const existingNames = new Set(base.map(e => e.name.toLowerCase()));
+              const sheetNames = new Set([
+                ...Object.keys(sheetsData.best || {}),
+                ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean),
+              ]);
+              let nextId = Math.max(0, ...base.map(e => e.id), 0) + 1;
+              for (const name of sheetNames) {
+                if (!existingNames.has(name.toLowerCase())) {
+                  const defBest = {};
+                  localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
+                  base.push({ id: nextId++, name, timed: false, category: "", location: "Anywhere", best: defBest, history: [] });
+                  existingNames.add(name.toLowerCase());
+                }
+              }
+              base.sort((a, b) => a.name.localeCompare(b.name));
+
+              const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
+              const migrated = migrateRanges(merged);
+
+              // Auto-hide any new people that arrived from Sheets (meaning they were added on another device)
+              const incomingPeople = mergedPeople.filter(p => !localPeople.map(x => x.toLowerCase()).includes(p.toLowerCase()));
+              let nextHidden = localHidden;
+              if (incomingPeople.length > 0) {
+                nextHidden = [...new Set([...localHidden, ...incomingPeople])];
+                setHiddenPeople(nextHidden);
+                localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(nextHidden));
+              }
+
+              setPeople(mergedPeople);
+              setExercises(migrated);
+              if (mergedLocations && mergedLocations.length > 0) {
+                setLocations(mergedLocations);
+                localStorage.setItem(LOCATIONS_KEY, JSON.stringify(mergedLocations));
+              }
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+              localStorage.setItem(PEOPLE_KEY, JSON.stringify(mergedPeople));
+            }
+            setSyncStatus("ok");
+            setLastSyncTime(new Date());
+          } catch {
+            setSyncStatus("error");
+            showToast("Sheets sync failed — working offline", "error");
+          }
+        }
+      };
+
+      // ── PERSIST ────────────────────────────────────────────────────────────
+      const persist = async (newExercises, newPeople = null, sheetsPayload = null) => {
+        setExercises(newExercises);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newExercises));
+        if (newPeople) {
+          setPeople(newPeople);
+          localStorage.setItem(PEOPLE_KEY, JSON.stringify(newPeople));
+        }
+        if (scriptConfigured && sheetsPayload) {
+          setSyncStatus("syncing");
+          try {
+            await sheetsPost(sheetsPayload);
+            setSyncStatus("ok");
+          } catch {
+            setSyncStatus("error");
+            showToast("Saved locally — Sheets sync failed", "error");
+          }
+        }
+      };
+
+      // People currently being tracked in the log screen
+      const activePeople = whoMode === "all" ? visiblePeople : [visiblePeople.find(p => p === whoMode)].filter(Boolean);
+
+      // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
+      const openLog = (id) => {
+        setLogExId(id);
+        setSets([]);
+        const inputs = {};
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        setLogInputs(inputs);
+        setLogNote("");
+        setLogError("");
+        setSetCount(1);
+        setView("log");
+      };
+
+      const updateLogInput = (personKey, field, value) => {
+        setLogInputs(prev => ({ ...prev, [personKey]: { ...prev[personKey], [field]: value } }));
+        setLogError("");
+      };
+
+      const getBest = (exId, personKey, rangeKey) => {
+        const ex = exercises.find(e => e.id === exId);
+        const b  = ex?.best?.[personKey]?.[rangeKey];
+        if (!b) return null;
+        if (ex.timed) return b.reps;  // already mm:ss
+        return b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`;
+      };
+
+      // ── SAVE SET ──────────────────────────────────────────────────────────
+      const saveSet = async () => {
+        const ex = exercises.find(e => e.id === logExId);
+        const date = todayStr();
+        const newEntries = [];
+        let err = "";
+
+        for (const person of activePeople) {
+          const key   = person.toLowerCase();
+          const input = logInputs[key] || {};
+
+          if (ex.timed) {
+            const rawDur = input.duration?.trim();
+            // If they are visible but NO duration entered, skip them (don't error)
+            if (!rawDur) continue; 
+            
+            const normalized = normalizeTimeInput(rawDur);
+            if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person} — use mm:ss or seconds`; break; }
+            newEntries.push({
+              date, person: key, reps: normalized, weight: input.weight || "",
+              range: "r13_plus", note: logNote, setNum: setCount, timed: true,
+            });
+          } else {
+            const repsVal = input.reps?.trim();
+            // If they are visible but NO reps entered, skip them (don't error)
+            if (!repsVal) continue;
+
+            const range = getRange(repsVal);
+            if (!range) { err = `${person}'s reps must fit a range: 1-3, 4-7, 8-12, or 13+`; break; }
+            newEntries.push({
+              date, person: key, reps: repsVal, weight: input.weight || "",
+              range, note: logNote, setNum: setCount, timed: false,
+            });
+          }
+        }
+
+        if (err) return setLogError(err);
+        if (newEntries.length === 0) return setLogError("Enter results for at least one person");
+        setLogError("");
+
+        const exName = ex.name;
+        const updated = exercises.map(ex => {
+          if (ex.id !== logExId) return ex;
+          // Clone best for all people
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = { ...(ex.best?.[p.toLowerCase()] || {}) }; });
+          newEntries.forEach(entry => {
+            const current = newBest[entry.person]?.[entry.range];
+            if (!current || isBetter(entry, current, ex.timed))
+              newBest[entry.person][entry.range] = { reps: entry.reps, weight: entry.weight };
+          });
+          return { ...ex, best: newBest, history: [...newEntries, ...(ex.history || [])] };
+        });
+
+        await persist(updated, null, { action: "logSet", exercise: exName, entries: newEntries });
+        setSets([...sets, ...newEntries]);
+        const inputs = {};
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        setLogInputs(inputs);
+        setLogNote("");
+        setSetCount(setCount + 1);
+        showToast(`Set ${setCount} saved!`);
+      };
+
+      const finishLogging = () => { setView("list"); setExpanded(logExId); };
+
+      // ── DELETE HELPERS ─────────────────────────────────────────────────────
+      const deleteHistoryEntry = async (exId, histIdx) => {
+        const ex    = exercises.find(e => e.id === exId);
+        const entry = ex?.history?.[histIdx];
+        const updated = exercises.map(ex => {
+          if (ex.id !== exId) return ex;
+          const newHistory = (ex.history || []).filter((_, i) => i !== histIdx);
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = {}; });
+          newHistory.forEach(h => {
+            const current = newBest[h.person]?.[h.range];
+            if (!current || isBetter(h, current, ex.timed))
+              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
+          });
+          return { ...ex, best: newBest, history: newHistory };
+        });
+        await persist(updated, null, entry ? {
+          action: "deleteHistory", exercise: ex.name,
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
+        } : null);
+        setConfirmDelete(null);
+        showToast("Entry deleted");
+      };
+
+      const deleteExercise = async (id) => {
+        const ex = exercises.find(e => e.id === id);
+        if (!ex) return;
+        const updated = exercises.filter(e => e.id !== id);
+        await persist(updated, null, { action: "deleteExercise", exercise: ex.name });
+        setConfirmDelete(null);
+        if (expanded === id) setExpanded(null);
+        showToast("Deleted");
+      };
+
+      // ── ADD EXERCISE ───────────────────────────────────────────────────────
+      const addExercise = async () => {
+        if (!newName.trim()) return showToast("Name required", "error");
+        const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+        const defBest = {};
+        people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+        const newEx = {
+          id: maxId + 1, name: newName.trim(), timed: newExTimed,
+          category: newExCategory, location: newExLocation, best: defBest, history: [],
+        };
+        const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+        await persist(updated);
+        if (scriptConfigured) {
+          try {
+            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+          } catch {}
+        }
+        setNewName(""); setNewExTimed(false); setNewExCategory(""); setNewExLocation("Anywhere");
+        showToast("Exercise added!");
+        setView("list");
+      };
+
+      // ── PEOPLE MANAGEMENT ──────────────────────────────────────────────────
+      const addPerson = async () => {
+        if (!newPersonName.trim()) return showToast("Name required", "error");
+        const trimmed = newPersonName.trim();
+        if (people.map(p => p.toLowerCase()).includes(trimmed.toLowerCase()))
+          return showToast("Already on the list", "error");
+        const newPeople = [...people, trimmed];
+        // Ensure all exercises have a best slot for this person
+        const updatedEx = exercises.map(ex => {
+          const nb = { ...(ex.best || {}) };
+          nb[trimmed.toLowerCase()] = {};
+          return { ...ex, best: nb };
+        });
+        await persist(updatedEx, newPeople, { action: "savePeople", people: newPeople });
+        setNewPersonName("");
+        showToast(`${trimmed} added!`);
+      };
+
+      const removePerson = async (name) => {
+        if (people.length <= 1) return showToast("Need at least one person", "error");
+        const newPeople = people.filter(p => p !== name);
+        await persist(exercises, newPeople, { action: "savePeople", people: newPeople });
+        if (whoMode === name) setWhoMode("all");
+        setConfirmDelete(null);
+        showToast(`${name} removed from roster`);
+      };
+
+      const togglePersonVisibility = (name) => {
+        const isHidden = hiddenPeople.includes(name);
+        const newHidden = isHidden
+          ? hiddenPeople.filter(h => h !== name)
+          : [...hiddenPeople, name];
+        setHiddenPeople(newHidden);
+        localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(newHidden));
+        if (!isHidden && whoMode === name) setWhoMode("all");
+        showToast(isHidden ? `${name} shown on this device` : `${name} hidden on this device`);
+      };
+
+      // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
+      const addLocation = async () => {
+        if (!newLocName.trim()) return showToast("Name required", "error");
+        const trimmed = newLocName.trim();
+        if (locations.map(l => l.toLowerCase()).includes(trimmed.toLowerCase()))
+          return showToast("Already on the list", "error");
+        const newLocs = [...locations, trimmed];
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (scriptConfigured) {
+          try { await sheetsPost({ action: "syncMeta", people, locations: newLocs, exercises: [] }); } catch {}
+        }
+        setNewLocName("");
+        showToast(`${trimmed} added!`);
+      };
+
+      const removeLocation = (name) => {
+        if (name === "Anywhere") return showToast("Anywhere cannot be removed", "error");
+        const newLocs = locations.filter(l => l !== name);
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (locationFilter === name) setLocationFilter("all");
+        setConfirmDelete(null);
+        showToast(`${name} removed`);
+      };
+
+      // ── MANUAL SYNC ────────────────────────────────────────────────────────
+      const manualSync = async () => {
+        if (syncStatus === "syncing") return;
+        setSyncStatus("syncing");
+        try {
+          await sheetsPost({ action: "savePeople", people });
+          setSyncStatus("ok");
+          setLastSyncTime(new Date());
+          showToast("Roster synced to Sheets ✓");
+        } catch (e) {
+          setSyncStatus("error");
+          showToast("Sync failed: " + (e?.message || "unknown error"), "error");
+        }
+      };
+
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
+
+      const filtered = exercises.filter(e => {
+        const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
+        const catMatch  = !categoryFilter || e.category === categoryFilter;
+        const locMatch  = locationFilter === "all"
+          || e.location === locationFilter
+          || !e.location
+          || e.location === "Anywhere";
+        return nameMatch && catMatch && locMatch;
+      });
+
+      const syncDot = scriptConfigured ? (
+        <div
+          title={syncStatus === "error" ? "Sync error — go to Settings to retry" : syncStatus === "syncing" ? "Syncing..." : "Synced"}
+          style={{
+            width: 8, height: 8, borderRadius: "50%", marginLeft: 8,
+            cursor: "default",
+            background: syncStatus === "ok" ? "#22c55e" : syncStatus === "error" ? "#ef4444" : "#f97316",
+            animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none", flexShrink: 0,
+          }}
+        />
+      ) : null;
+
+      if (loading) return <div style={s.center}><div className="spinner" style={s.spinner} /></div>;
+
+      // ════════════════════════════════════════════════════════════════════════
+      // SETTINGS VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      if (view === "settings") {
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={() => setView("list")}>← Back</button>
+              <div style={s.headerTitle}>SETTINGS</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <div style={s.sectionLabel}>PEOPLE</div>
+              <div style={s.settingsNote}>
+                <strong style={{color:"#f97316"}}>This device:</strong> {visiblePeople.join(", ") || "Nobody active"}.
+                Toggle ●/○ to show/hide per device. Remove ✕ affects all devices.
+              </div>
+              {people.map(person => {
+                const isHidden = hiddenPeople.includes(person);
+                return (
+                  <div key={person} style={s.personListRow}>
+                    <div style={{ ...s.personListName, opacity: isHidden ? 0.4 : 1 }}>{person}</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <button
+                        style={{ ...s.deviceToggleBtn, ...(isHidden ? s.deviceToggleOff : s.deviceToggleOn) }}
+                        onClick={() => togglePersonVisibility(person)}>
+                        {isHidden ? "○ HIDDEN" : "● THIS DEVICE"}
+                      </button>
+                      <button style={s.personRemoveBtn}
+                        onClick={() => setConfirmDelete({ type: "person", name: person })}>✕</button>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={s.addPersonRow}>
+                <input
+                  style={{ ...s.input, flex: 1 }}
+                  placeholder="New person name..."
+                  value={newPersonName}
+                  onChange={e => setNewPersonName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addPerson()}
+                />
+                <button style={s.addPersonBtn} onClick={addPerson}>ADD</button>
+              </div>
+
+              <div style={{ ...s.sectionLabel, marginTop: 24 }}>LOCATIONS</div>
+              {locations.map(loc => (
+                <div key={loc} style={s.personListRow}>
+                  <div style={s.personListName}>{loc}</div>
+                  {loc !== "Anywhere" && (
+                    <button style={s.personRemoveBtn}
+                      onClick={() => setConfirmDelete({ type: "location", name: loc })}>✕</button>
+                  )}
+                </div>
+              ))}
+              <div style={s.addPersonRow}>
+                <input
+                  style={{ ...s.input, flex: 1 }}
+                  placeholder="New location..."
+                  value={newLocName}
+                  onChange={e => setNewLocName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addLocation()}
+                />
+                <button style={s.addPersonBtn} onClick={addLocation}>ADD</button>
+              </div>
+
+              <div style={{ ...s.sectionLabel, marginTop: 24 }}>DATA</div>
+              <button
+                style={{ ...s.syncBtn, ...(syncStatus === "syncing" ? s.syncBtnDisabled : {}) }}
+                onClick={syncStatus !== "syncing" ? manualSync : undefined}
+              >
+                {syncStatus === "syncing" ? "●●● Syncing..." : "↑ Sync All Data to Sheets"}
+              </button>
+              {lastSyncTime && (
+                <div style={{ ...s.settingsNote, marginTop: 6 }}>
+                  Last synced: {lastSyncTime.toLocaleTimeString()}
+                </div>
+              )}
+            </div>
+
+            {confirmDelete?.type === "person" && (
+              <div style={s.overlay}>
+                <div style={s.modal}>
+                  <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
+                  <div style={s.modalSub}>
+                    This removes them from <strong style={{color:"#f97316"}}>all devices</strong>. Their history stays in Sheets.
+                  </div>
+                  <div style={s.modalBtns}>
+                    <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                    <button style={s.confirmBtn} onClick={() => removePerson(confirmDelete.name)}>Remove from All Devices</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {confirmDelete?.type === "location" && (
+              <div style={s.overlay}>
+                <div style={s.modal}>
+                  <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
+                  <div style={s.modalSub}>
+                    Exercises tagged to this location won't appear in that filter.
+                  </div>
+                  <div style={s.modalBtns}>
+                    <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                    <button style={s.confirmBtn} onClick={() => removeLocation(confirmDelete.name)}>Remove</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // LOG SET VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      if (view === "log") {
+        const ex = exercises.find(e => e.id === logExId);
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={finishLogging}>← Done</button>
+              <div style={s.headerTitle}>LOG SET {setCount}</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={s.logExName}>{ex?.name}</div>
+                {ex?.timed && <span style={s.timedBadge}>⏱ TIMED</span>}
+              </div>
+
+              <div style={s.whoLabel}>WHO'S WORKING OUT?</div>
+              <div style={s.segmented}>
+                {visiblePeople.length > 1 && (
+                  <button style={{ ...s.segBtn, ...(whoMode === "all" ? s.segActive : {}) }}
+                    onClick={() => setWhoMode("all")}>All</button>
+                )}
+                {visiblePeople.map(p => (
+                  <button key={p}
+                    style={{ ...s.segBtn, ...(whoMode === p ? s.segActive : {}) }}
+                    onClick={() => setWhoMode(p)}>{p}</button>
+                ))}
+              </div>
+
+              {sets.length > 0 && (
+                <div style={s.setsLogged}>
+                  <div style={s.setsLoggedTitle}>LOGGED THIS SESSION</div>
+                  {sets.map((set, i) => {
+                    const displayName = people.find(p => p.toLowerCase() === set.person) || set.person;
+                    const result = set.timed
+                      ? set.reps + (set.weight ? ` · ${set.weight}lbs` : "")
+                      : (set.weight ? `${set.reps}x${set.weight}` : `${set.reps} reps`);
+                    return (
+                      <div key={i} style={s.setRow}>
+                        <span style={s.setNum}>Set {set.setNum}</span>
+                        <span style={s.setPerson}>{displayName}</span>
+                        <span style={s.setRange}>{set.timed ? "⏱" : REP_RANGES.find(r => r.key === set.range)?.label}</span>
+                        <span style={s.setResult}>{result}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {visiblePeople.map(person => {
+                const key      = person.toLowerCase();
+                const input    = logInputs[key] || {};
+                const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
+                const bestVal  = getBest(logExId, key, rangeKey || "r13_plus");
+                return (
+                  <div key={person} style={s.personBlock}>
+                    <div style={s.personBlockLabel}>{person.toUpperCase()}</div>
+                    <div style={s.inlineRow}>
+                      {ex?.timed ? (
+                        <div style={s.inlineField}>
+                          <label style={s.label}>DURATION (mm:ss)</label>
+                          <input
+                            style={s.input}
+                            placeholder="e.g. 1:30 or 90"
+                            value={input.duration || ""}
+                            onChange={e => updateLogInput(key, "duration", e.target.value)}
+                          />
+                          {input.duration && (
+                            <div style={s.rangeTag}>⏱ {normalizeTimeInput(input.duration)}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={s.inlineField}>
+                          <label style={s.label}>REPS</label>
+                          <input
+                            style={s.input}
+                            placeholder="e.g. 8"
+                            type="number"
+                            value={input.reps || ""}
+                            onChange={e => updateLogInput(key, "reps", e.target.value)}
+                          />
+                          {rangeKey && <div style={s.rangeTag}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
+                        </div>
+                      )}
+                      <div style={s.inlineField}>
+                        <label style={s.label}>WEIGHT</label>
+                        <input
+                          style={s.input}
+                          placeholder={ex?.timed ? "lbs (optional)" : "e.g. 135"}
+                          value={input.weight || ""}
+                          onChange={e => updateLogInput(key, "weight", e.target.value)}
+                        />
+                        {rangeKey && bestVal && <div style={s.bestTag}>Best: {bestVal}</div>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div style={s.inlineField}>
+                <label style={s.label}>NOTE (optional)</label>
+                <input
+                  style={s.input}
+                  placeholder="e.g. felt strong, pin #7"
+                  value={logNote}
+                  onChange={e => setLogNote(e.target.value)}
+                />
+              </div>
+              {logError && <div style={s.error}>{logError}</div>}
+              <div style={s.logBtnRow}>
+                <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>
+                {sets.length > 0 && <button style={s.doneBtn} onClick={finishLogging}>Done</button>}
+              </div>
+            </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // LIST VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      const categoryGroups = EXERCISE_CATEGORIES.map(cat => ({
+        name: cat,
+        items: filtered.filter(e => e.category === cat)
+      })).filter(g => g.items.length > 0);
+
+      return (
+        <div style={s.root}>
+          <div style={s.header}>
+            <div style={s.headerLeft}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={s.headerTitle}>LIFT (BETA)</div>
+                {syncDot}
+              </div>
+              <div style={s.headerSub}>{todayStr()}</div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={s.circleBtn} onClick={() => setView("settings")}>⚙️</button>
+              <button style={s.circleBtn} onClick={() => setView("add")}>+</button>
+            </div>
+          </div>
+
+          <div style={s.filterBar}>
+            <div style={s.searchWrap}>
+              <input
+                style={s.searchInput}
+                placeholder="Search exercise..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              {search && <button style={s.clearBtn} onClick={() => setSearch("")}>✕</button>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select style={s.select} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
+                <option value="all">All Gyms</option>
+                {locations.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <select style={s.select} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+                <option value="">All Categories</option>
+                {EXERCISE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={s.scrollArea}>
+            {categoryGroups.length === 0 ? (
+              <div style={s.empty}>No exercises found matching your filters.</div>
+            ) : (
+              categoryGroups.map(group => (
+                <div key={group.name} style={s.group}>
+                  <div style={s.groupLabel}>{group.name}</div>
+                  {group.items.map(ex => (
+                    <div key={ex.id} style={{ ...s.card, ...(expanded === ex.id ? s.cardExpanded : {}) }}>
+                      <div style={s.cardHeader} onClick={() => setExpanded(expanded === ex.id ? null : ex.id)}>
+                        <div style={s.cardInfo}>
+                          <div style={s.cardName}>{ex.name}</div>
+                          {ex.location && ex.location !== "Anywhere" && (
+                            <div style={s.cardLoc}>📍 {ex.location}</div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {ex.timed && <div style={s.timedBadge}>⏱</div>}
+                          <div style={{ ...s.chevron, ...(expanded === ex.id ? s.chevronUp : {}) }}>▼</div>
+                        </div>
+                      </div>
+
+                      {expanded === ex.id && (
+                        <div style={s.cardBody}>
+                          <div style={s.bestRow}>
+                            {visiblePeople.map(p => {
+                              const best = getBest(ex.id, p.toLowerCase(), "r8_12");
+                              return best ? (
+                                <div key={p} style={s.bestItem}>
+                                  <div style={s.bestPerson}>{p}</div>
+                                  <div style={s.bestVal}>{best}</div>
+                                </div>
+                              ) : null;
+                            })}
+                          </div>
+                          <div style={s.cardBtns}>
+                            <button style={s.logBtn} onClick={() => openLog(ex.id)}>LOG SETS</button>
+                            <button style={s.editBtn} onClick={() => setView("edit") || setLogExId(ex.id)}>EDIT</button>
+                            <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", id: ex.id, name: ex.name })}>✕</button>
+                          </div>
+                          
+                          {ex.history && ex.history.length > 0 && (
+                            <div style={s.history}>
+                              <div style={s.historyTitle}>RECENT HISTORY</div>
+                              {ex.history.slice(0, 5).map((h, i) => {
+                                const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
+                                const result = ex.timed
+                                  ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
+                                  : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
+                                return (
+                                  <div key={i} style={s.histRow}>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={s.histDate}>{h.date} · {displayName}</div>
+                                      {h.note && <div style={s.histNote}>{h.note}</div>}
+                                    </div>
+                                    <div style={s.histRes}>{result}</div>
+                                    <button style={s.histDel} onClick={() => setConfirmDelete({ type: "history", exId: ex.id, idx: i })}>✕</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+
+          {confirmDelete?.type === "exercise" && (
+            <div style={s.overlay}>
+              <div style={s.modal}>
+                <div style={s.modalTitle}>Delete {confirmDelete.name}?</div>
+                <div style={s.modalSub}>This will permanently remove the exercise and all its history from Sheets.</div>
+                <div style={s.modalBtns}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={() => deleteExercise(confirmDelete.id)}>Delete</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {confirmDelete?.type === "history" && (
+            <div style={s.overlay}>
+              <div style={s.modal}>
+                <div style={s.modalTitle}>Delete this entry?</div>
+                <div style={s.modalSub}>This entry will be removed from your history in Sheets.</div>
+                <div style={s.modalBtns}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={() => deleteHistoryEntry(confirmDelete.exId, confirmDelete.idx)}>Delete</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+        </div>
+      );
+    }
+
+    // ── STYLES ───────────────────────────────────────────────────────────────
+    const s = {
+      root: { display: "flex", flexDirection: "column", height: "100%", background: "#0c0c0c", color: "#e0e0e0" },
+      center: { display: "flex", alignItems: "center", justifyContent: "center", height: "100%" },
+      spinner: { width: 32, height: 32, border: "3px solid #1a1a1a", borderTopColor: "#f97316", borderRadius: "50%" },
+      header: { padding: "16px 20px", background: "#111", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 },
+      headerLeft: { display: "flex", flexDirection: "column" },
+      headerTitle: { fontSize: 18, fontWeight: 700, letterSpacing: -0.5, color: "#f97316" },
+      headerSub: { fontSize: 11, color: "#555", fontFamily: "var(--mono)", marginTop: 2 },
+      circleBtn: { background: "#1a1a1a", border: "none", color: "#e0e0e0", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, cursor: "pointer" },
+      filterBar: { padding: "12px 16px", background: "#0c0c0c", borderBottom: "1px solid #1a1a1a", display: "flex", flexDirection: "column", gap: 10 },
+      searchWrap: { position: "relative" },
+      searchInput: { width: "100%", background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 36px 10px 12px", color: "#e0e0e0", fontSize: 14, outline: "none" },
+      clearBtn: { position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#555", fontSize: 16, cursor: "pointer", padding: 4 },
+      select: { flex: 1, background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: 8, color: "#e0e0e0", fontSize: 12, outline: "none" },
+      scrollArea: { flex: 1, overflowY: "auto", padding: "12px 16px" },
+      empty: { textAlign: "center", padding: 40, color: "#555", fontSize: 14 },
+      group: { marginBottom: 20 },
+      groupLabel: { fontSize: 10, color: "#555", letterSpacing: 1, fontWeight: 700, marginBottom: 8, marginLeft: 2, fontFamily: "var(--mono)" },
+      card: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, marginBottom: 8, overflow: "hidden" },
+      cardHeader: { padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" },
+      cardInfo: { flex: 1 },
+      cardName: { fontSize: 15, fontWeight: 500 },
+      cardLoc: { fontSize: 10, color: "#555", marginTop: 2 },
+      chevron: { fontSize: 10, color: "#333", transition: "transform 0.2s" },
+      chevronUp: { transform: "rotate(180deg)" },
+      cardBody: { padding: "0 14px 14px", borderTop: "1px solid #161616" },
+      bestRow: { display: "flex", flexWrap: "wrap", gap: 12, padding: "12px 0" },
+      bestItem: { display: "flex", flexDirection: "column" },
+      bestPerson: { fontSize: 9, color: "#555", fontWeight: 700, letterSpacing: 0.5 },
+      bestVal: { fontSize: 13, color: "#f97316", fontWeight: 600, marginTop: 1 },
+      cardBtns: { display: "flex", gap: 8, marginTop: 4 },
+      logBtn: { flex: 2, background: "#f97316", border: "none", color: "white", padding: 10, borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" },
+      editBtn: { flex: 1, background: "#1a1a1a", border: "none", color: "#e0e0e0", padding: 10, borderRadius: 8, fontSize: 12, cursor: "pointer" },
+      delBtn: { width: 38, background: "none", border: "none", color: "#222", fontSize: 14, cursor: "pointer" },
+      history: { marginTop: 16, background: "#0e0e0e", borderRadius: 8, padding: 10 },
+      historyTitle: { fontSize: 9, color: "#444", fontWeight: 700, letterSpacing: 1, marginBottom: 8 },
+      histRow: { display: "flex", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #161616" },
+      histDate: { fontSize: 10, color: "#555" },
+      histNote: { fontSize: 10, color: "#777", fontStyle: "italic", marginTop: 1 },
+      histRes: { fontSize: 12, fontWeight: 600, color: "#bbb", marginLeft: 8 },
+      histDel: { background: "none", border: "none", color: "#222", padding: "0 4px 0 10px", fontSize: 12 },
+      overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", z-index: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
+      modal: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 360 },
+      modalTitle: { fontSize: 18, fontWeight: 700, marginBottom: 8 },
+      modalSub: { fontSize: 13, color: "#777", lineHeight: 1.5, marginBottom: 20 },
+      modalBtns: { display: "flex", flexDirection: "column", gap: 10 },
+      confirmBtn: { background: "#ef4444", border: "none", color: "white", padding: 12, borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: "pointer" },
+      cancelBtn: { background: "#1a1a1a", border: "none", color: "#e0e0e0", padding: 12, borderRadius: 8, fontSize: 14, cursor: "pointer" },
+      toast: { position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", padding: "10px 20px", borderRadius: 30, color: "white", fontSize: 13, fontWeight: 600, z-index: 2000, whiteSpace: "nowrap" },
+      formWrap: { padding: 20, flex: 1, overflowY: "auto" },
+      backBtn: { background: "none", border: "none", color: "#f97316", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+      logExName: { fontSize: 20, fontWeight: 700, color: "#f97316", margin: "12px 0 20px" },
+      whoLabel: { fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1, marginBottom: 10 },
+      segmented: { display: "flex", background: "#111", borderRadius: 8, padding: 3, marginBottom: 20 },
+      segBtn: { flex: 1, border: "none", background: "none", color: "#555", padding: "8px 4px", fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: "pointer" },
+      segActive: { background: "#1a1a1a", color: "#f97316" },
+      personBlock: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, padding: 16, marginBottom: 12 },
+      personBlockLabel: { fontSize: 10, color: "#555", fontWeight: 700, letterSpacing: 1, marginBottom: 12 },
+      inlineRow: { display: "flex", gap: 12 },
+      inlineField: { flex: 1, display: "flex", flexDirection: "column", gap: 6 },
+      label: { fontSize: 10, color: "#555", fontWeight: 700 },
+      input: { background: "#0c0c0c", border: "1px solid #1a1a1a", borderRadius: 8, padding: 10, color: "#e0e0e0", fontSize: 16, outline: "none" },
+      rangeTag: { fontSize: 10, color: "#f97316", fontWeight: 700 },
+      bestTag: { fontSize: 9, color: "#555", marginTop: 2 },
+      error: { color: "#ef4444", fontSize: 12, textAlign: "center", margin: "10px 0" },
+      logBtnRow: { display: "flex", gap: 10, marginTop: 20 },
+      saveSetBtn: { flex: 2, background: "#f97316", border: "none", color: "white", padding: 14, borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" },
+      doneBtn: { flex: 1, background: "#1a1a1a", border: "none", color: "#e0e0e0", padding: 14, borderRadius: 12, fontSize: 15, cursor: "pointer" },
+      timedBadge: { background: "rgba(249,115,22,0.1)", color: "#f97316", fontSize: 9, padding: "2px 6px", borderRadius: 4, fontWeight: 700 },
+      personListRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #161616" },
+      personListName: { fontSize: 15, fontWeight: 500 },
+      personRemoveBtn: { background: "none", border: "none", color: "#222", padding: 8, fontSize: 14 },
+      addPersonRow: { display: "flex", gap: 8, marginTop: 12 },
+      addPersonBtn: { background: "#f97316", border: "none", color: "white", padding: "0 16px", borderRadius: 8, fontSize: 12, fontWeight: 700 },
+      syncBtn: { width: "100%", background: "#111", border: "1px solid #1a1a1a", color: "#e0e0e0", padding: 14, borderRadius: 12, fontSize: 14, fontWeight: 600, marginTop: 10, cursor: "pointer" },
+      syncBtnDisabled: { opacity: 0.5, cursor: "not-allowed" },
+      settingsNote: { fontSize: 11, color: "#555", lineHeight: 1.4, margin: "8px 0 16px" },
+      deviceToggleBtn: { border: "none", borderRadius: 6, fontSize: 9, fontWeight: 800, padding: "4px 8px", cursor: "pointer" },
+      deviceToggleOn: { background: "rgba(34,197,94,0.1)", color: "#22c55e" },
+      deviceToggleOff: { background: "#161616", color: "#333" },
+      setsLogged: { marginBottom: 20, background: "#0e0e0e", borderRadius: 8, padding: 12 },
+      setsLoggedTitle: { fontSize: 9, color: "#444", fontWeight: 700, letterSpacing: 1, marginBottom: 8 },
+      setRow: { display: "flex", alignItems: "center", padding: "4px 0", fontSize: 11 },
+      setNum: { color: "#444", width: 40 },
+      setPerson: { color: "#f97316", width: 80, fontWeight: 700, textTransform: "uppercase" },
+      setRange: { color: "#444", flex: 1 },
+      setResult: { color: "#e0e0e0", fontWeight: 700 }
+    };
+
+    const container = document.getElementById("tracker-root");
+    const root = ReactDOM.createRoot(container);
+    root.render(<WorkoutTracker />);
+  </script>
+</body>
+
+</html>

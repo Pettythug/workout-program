@@ -345,14 +345,14 @@
       };
 
       // People currently being tracked in the log screen
-      const activePeople = whoMode === "all" ? people : [people.find(p => p === whoMode)].filter(Boolean);
+      const activePeople = whoMode === "all" ? visiblePeople : [visiblePeople.find(p => p === whoMode)].filter(Boolean);
 
       // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
       const openLog = (id) => {
         setLogExId(id);
         setSets([]);
         const inputs = {};
-        people.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
         setLogInputs(inputs);
         setLogNote("");
         setLogError("");
@@ -386,7 +386,7 @@
 
           if (ex.timed) {
             const rawDur = input.duration?.trim();
-            if (!rawDur) { err = `Enter ${person}'s duration`; break; }
+            if (!rawDur) continue; 
             const normalized = normalizeTimeInput(rawDur);
             if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person} — use mm:ss or seconds`; break; }
             newEntries.push({
@@ -395,7 +395,7 @@
             });
           } else {
             const repsVal = input.reps?.trim();
-            if (!repsVal) { err = `Enter ${person}'s reps`; break; }
+            if (!repsVal) continue;
             const range = getRange(repsVal);
             if (!range) { err = `${person}'s reps must fit a range: 1-3, 4-7, 8-12, or 13+`; break; }
             newEntries.push({
@@ -406,6 +406,7 @@
         }
 
         if (err) return setLogError(err);
+        if (newEntries.length === 0) return setLogError("Enter results for at least one person");
         setLogError("");
 
         const exName = ex.name;
@@ -425,7 +426,7 @@
         await persist(updated, null, { action: "logSet", exercise: exName, entries: newEntries });
         setSets([...sets, ...newEntries]);
         const inputs = {};
-        people.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
         setLogInputs(inputs);
         setLogNote("");
         setSetCount(setCount + 1);
