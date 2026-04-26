@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0c0c0c" />
-  <title>LIFT</title>
+  <title>LIFT (BETA)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
@@ -841,24 +841,34 @@
 
   <script>
     function switchView(view) {
-       // Sync people and location from LIFT to PLAN
-       if (view === 'builder') {
-           try {
-               const people = JSON.parse(localStorage.getItem('gym-tracker-people-v1'));
-               if (people && Array.isArray(people)) {
-                   localStorage.setItem('builder_active_people', JSON.stringify(people));
-                   if (typeof activePeople !== 'undefined') activePeople = people;
-               }
-           } catch(e) {}
-       }
        document.getElementById('tracker-root').style.display = view === 'tracker' ? 'block' : 'none';
        document.getElementById('builder-root').style.display = view === 'builder' ? 'block' : 'none';
        document.getElementById('nav-tracker').classList.toggle('active', view === 'tracker');
        document.getElementById('nav-builder').classList.toggle('active', view === 'builder');
-       if(view === 'builder' && typeof initBuilder === 'function' && !window.builderInitialized) {
-           initBuilder();
-           window.builderInitialized = true;
+       
+       if(view === 'builder' && typeof initBuilder === 'function') {
+           if (!window.builderInitialized) {
+               initBuilder();
+               window.builderInitialized = true;
+           } else {
+               // If already initialized, just refresh people from common storage
+               syncPeopleToBuilder();
+           }
        }
+    }
+
+    function syncPeopleToBuilder() {
+        try {
+            const all = JSON.parse(localStorage.getItem('gym-tracker-people-v1')) || [];
+            const hidden = JSON.parse(localStorage.getItem('gym-tracker-hidden-people-v1')) || [];
+            const visible = all.filter(p => !hidden.includes(p));
+            if (visible.length > 0) {
+                activePeople = visible;
+                if (currentWorkout) {
+                    renderWorkout(currentWorkout, currentWorkout.exercises);
+                }
+            }
+        } catch(e) {}
     }
     
         const BUILDER_STORAGE_KEY = 'gym-tracker-script-url-v1';
@@ -866,6 +876,8 @@
         const NUM_KEY = 'builder_workout_num';
         const LOC_KEY = 'builder_location';
         const ACTIVE_PEOPLE_KEY = 'builder_active_people';
+        const B_HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
+        const B_PEOPLE_KEY        = "gym-tracker-people-v1";
         
         let API_URL = '';
         let currentWorkout = null;
@@ -893,9 +905,13 @@
             
             const container = document.getElementById('activePeopleCheckboxes');
             const allPeople = globalData.people || ['Brian'];
+            // Load fresh hidden list
+            let hidden = [];
+            try { hidden = JSON.parse(localStorage.getItem(B_HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
+
             container.innerHTML = allPeople.map(p => `
                 <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
-                    <input type="checkbox" value="${p}" class="person-cb" ${activePeople.includes(p) ? 'checked' : ''} /> 
+                    <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
                     ${p}
                 </label>
             `).join('');
@@ -912,11 +928,23 @@
             
             const cbs = document.querySelectorAll('.person-cb');
             let selected = [];
-            cbs.forEach(cb => { if (cb.checked) selected.push(cb.value); });
-            if (selected.length === 0) selected = [(globalData.people || ['Brian'])[0]];
+            let hidden = [];
+            cbs.forEach(cb => { 
+                if (cb.checked) selected.push(cb.value); 
+                else hidden.push(cb.value);
+            });
+            
+            if (selected.length === 0) {
+                selected = [(globalData.people || ['Brian'])[0]];
+                hidden = hidden.filter(h => h !== selected[0]);
+            }
             
             activePeople = selected;
-            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(activePeople));
+            localStorage.setItem(B_HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
+            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected)); // Keep for legacy compatibility if needed
+            
+            // Notify other components (like React) that settings changed
+            window.dispatchEvent(new Event('gym-settings-updated'));
             
             closeSettingsModal();
             if (currentWorkout) {
@@ -948,9 +976,11 @@
                 globalData = json.data;
                 
                 try {
-                    const savedP = JSON.parse(localStorage.getItem(ACTIVE_PEOPLE_KEY));
-                    if (savedP && Array.isArray(savedP) && savedP.length > 0) activePeople = savedP;
-                    else activePeople = [(globalData.people || ['Brian'])[0]];
+                    const hidden = JSON.parse(localStorage.getItem(B_HIDDEN_PEOPLE_KEY)) || [];
+                    const all = globalData.people || ['Brian'];
+                    const visible = all.filter(p => !hidden.includes(p));
+                    if (visible.length > 0) activePeople = visible;
+                    else activePeople = [all[0]];
                 } catch {
                     activePeople = [(globalData.people || ['Brian'])[0]];
                 }
@@ -1782,7 +1812,18 @@
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
-      useEffect(() => { loadData(); }, []);
+      useEffect(() => { 
+        loadData(); 
+        
+        const handleSync = () => {
+          // Re-load only local settings to avoid unnecessary network fetch
+          const localHidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+          setHiddenPeople(localHidden);
+        };
+        
+        window.addEventListener('gym-settings-updated', handleSync);
+        return () => window.removeEventListener('gym-settings-updated', handleSync);
+      }, []);
 
       const showToast = (msg, type = "success") => {
         setToast({ msg, type });
@@ -1908,14 +1949,15 @@
       };
 
       // People currently being tracked in the log screen
-      const activePeople = whoMode === "all" ? people : [people.find(p => p === whoMode)].filter(Boolean);
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
+      const activePeople = whoMode === "all" ? visiblePeople : [people.find(p => p === whoMode)].filter(Boolean);
 
       // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
       const openLog = (id) => {
         setLogExId(id);
         setSets([]);
         const inputs = {};
-        people.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
         setLogInputs(inputs);
         setLogNote("");
         setLogError("");
@@ -1949,18 +1991,18 @@
 
           if (ex.timed) {
             const rawDur = input.duration?.trim();
-            if (!rawDur) { err = `Enter ${person}'s duration`; break; }
+            if (!rawDur) continue; // Skip if empty
             const normalized = normalizeTimeInput(rawDur);
-            if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person} — use mm:ss or seconds`; break; }
+            if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person}`; break; }
             newEntries.push({
               date, person: key, reps: normalized, weight: input.weight || "",
               range: "r13_plus", note: logNote, setNum: setCount, timed: true,
             });
           } else {
             const repsVal = input.reps?.trim();
-            if (!repsVal) { err = `Enter ${person}'s reps`; break; }
+            if (!repsVal) continue; // Skip if empty
             const range = getRange(repsVal);
-            if (!range) { err = `${person}'s reps must fit a range: 1-3, 4-7, 8-12, or 13+`; break; }
+            if (!range) { err = `${person}'s reps must fit a range`; break; }
             newEntries.push({
               date, person: key, reps: repsVal, weight: input.weight || "",
               range, note: logNote, setNum: setCount, timed: false,
@@ -1969,6 +2011,7 @@
         }
 
         if (err) return setLogError(err);
+        if (newEntries.length === 0) return setLogError("Enter results for at least one person");
         setLogError("");
 
         const exName = ex.name;
@@ -1988,7 +2031,7 @@
         await persist(updated, null, { action: "logSet", exercise: exName, entries: newEntries });
         setSets([...sets, ...newEntries]);
         const inputs = {};
-        people.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
         setLogInputs(inputs);
         setLogNote("");
         setSetCount(setCount + 1);
@@ -2089,6 +2132,7 @@
         localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(newHidden));
         if (!isHidden && whoMode === name) setWhoMode("all");
         showToast(isHidden ? `${name} shown on this device` : `${name} hidden on this device`);
+        window.dispatchEvent(new Event('gym-settings-updated'));
       };
 
       // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
@@ -2135,7 +2179,7 @@
         }
       };
 
-      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
+
 
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());

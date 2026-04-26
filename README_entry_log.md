@@ -14,8 +14,8 @@ This is a quick reference for what's in the folder and what's active vs archived
 | `workout-builder-v2.html` | ✅ Active (BETA) | Based on V3 logic. Experimental stuff goes here first. |
 | `workout-builder.html` | ✅ Active (Legacy) | BUILDER CLASSIC. Light themed original. |
 | `Combined_AppScript_v2.gs` | ✅ Active | Unified backend. Handles Best Rec recalculations on the fly. |
-| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. Merges Tracker and Builder into one app. |
-| `gymlog-ultimate-beta.html` | 🧪 Beta | Testing hidden people fix and new features. |
+| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. Now includes fix for hidden people and synced roster. |
+| `gymlog-ultimate-beta.html` | 🧪 Beta | Testing architectural split and core logic separation. |
 | `files/` | 📦 Archive | Old versions kept for safekeeping. |
 
 ---
