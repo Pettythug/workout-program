@@ -8,7 +8,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#0c0c0c" />
-  <title>LIFT (BETA)</title>
+  <title>LIFT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="gym-core.js"></script>
@@ -954,10 +954,10 @@
             }
         }
 
-        async function loadDataAndWorkout() {
+        async function loadDataAndWorkout(preFetchedData = null) {
             showLoading();
             try {
-                const json = await sheetsGet();
+                const json = preFetchedData || await sheetsGet();
                 globalData = json;
                 
                 try {
@@ -977,6 +977,13 @@
                 console.error(err);
             }
         }
+
+        // Global hook for React to push data to the Builder
+        window.updatePlanData = (data) => {
+            if (typeof loadDataAndWorkout === 'function') {
+                loadDataAndWorkout(data);
+            }
+        };
 
         function setupSelectors() {
             const locSelect = document.getElementById('locationSelect');
@@ -1754,6 +1761,7 @@
             }
             setSyncStatus("ok");
             setLastSyncTime(new Date());
+            if (window.updatePlanData) window.updatePlanData(json.data);
           } catch {
             setSyncStatus("error");
             showToast("Sheets sync failed — working offline", "error");
