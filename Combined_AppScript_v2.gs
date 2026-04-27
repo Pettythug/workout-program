@@ -31,6 +31,8 @@ const HISTORY_HEADERS   = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep 
 const BEST_HEADERS      = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS    = ["Name"];
 const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location"];
+const SETTINGS_TAB      = "GymLog_Settings";
+const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
@@ -65,6 +67,8 @@ function doGet(e) {
       if (payload.action === "deleteExercise") return gymlog_handleDeleteExercise(payload);
       if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
       if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
+      if (payload.action === "getSettings")    return gymlog_handleGetSettings();
+      if (payload.action === "saveSettings")   return gymlog_handleSaveSettings(payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -95,6 +99,7 @@ function doPost(e) {
     if (payload.action === "deleteHistory")  return gymlog_handleDeleteHistory(payload);
     if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
     if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
+    if (payload.action === "saveSettings")   return gymlog_handleSaveSettings(payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -239,6 +244,7 @@ function gymlog_doGet() {
       people:    people.length > 0 ? people : DEFAULT_PEOPLE,
       exercises: exercisesMeta,
       locations: derivedLocations,
+      settings:  gymlog_getSettingsInternal()
     });
 
   } catch (e) {
@@ -503,6 +509,54 @@ function gymlog_handleDeleteHistory(payload) {
 
   gymlog_recalculateBestForExercise(exercise);
   return ok({ deleted: 1 });
+}
+
+
+// =============================================================================
+// GYMLOG — SETTINGS (Global sync for workout num, etc)
+// =============================================================================
+
+function gymlog_handleGetSettings() {
+  return ok(gymlog_getSettingsInternal());
+}
+
+function gymlog_getSettingsInternal() {
+  try {
+    const sheet = getOrCreateSheet(SETTINGS_TAB, SETTINGS_HEADERS);
+    const data = sheet.getLastRow() > 1 
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues()
+      : [];
+    const settings = {};
+    data.forEach(r => { if(r[0]) settings[r[0]] = r[1]; });
+    return settings;
+  } catch(e) {
+    return {};
+  }
+}
+
+function gymlog_handleSaveSettings(payload) {
+  const { settings } = payload; // Expecting { "builder_workout_num": 117, ... }
+  if (!settings) return err("No settings provided");
+  const sheet = getOrCreateSheet(SETTINGS_TAB, SETTINGS_HEADERS);
+  
+  for (const key in settings) {
+    const val = settings[key];
+    const lastRow = sheet.getLastRow();
+    let rowIndex = -1;
+    if (lastRow > 1) {
+      const keys = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < keys.length; i++) {
+        if (String(keys[i][0]).trim() === String(key).trim()) { rowIndex = i + 2; break; }
+      }
+    }
+    
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 2).setValue(val);
+    } else {
+      sheet.appendRow([key, val]);
+    }
+  }
+  return ok({ saved: Object.keys(settings).length });
 }
 
 
