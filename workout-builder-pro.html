@@ -880,6 +880,16 @@
                         activePeople = [(globalData.people || ['Brian'])[0]];
                     }
                     
+                    // SYNC WORKOUT NUMBER FROM SPREADSHEET
+                    if (globalData.settings && globalData.settings.builder_workout_num) {
+                        const cloudNum = parseInt(globalData.settings.builder_workout_num);
+                        const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
+                        if (cloudNum > localNum) {
+                            console.log(`Syncing workout num: ${localNum} -> ${cloudNum}`);
+                            localStorage.setItem(NUM_KEY, cloudNum.toString());
+                        }
+                    }
+                    
                     setupSelectors();
                     generateWorkout();
                     return true;
@@ -1440,9 +1450,21 @@
             if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
         }
 
-        function completeWorkout() {
+        async function completeWorkout() {
+            const num = currentWorkout.workoutNum.toString();
             localStorage.setItem(TYPE_KEY, currentWorkout.type);
-            localStorage.setItem(NUM_KEY, currentWorkout.workoutNum.toString());
+            localStorage.setItem(NUM_KEY, num);
+
+            // SYNC TO SPREADSHEET
+            try {
+                await sheetsPost({
+                    action: "saveSettings",
+                    settings: { "builder_workout_num": num }
+                });
+            } catch(e) {
+                console.warn("Failed to sync workout num to cloud:", e);
+            }
+
             document.getElementById('workoutContent').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
             markAccessoryDone();

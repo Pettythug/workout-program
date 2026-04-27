@@ -1039,6 +1039,16 @@
                 const json = preFetchedData || await sheetsGet();
                 globalData = json;
                 
+                // SYNC WORKOUT NUMBER FROM SPREADSHEET
+                if (globalData.settings && globalData.settings.builder_workout_num) {
+                    const cloudNum = parseInt(globalData.settings.builder_workout_num);
+                    const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
+                    if (cloudNum > localNum) {
+                        console.log(`Syncing workout num: ${localNum} -> ${cloudNum}`);
+                        localStorage.setItem(NUM_KEY, cloudNum.toString());
+                    }
+                }
+                
                 try {
                     const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
                     const all = globalData.people || ['Brian'];
@@ -1610,9 +1620,21 @@
             if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
         }
 
-        function completeWorkout() {
+        async function completeWorkout() {
+            const num = currentWorkout.workoutNum.toString();
             localStorage.setItem(TYPE_KEY, currentWorkout.type);
-            localStorage.setItem(NUM_KEY, currentWorkout.workoutNum.toString());
+            localStorage.setItem(NUM_KEY, num);
+            
+            // SYNC TO SPREADSHEET
+            try {
+                await sheetsPost({
+                    action: "saveSettings",
+                    settings: { "builder_workout_num": num }
+                });
+            } catch(e) {
+                console.warn("Failed to sync workout num to cloud:", e);
+            }
+
             document.getElementById('workoutContent').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
             markAccessoryDone();
@@ -2721,8 +2743,11 @@
                                   </div>
                                   {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
                                 </div>
-                                <button style={s.histDelBtn}
-                                  onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}>✕</button>
+                                <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
+                                  onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
+                                  title="Delete Entry">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
                               </div>
                             );
                           })}

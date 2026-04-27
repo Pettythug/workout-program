@@ -26,6 +26,7 @@ This is a quick reference for what's in the folder and what's active vs archived
 - **Persistent Machines**: If you type a new machine in the swap menu, it actually saves to GymLog_Exercises sheet now. 
 - **Neon UI**: Added orange outlines and "Person Blocks" for you and your Dad so the data doesn't get mixed up when you're tired mid-set.
 - **Sync Logic**: Confirmed the Best tab on sheets updates instantly when you log or delete stuff. No more waiting for the sheet to "catch up".
+- **Workout Number Sync**: Added Phase 1 & 2 sync. Your workout number (#117, etc.) now saves to a new "GymLog_Settings" tab on the sheet and syncs to your other devices automatically on load.
 
 ---
 
