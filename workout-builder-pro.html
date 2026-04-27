@@ -881,12 +881,23 @@
                     }
                     
                     // SYNC WORKOUT NUMBER FROM SPREADSHEET
-                    if (globalData.settings && globalData.settings.builder_workout_num) {
-                        const cloudNum = parseInt(globalData.settings.builder_workout_num);
+                    if (globalData.settings) {
+                        const cloudNum = parseInt(globalData.settings.builder_workout_num || '0');
                         const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
-                        if (cloudNum > localNum) {
-                            console.log(`Syncing workout num: ${localNum} -> ${cloudNum}`);
-                            localStorage.setItem(NUM_KEY, cloudNum.toString());
+                        
+                        if (cloudNum > 0) {
+                            // Cloud has data: Cloud is the BOSS.
+                            if (cloudNum !== localNum) {
+                                console.log(`Cloud sync: ${localNum} -> ${cloudNum}`);
+                                localStorage.setItem(NUM_KEY, cloudNum.toString());
+                            }
+                        } else if (localNum > 0) {
+                            // Cloud is empty: Seed it with local data.
+                            console.log(`Seeding cloud with local workout num: ${localNum}`);
+                            sheetsPost({
+                                action: "saveSettings",
+                                settings: { "builder_workout_num": localNum.toString() }
+                            }).catch(e => console.warn("Initial seeding failed:", e));
                         }
                     }
                     
