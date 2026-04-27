@@ -1633,17 +1633,29 @@
 
         async function completeWorkout() {
             const num = currentWorkout.workoutNum.toString();
-            localStorage.setItem(TYPE_KEY, currentWorkout.type);
+            const type = currentWorkout.type;
+            localStorage.setItem(TYPE_KEY, type);
             localStorage.setItem(NUM_KEY, num);
             
-            // SYNC TO SPREADSHEET
+            // SYNC TO SPREADSHEET (Smart Finish for all active people)
             try {
-                await sheetsPost({
-                    action: "saveSettings",
-                    settings: { "builder_workout_num": num }
+                const settings = {};
+                activePeople.forEach(p => {
+                    const name = p.toLowerCase();
+                    settings[`builder_workout_num_${name}`] = num;
+                    settings[`builder_workout_type_${name}`] = type;
                 });
+                // Fallback/Legacy global key
+                settings["builder_workout_num"] = num;
+                settings["builder_workout_type"] = type;
+
+                // Background sync (don't wait for it)
+                sheetsPost({
+                    action: "saveSettings",
+                    settings: settings
+                }).catch(e => console.warn("Background sync failed:", e));
             } catch(e) {
-                console.warn("Failed to sync workout num to cloud:", e);
+                console.warn("Failed to prepare workout settings:", e);
             }
 
             document.getElementById('workoutContent').style.display = 'none';
