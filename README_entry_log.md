@@ -17,10 +17,10 @@ This is a quick reference for what's in the folder and what's active vs archived
 
 ---
 
-- **Smart Card Variations**: Standardized "(Single)" and "(Alt)" grouping across the entire ecosystem (Ultimate, Pro, and Builder).
-- **Variation Toggling**: Integrated Smart Card headers for on-the-fly mode switching.
-- **Batch Creation**: Added multi-variation creation to the "Add Exercise" flows.
-- **Database Normalization**: Standardized historical data lookups to use base exercise names.
+- **Smart Card Pro Layout**: Migrated all apps to the vertical info stack (Category -> Name -> Maxes) for a cleaner, high-info design.
+- **Cross-Tab Parity**: Standardized Smart Card toggles across both the LIFT and PLAN tabs in GymLog Ultimate.
+- **Workout Builder Pro**: Fully integrated variation switching and batch creation while maintaining its original routine-building speed.
+- **History Integrity**: Unified `getBaseName` logic ensures variations contribute correctly to standardized personal bests.
 
 ---
 
