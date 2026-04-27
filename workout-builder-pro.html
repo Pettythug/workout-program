@@ -64,6 +64,64 @@
             letter-spacing: -0.3px;
         }
 
+        /* MODAL STYLES */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px;
+            padding: 24px 20px 30px;
+            width: 90%;
+            max-width: 340px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .modal-label {
+            font-size: 10px;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-family: var(--mono);
+        }
+        .modal-input {
+            width: 100%;
+            background: #0c0c0c;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        .modal-input:focus { border-color: var(--accent); }
+        .modal-save-btn {
+            width: 100%;
+            background: var(--accent);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
         
 
         .header-left p {
@@ -512,180 +570,40 @@
             color: var(--muted);
             font-size: 14px;
         }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 200;
-            align-items: flex-end;
-            justify-content: center;
-        }
-
-        .modal-overlay.open { display: flex; }
-
-        .modal {
-            background: #141414;
-            border: 1px solid #2a2a2a;
-            border-radius: 20px 20px 0 0;
-            padding: 24px 20px 40px;
-            width: 100%;
-            max-width: 480px;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-        }
-        .modal h3 {
-            font-size: 17px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            color: var(--accent);
-            letter-spacing: 1px;
-        }
-        .modal-label {
-            font-size: 10px;
-            color: #444;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
-            font-family: var(--mono);
-        }
-        .modal-input {
-            width: 100%;
-            background: #0c0c0c;
-            border: 1px solid #222;
-            border-radius: 8px;
-            padding: 12px;
-            color: var(--text);
-            font-family: var(--mono);
-            font-size: 13px;
-            margin-bottom: 20px;
-            outline: none;
-        }
-        .modal-input:focus { border-color: var(--accent); }
-
-        
-
-        .modal-save-btn {
-            width: 100%;
-            background: var(--text);
-            color: white;
-            border: none;
-            border-radius: var(--radius);
-            padding: 14px;
-            font-family: var(--sans);
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-
-        .modal-cancel-btn {
-            width: 100%;
-            background: transparent;
-            color: var(--muted);
-            border: none;
-            padding: 10px;
-            font-family: var(--sans);
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .config-screen {
-            padding: 40px 20px;
-            max-width: 480px;
-            margin: 0 auto;
-        }
-
-        .config-screen h2 {
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            letter-spacing: -0.4px;
-        }
-
-        .config-screen p {
-            color: var(--muted);
-            font-size: 14px;
-            margin-bottom: 28px;
-        }
-
-        .config-label {
-            font-size: 12px;
-            font-family: var(--mono);
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .config-input {
-            width: 100%;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-            font-family: var(--mono);
-            font-size: 13px;
-            color: var(--text);
-            outline: none;
-            margin-bottom: 20px;
-        }
-
-        .config-input:focus {
-            border-color: var(--accent);
-        }
-
-        .config-btn {
-            width: 100%;
-            background: var(--text);
-            color: white;
-            border: none;
-            border-radius: var(--radius);
-            padding: 14px;
-            font-family: var(--sans);
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .config-note {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 12px;
-            text-align: center;
-            font-family: var(--mono);
-        }
     </style>
-</head>
 
-<body>
-
-    <!-- CONFIG SCREEN -->
-    <div id="configScreen" style="display:none;">
-        <div class="config-screen">
-            <h2>Setup</h2>
-            <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
-            <div class="config-label">Deployment URL</div>
-            <input type="text" class="config-input" id="apiUrlInput"
-                placeholder="https://script.google.com/macros/s/..." />
-            <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
-            <p class="config-note">Saved locally on your device only.</p>
-        </div>
-    </div>
-
-        <!-- SETTINGS MODAL -->
+    <!-- UNIFIED SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
         <div class="modal">
-            <h3>Settings</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:16px; color:var(--accent); letter-spacing:1px; font-weight:600;">SETTINGS</h3>
+                <button onclick="closeSettingsModal()" style="background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
             <div class="modal-label">Apps Script URL</div>
-            <input type="text" class="modal-input" id="settingsUrlInput"
-                placeholder="https://script.google.com/macros/s/..." />
+            <input type="text" class="modal-input" id="settingsUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:11px;" />
 
-            <div class="modal-label" style="margin-top:12px;">Active People (Who is working out?)</div>
-            <div id="activePeopleCheckboxes" style="margin-bottom:20px;"></div>
+            <div class="modal-label" style="margin-top:20px;">ROSTER (Who is working out today?)</div>
+            <div id="activePeopleCheckboxes" style="margin-bottom:12px;"></div>
+            
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newPersonInput" placeholder="Add person..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewPerson()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
 
-            <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
-            <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
+            <div class="modal-label">LOCATIONS</div>
+            <div id="locationsList" style="margin-bottom:12px;"></div>
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newLocationInput" placeholder="Add location..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewLocation()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
+
+            <div id="deviceOwnerContainer" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);"></div>
+
+            <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
+                <button class="modal-save-btn" onclick="saveSettings()" style="width:100%; margin:0;">Save & Sync Everything</button>
+                <button onclick="manualSyncFromSettings()" style="background:none; border:1px solid var(--success); color:var(--success); padding:10px; border-radius:8px; font-size:11px; font-family:var(--mono); cursor:pointer;">↑ Sync Roster to Sheets</button>
+            </div>
         </div>
     </div>
 
@@ -785,9 +703,7 @@
         const TYPE_KEY = 'builder_last_workout_type';
         const NUM_KEY = 'builder_workout_num';
         const LOC_KEY = 'builder_location';
-        const ACTIVE_PEOPLE_KEY = 'builder_active_people';
         
-        let API_URL = '';
         let currentWorkout = null;
         let exerciseStatus = {};
         let currentMaxes = {};
@@ -801,25 +717,46 @@
 
 
         function init() {
-            document.getElementById('configScreen').style.display = 'none';
             document.getElementById('app').style.display = 'block';
             loadDataAndWorkout();
         }
 
         function openSettings() {
-            document.getElementById('settingsUrlInput').value = SCRIPT_URL;
+            const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+            document.getElementById('settingsUrlInput').value = url;
             
-            const container = document.getElementById('activePeopleCheckboxes');
-            const allPeople = globalData.people || ['Brian'];
-            let hidden = [];
-            try { hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
+            const peopleContainer = document.getElementById('activePeopleCheckboxes');
+            const locContainer = document.getElementById('locationsList');
+            const ownerContainer = document.getElementById('deviceOwnerContainer');
+            
+            const allPeople = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const allLocs = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+            const primaryUser = localStorage.getItem('builder_primary_user') || allPeople[0];
 
-            container.innerHTML = allPeople.map(p => `
-                <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
-                    <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
-                    ${p}
-                </label>
+            peopleContainer.innerHTML = allPeople.map(p => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); cursor:pointer; flex:1;">
+                        <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
+                        ${p}
+                    </label>
+                    <button onclick="removePersonGlobal('${p}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>
+                </div>
             `).join('');
+
+            locContainer.innerHTML = allLocs.map(l => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <span style="font-size:12px; color:var(--text); opacity:${l==='Anywhere' ? 0.5 : 1}">${l}</span>
+                    ${l !== 'Anywhere' ? `<button onclick="removeLocationGlobal('${l}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>` : ''}
+                </div>
+            `).join('');
+
+            ownerContainer.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Device Owner</div>
+                <select id="deviceOwnerSelect" style="width:100%; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:var(--sans);">
+                    ${allPeople.map(p => `<option value="${p}" ${p === primaryUser ? 'selected' : ''}>${p}</option>`).join('')}
+                </select>
+            `;
             
             document.getElementById('settingsModal').classList.add('open');
         }
@@ -827,29 +764,101 @@
         function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
         function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
 
+        function addNewPerson() {
+            const input = document.getElementById('newPersonInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removePersonGlobal(name) {
+            if (!confirm(`Remove ${name} from all devices?`)) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const next = all.filter(p => p !== name);
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        function addNewLocation() {
+            const input = document.getElementById('newLocationInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removeLocationGlobal(name) {
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const next = all.filter(l => l !== name);
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        async function manualSyncFromSettings() {
+            const btn = event.currentTarget;
+            btn.textContent = "Syncing...";
+            try {
+                const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+                await sheetsPost({ action: "savePeople", people });
+                btn.textContent = "Synced ✓";
+                setTimeout(() => btn.textContent = "↑ Sync Roster to Sheets", 2000);
+            } catch(e) {
+                alert("Sync failed");
+                btn.textContent = "Retry Sync";
+            }
+        }
+
         function saveSettings() {
+            const url = document.getElementById('settingsUrlInput').value.trim();
+            if (url) localStorage.setItem('gym_api_url', url);
+            
+            const oldOwner = localStorage.getItem('builder_primary_user') || 'Brian';
+            const oldLeader = (activePeople.includes(oldOwner) ? oldOwner : (activePeople[0] || 'Brian')).toLowerCase();
+            
             const cbs = document.querySelectorAll('.person-cb');
-            let selected = [];
             let hidden = [];
+            let selected = [];
+            
             cbs.forEach(cb => { 
                 if (cb.checked) selected.push(cb.value); 
                 else hidden.push(cb.value);
             });
             
+            const newPrimary = document.getElementById('deviceOwnerSelect').value;
+            
             if (selected.length === 0) {
-                selected = [(globalData.people || ['Brian'])[0]];
+                selected = [newPrimary];
                 hidden = hidden.filter(h => h !== selected[0]);
             }
             
             activePeople = selected;
             localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
             localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected));
-            notifySettingsUpdated();
+            localStorage.setItem('builder_primary_user', newPrimary);
             
+            // Sync Meta to Sheets (Background)
+            const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const locations = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            sheetsPost({ action: "syncMeta", people, locations, exercises: [] }).catch(() => {});
+
+            notifySettingsUpdated();
             closeSettingsModal();
             
-            // RE-SYNC WORKOUT DATA FOR NEW ROSTER
-            loadDataAndWorkout();
+            const newLeader = (activePeople.includes(newPrimary) ? newPrimary : (activePeople[0] || 'Brian')).toLowerCase();
+            if (oldLeader !== newLeader) {
+                loadDataAndWorkout();
+            } else if (currentWorkout) {
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+            }
         }
 
 
@@ -875,7 +884,8 @@
                     
                     // SYNC WORKOUT NUMBER AND TYPE FROM SPREADSHEET
                     if (globalData.settings) {
-                        const primaryUser = (activePeople[0] || 'Brian').toLowerCase();
+                        const owner = localStorage.getItem('builder_primary_user') || 'Brian';
+                        const primaryUser = (activePeople.includes(owner) ? owner : (activePeople[0] || 'Brian')).toLowerCase();
                         const cloudNum = parseInt(globalData.settings[`builder_workout_num_${primaryUser}`] || '0');
                         const cloudType = globalData.settings[`builder_workout_type_${primaryUser}`] || '';
                         
@@ -888,12 +898,10 @@
                                 console.log(`Cloud sync (Num) for ${primaryUser}: ${localNum} -> ${cloudNum}`);
                                 localStorage.setItem(NUM_KEY, cloudNum.toString());
                             }
-                        } else if (localNum > 0) {
-                            console.log(`Seeding cloud with local workout num for ${primaryUser}: ${localNum}`);
-                            sheetsPost({
-                                action: "saveSettings",
-                                settings: { [`builder_workout_num_${primaryUser}`]: localNum.toString() }
-                            }).catch(e => console.warn("Initial seeding failed:", e));
+                        } else {
+                            // Cloud is empty for this user: FORCE start at 0 (Workout #1)
+                            console.log(`New user detected or empty cloud (${primaryUser}): Resetting local storage to 0`);
+                            localStorage.setItem(NUM_KEY, '0');
                         }
 
                         // 2. Sync Workout Type (Push/Pull)

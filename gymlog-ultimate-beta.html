@@ -22,6 +22,7 @@
     const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
     const ACTIVE_LOCATION_KEY = "gym-active-location-v1";
     const ACTIVE_TYPE_KEY     = "gym-active-type-v1";
+    const ACTIVE_PEOPLE_KEY   = "gym-active-people-v1";
     const DEFAULT_PEOPLE    = ["Brian", "Dad"];
     const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
     const EXERCISE_CATEGORIES = ["Explosive", "Knee Dominant", "Hip Dominant", "Horizontal Push", "Horizontal Pull", "Vertical Push", "Vertical Pull", "Rotational Core", "Plank Core", "Accessory"];
@@ -802,26 +803,44 @@
     #tracker-root { display: block; }
     #builder-root { display: none; }
   </style>
+  <!-- UNIFIED SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
+        <div class="modal" style="max-width:340px; max-height:85vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; color:var(--accent); letter-spacing:1px;">SETTINGS</h3>
+                <button onclick="closeSettingsModal()" style="background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-label">Apps Script URL</div>
+            <input type="text" class="modal-input" id="settingsUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:11px;" />
+
+            <div class="modal-label" style="margin-top:20px;">ROSTER (Who is working out today?)</div>
+            <div id="activePeopleCheckboxes" style="margin-bottom:12px;"></div>
+            
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newPersonInput" placeholder="Add person..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewPerson()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
+
+            <div class="modal-label">LOCATIONS</div>
+            <div id="locationsList" style="margin-bottom:12px;"></div>
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newLocationInput" placeholder="Add location..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewLocation()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
+
+            <div id="deviceOwnerContainer" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);"></div>
+
+            <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
+                <button class="modal-save-btn" onclick="saveSettings()" style="width:100%; margin:0;">Save & Sync Everything</button>
+                <button onclick="manualSyncFromSettings()" style="background:none; border:1px solid var(--success); color:var(--success); padding:10px; border-radius:8px; font-size:11px; font-family:var(--mono); cursor:pointer;">↑ Sync Roster to Sheets</button>
+            </div>
+        </div>
+    </div>
 
   <div id="tracker-root"></div>
   
   <div id="builder-root">
-    
-    <!-- SETTINGS MODAL -->
-    <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
-        <div class="modal">
-            <h3>Settings</h3>
-            <div class="modal-label">Apps Script URL</div>
-            <input type="text" class="modal-input" id="settingsUrlInput"
-                placeholder="https://script.google.com/macros/s/..." />
-
-            <div class="modal-label" style="margin-top:12px;">Active People (Who is working out?)</div>
-            <div id="activePeopleCheckboxes" style="margin-bottom:20px;"></div>
-
-            <button class="modal-save-btn" onclick="saveSettings()">Save & Reconnect</button>
-            <button class="modal-cancel-btn" onclick="closeSettingsModal()">Cancel</button>
-        </div>
-    </div>
 
     <div class="header">
         <div class="header-left">
@@ -971,58 +990,146 @@
     }
 
         function openSettings() {
-            document.getElementById('settingsUrlInput').value = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+            const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+            document.getElementById('settingsUrlInput').value = url;
             
-            const container = document.getElementById('activePeopleCheckboxes');
-            const allPeople = globalData.people || ['Brian'];
-            // Load fresh hidden list
-            let hidden = [];
-            try { hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || []; } catch(e){}
+            const peopleContainer = document.getElementById('activePeopleCheckboxes');
+            const locContainer = document.getElementById('locationsList');
+            const ownerContainer = document.getElementById('deviceOwnerContainer');
+            
+            const allPeople = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const allLocs = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+            const primaryUser = localStorage.getItem('builder_primary_user') || allPeople[0];
 
-            container.innerHTML = allPeople.map(p => `
-                <label style="display:block; margin-bottom:8px; font-size:14px; font-family:var(--sans);">
-                    <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
-                    ${p}
-                </label>
+            peopleContainer.innerHTML = allPeople.map(p => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; flex:1;">
+                        <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
+                        ${p}
+                    </label>
+                    <button onclick="removePersonGlobal('${p}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>
+                </div>
             `).join('');
+
+            locContainer.innerHTML = allLocs.map(l => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <span style="font-size:12px; color:var(--text); opacity:${l==='Anywhere' ? 0.5 : 1}">${l}</span>
+                    ${l !== 'Anywhere' ? `<button onclick="removeLocationGlobal('${l}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>` : ''}
+                </div>
+            `).join('');
+
+            ownerContainer.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Device Owner</div>
+                <select id="deviceOwnerSelect" style="width:100%; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:var(--sans);">
+                    ${allPeople.map(p => `<option value="${p}" ${p === primaryUser ? 'selected' : ''}>${p}</option>`).join('')}
+                </select>
+            `;
             
             document.getElementById('settingsModal').classList.add('open');
         }
+        window.openSettings = openSettings;
 
-        function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
-        function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
+        function addNewPerson() {
+            const input = document.getElementById('newPersonInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removePersonGlobal(name) {
+            if (!confirm(`Remove ${name} from all devices?`)) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const next = all.filter(p => p !== name);
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        function addNewLocation() {
+            const input = document.getElementById('newLocationInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removeLocationGlobal(name) {
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const next = all.filter(l => l !== name);
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        async function manualSyncFromSettings() {
+            const btn = event.currentTarget;
+            btn.textContent = "Syncing...";
+            try {
+                const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+                await sheetsPost({ action: "savePeople", people });
+                btn.textContent = "Synced ✓";
+                setTimeout(() => btn.textContent = "↑ Sync Roster to Sheets", 2000);
+            } catch(e) {
+                alert("Sync failed");
+                btn.textContent = "Retry Sync";
+            }
+        }
 
         function saveSettings() {
             const url = document.getElementById('settingsUrlInput').value.trim();
             if (url) localStorage.setItem('gym_api_url', url);
             
+            const oldOwner = localStorage.getItem('builder_primary_user') || 'Brian';
+            const oldLeader = (activePeople.includes(oldOwner) ? oldOwner : (activePeople[0] || 'Brian')).toLowerCase();
+            
             const cbs = document.querySelectorAll('.person-cb');
-            let selected = [];
             let hidden = [];
+            let selected = [];
+            
+            const allPeople = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
             cbs.forEach(cb => { 
                 if (cb.checked) selected.push(cb.value); 
                 else hidden.push(cb.value);
             });
             
+            const newPrimary = document.getElementById('deviceOwnerSelect').value;
+            
             if (selected.length === 0) {
-                selected = [(globalData.people || ['Brian'])[0]];
+                selected = [newPrimary];
                 hidden = hidden.filter(h => h !== selected[0]);
             }
             
             activePeople = selected;
             localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
+            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected));
+            localStorage.setItem('builder_primary_user', newPrimary);
             
-            // Sync Location if changed (Plan side uses a simple select)
-            localStorage.setItem(ACTIVE_LOCATION_KEY, document.getElementById('locationSelect').value);
-            
-            // Notify other components (like React) that settings changed
+            // Sync Meta to Sheets (Background)
+            const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const locations = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            sheetsPost({ action: "syncMeta", people, locations, exercises: [] }).catch(() => {});
+
             notifySettingsUpdated();
-            
             closeSettingsModal();
             
-            // RE-SYNC WORKOUT DATA FOR NEW ROSTER
-            loadDataAndWorkout();
+            const newLeader = (activePeople.includes(newPrimary) ? newPrimary : (activePeople[0] || 'Brian')).toLowerCase();
+            if (oldLeader !== newLeader) {
+                loadDataAndWorkout();
+            } else if (currentWorkout) {
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+            }
         }
+
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+        function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
 
         async function loadDataAndWorkout(preFetchedData = null) {
             showLoading();
@@ -1034,7 +1141,8 @@
                 
                 // SYNC WORKOUT NUMBER AND TYPE FROM SPREADSHEET
                 if (globalData.settings) {
-                    const primaryUser = (activePeople[0] || 'Brian').toLowerCase();
+                    const owner = localStorage.getItem('builder_primary_user') || 'Brian';
+                    const primaryUser = (activePeople.includes(owner) ? owner : (activePeople[0] || 'Brian')).toLowerCase();
                     const cloudNum = parseInt(globalData.settings[`builder_workout_num_${primaryUser}`] || '0');
                     const cloudType = globalData.settings[`builder_workout_type_${primaryUser}`] || '';
                     
@@ -1048,11 +1156,10 @@
                             localStorage.setItem(NUM_KEY, cloudNum.toString());
                         }
                     } else {
-                        // Cloud is empty for this user: Force start at 0 (Workout #1)
-                        if (localNum !== 0) {
-                            console.log(`New user detected (${primaryUser}): Resetting local storage to 0`);
-                            localStorage.setItem(NUM_KEY, '0');
-                        }
+                        // Cloud is empty for this user: FORCE start at 0 (Workout #1)
+                        // This prevents "Leaking" from the previous user on this device
+                        console.log(`New user detected or empty cloud (${primaryUser}): Resetting local storage to 0`);
+                        localStorage.setItem(NUM_KEY, '0');
                     }
 
                     // 2. Sync Workout Type (Push/Pull)
@@ -2286,121 +2393,11 @@
       // ════════════════════════════════════════════════════════════════════════
       // SETTINGS VIEW
       // ════════════════════════════════════════════════════════════════════════
+      // React Settings View Removed - Unified in Global Vanilla Modal
       if (view === "settings") {
-        return (
-          <div style={s.root}>
-            <div style={s.header}>
-              <button style={s.backBtn} onClick={() => setView("list")}>← Back</button>
-              <div style={s.headerTitle}>SETTINGS</div>
-              <div style={{ width: 60 }} />
-            </div>
-            <div style={s.formWrap}>
-              <div style={s.sectionLabel}>PEOPLE</div>
-              <div style={s.settingsNote}>
-                <strong style={{color:"#f97316"}}>This device:</strong> {visiblePeople.join(", ") || "Nobody active"}.
-                Toggle ●/○ to show/hide per device. Remove ✕ affects all devices.
-              </div>
-              {people.map(person => {
-                const isHidden = hiddenPeople.includes(person);
-                return (
-                  <div key={person} style={s.personListRow}>
-                    <div style={{ ...s.personListName, opacity: isHidden ? 0.4 : 1 }}>{person}</div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <button
-                        style={{ ...s.deviceToggleBtn, ...(isHidden ? s.deviceToggleOff : s.deviceToggleOn) }}
-                        onClick={() => togglePersonVisibility(person)}>
-                        {isHidden ? "○ HIDDEN" : "● THIS DEVICE"}
-                      </button>
-                      <button style={s.personRemoveBtn}
-                        onClick={() => setConfirmDelete({ type: "person", name: person })}>✕</button>
-                    </div>
-                  </div>
-                );
-              })}
-              <div style={s.addPersonRow}>
-                <input
-                  style={{ ...s.input, flex: 1 }}
-                  placeholder="New person name..."
-                  value={newPersonName}
-                  onChange={e => setNewPersonName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && addPerson()}
-                />
-                <button style={s.addPersonBtn} onClick={addPerson}>ADD</button>
-              </div>
-
-              <div style={{ ...s.sectionLabel, marginTop: 24 }}>LOCATIONS</div>
-              <div style={s.settingsNote}>
-                Tag exercises to specific gyms. "Anywhere" exercises appear in all location views.
-              </div>
-              {locations.map(loc => (
-                <div key={loc} style={s.personListRow}>
-                  <div style={s.personListName}>{loc}</div>
-                  {loc !== "Anywhere" && (
-                    <button style={s.personRemoveBtn}
-                      onClick={() => setConfirmDelete({ type: "location", name: loc })}>✕</button>
-                  )}
-                </div>
-              ))}
-              <div style={s.addPersonRow}>
-                <input
-                  style={{ ...s.input, flex: 1 }}
-                  placeholder="New location (e.g. Park, Friend's Gym)..."
-                  value={newLocName}
-                  onChange={e => setNewLocName(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && addLocation()}
-                />
-                <button style={s.addPersonBtn} onClick={addLocation}>ADD</button>
-              </div>
-
-              <div style={{ ...s.sectionLabel, marginTop: 24 }}>DATA</div>
-              <div style={s.settingsNote}>
-                Pushes the people roster to Google Sheets. Exercise metadata (category, location)
-                syncs automatically when you add or edit an exercise.
-              </div>
-              <button
-                style={{ ...s.syncBtn, ...(syncStatus === "syncing" ? s.syncBtnDisabled : {}) }}
-                onClick={syncStatus !== "syncing" ? manualSync : undefined}
-              >
-                {syncStatus === "syncing" ? "●●● Syncing..." : "↑ Sync All Data to Sheets"}
-              </button>
-              {lastSyncTime && (
-                <div style={{ ...s.settingsNote, marginTop: 6 }}>
-                  Last synced: {lastSyncTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit" })}
-                </div>
-              )}
-            </div>
-
-            {confirmDelete?.type === "person" && (
-              <div style={s.overlay}>
-                <div style={s.modal}>
-                  <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
-                  <div style={s.modalSub}>
-                    This removes them from <strong style={{color:"#f97316"}}>all devices</strong>. Their workout history stays in Sheets.
-                  </div>
-                  <div style={s.modalBtns}>
-                    <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-                    <button style={s.confirmBtn} onClick={() => removePerson(confirmDelete.name)}>Remove from All Devices</button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {confirmDelete?.type === "location" && (
-              <div style={s.overlay}>
-                <div style={s.modal}>
-                  <div style={s.modalTitle}>Remove {confirmDelete.name}?</div>
-                  <div style={s.modalSub}>
-                    Exercises tagged to this location won't appear in that filter. Their history stays in Sheets.
-                  </div>
-                  <div style={s.modalBtns}>
-                    <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
-                    <button style={s.confirmBtn} onClick={() => removeLocation(confirmDelete.name)}>Remove</button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
-          </div>
-        );
+          setView("list");
+          setTimeout(() => { if(window.openSettings) window.openSettings(); }, 10);
+          return null;
       }
 
       // ════════════════════════════════════════════════════════════════════════
@@ -2608,7 +2605,7 @@
               <div style={s.subtitle}>{visiblePeople.join(" & ")} · {exercises.length} exercises</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button style={s.addIconBtn} onClick={() => setView("settings")} title="Settings">⚙️</button>
+              <button style={s.addIconBtn} onClick={() => { if(window.openSettings) window.openSettings(); }} title="Settings">⚙️</button>
               <button style={s.addIconBtn} onClick={() => setView("add")}>➕</button>
             </div>
           </div>

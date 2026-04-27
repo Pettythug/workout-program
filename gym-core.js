@@ -14,6 +14,7 @@ const STORAGE_KEY       = "gym-tracker-v4";
 const PEOPLE_KEY        = "gym-tracker-people-v1";
 const LOCATIONS_KEY     = "gym-tracker-locations-v1";
 const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
+const ACTIVE_PEOPLE_KEY = "gym-active-people-v1";
 
 // ── DEFAULT DATA ──────────────────────────────────────────────────────────
 const DEFAULT_PEOPLE    = ["Brian", "Dad"];
@@ -97,15 +98,17 @@ function migrateRanges(exercises) {
 
 // ── API COMMUNICATION ─────────────────────────────────────────────────────
 async function sheetsGet() {
-    const res = await fetch(SCRIPT_URL);
+    const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+    const res = await fetch(url);
     const json = await res.json();
     if (json.status !== "ok") throw new Error(json.message);
     return json.data;
 }
 
 async function sheetsPost(payload) {
+    const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
     const encoded = encodeURIComponent(JSON.stringify(payload));
-    const res = await fetch(SCRIPT_URL + "?payload=" + encoded);
+    const res = await fetch(url + "?payload=" + encoded);
     const json = await res.json();
     if (json.status !== "ok") throw new Error(json.message);
     return json.data;
