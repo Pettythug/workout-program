@@ -296,8 +296,9 @@
         loadData(); 
         
         const handleSync = () => {
-          const localHidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
-          setHiddenPeople(localHidden);
+          // If URL changed, we must reload to refresh API data
+          const currentUrl = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+          loadData(); 
         };
         window.addEventListener('gym-settings-updated', handleSync);
         return () => window.removeEventListener('gym-settings-updated', handleSync);

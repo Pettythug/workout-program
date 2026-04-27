@@ -8,40 +8,28 @@ This is a quick reference for what's in the folder and what's active vs archived
 
 | File | Status | Notes |
 |---|---|---|
-| `index.html` | ✅ Active | The main landing page for everything. |
-| `personal-gym-log.html` | ✅ Active (v3) | GYM LOG PRO. Powered by gym-core.js. Synced roster. |
-| `workout-builder-pro.html` | ✅ Active (PRO) | THE NEON PRO. Powered by gym-core.js. Includes Detailed History. |
-| `workout-builder-v2.html` | ✅ Active (BETA) | Based on V3 logic. Experimental stuff goes here first. |
-| `workout-builder.html` | ✅ Active (Legacy) | BUILDER CLASSIC. Light themed original. |
-| `Combined_AppScript_v2.gs` | ✅ Active | Unified backend. Handles Best Rec recalculations on the fly. |
-| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. Powered by gym-core.js. Unified Roster/History. |
-| `gymlog-ultimate-beta.html` | 🧪 Beta | Testing architectural split and core logic separation. |
-| `files/` | 📦 Archive | Old versions kept for safekeeping. |
+| `index.html` | ✅ Active | The main landing page. Unified hub for all Pro apps. |
+| `gym-log-pro.html` | ✅ Active | GYM LOG PRO (Renamed from v3). Powered by gym-core.js. |
+| `workout-builder-pro.html` | ✅ Active | WORKOUT BUILDER PRO. Powered by gym-core.js. Detailed History. |
+| `gymlog-ultimate.html` | ✅ Active | ULTIMATE EDITION. The gold standard. Fully synchronized with core. |
+| `gym-core.js` | ✅ Active | THE BRAIN. Centralized logic for all apps. |
+| `archive/` | 📦 Archive | Legacy versions and one-time import files (moved from root). |
 
 ---
 
-## Latest Tweaks to the Builder (Pro/Beta)
+## Latest Audit & Cleanup (April 2026)
 
-- **Dark Mode**: Unified the builder with the "Pro" look from the main tracker. Much easier on the eyes at the gym.
-- **Persistent Machines**: If you type a new machine in the swap menu, it actually saves to GymLog_Exercises sheet now. 
-- **Neon UI**: Added orange outlines and "Person Blocks" for you and your Dad so the data doesn't get mixed up when you're tired mid-set.
-- **Sync Logic**: Confirmed the Best tab on sheets updates instantly when you log or delete stuff. No more waiting for the sheet to "catch up".
-- **Workout Number Sync**: Added Phase 1 & 2 sync. Your workout number (#117, etc.) now saves to a new "GymLog_Settings" tab on the sheet. The **Spreadsheet is the Source of Truth**; the app follows the cloud value on load.
-- **Fresh Start & Instant Refresh**: New users now start at Workout #1 by default. Changing the roster in settings now instantly refreshes the workout number on the screen.
-
----
-
-## The Roadmap (Upcoming Features)
-
-- **History View**: ✅ COMPLETED. Detailed history drawer with notes and rep ranges integrated into the builder.
-- **Edit/Delete History**: Adding the ability to fix a typo or delete a set directly from the builder.
-- **Push/Pull Swap**: A manual toggle in the header so you can switch your routine on the fly if you aren't doing the suggested workout.
+- **Centralized Core**: Migrated all apps to `gym-core.js`. No more duplicated logic.
+- **Tab-Syncing**: Added a broadcast system. Changing settings in one tab updates all open tracker tabs instantly.
+- **Contrast Fixes**: Fixed visibility issues in the Settings modal (explicit color styles for roster labels).
+- **Builder Restoration**: Fixed a rendering regression in the Pro Builder.
+- **File Renames**: Simplified naming (V3 -> Pro) and promoted Ultimate Beta to Live.
 
 ---
 
 ## Notes
 
 - Apps Script backend is now versioned (v2) — handles the new "one row per person" Best Record schema.
-- If the builder feels slow, check the SCRIPT_URL in settings.
-- The orange neon design is the new "Pro" standard.
-- Pretty straightforward from here on out.
+- All "Pro" apps use the same orange neon aesthetic.
+- The spreadsheet remains the Source of Truth for all data.
+- pretty straight forward.

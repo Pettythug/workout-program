@@ -718,6 +718,9 @@
 
         function init() {
             document.getElementById('app').style.display = 'block';
+            window.addEventListener('gym-settings-updated', () => {
+                loadDataAndWorkout();
+            });
             loadDataAndWorkout();
         }
 

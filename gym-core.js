@@ -15,6 +15,8 @@ const PEOPLE_KEY        = "gym-tracker-people-v1";
 const LOCATIONS_KEY     = "gym-tracker-locations-v1";
 const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
 const ACTIVE_PEOPLE_KEY = "gym-active-people-v1";
+const ACTIVE_LOCATION_KEY = "gym-active-location-v1";
+const ACTIVE_TYPE_KEY     = "gym-active-type-v1";
 
 // ── DEFAULT DATA ──────────────────────────────────────────────────────────
 const DEFAULT_PEOPLE    = ["Brian", "Dad"];
