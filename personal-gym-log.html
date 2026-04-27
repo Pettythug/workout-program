@@ -87,6 +87,9 @@
 
       // ── LOAD ───────────────────────────────────────────────────────────────
       const loadData = async () => {
+        // Initial 1s delay to let everything settle
+        await new Promise(r => setTimeout(r, 1000));
+
         // Step 1: read people + locations from localStorage
         let localPeople = DEFAULT_PEOPLE;
         try {
@@ -132,53 +135,56 @@
         // Step 3: sync from Sheets
         if (scriptConfigured) {
           setSyncStatus("syncing");
-          try {
-            const sheetsData = await sheetsGet();
-            const hasData = sheetsData.history.length > 0 || Object.keys(sheetsData.best).length > 0;
-            if (hasData) {
-              // Add exercises in Sheets that aren't local
-              const existingNames = new Set(base.map(e => e.name.toLowerCase()));
-              const sheetNames = new Set([
-                ...Object.keys(sheetsData.best || {}),
-                ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean),
-              ]);
-              let nextId = Math.max(0, ...base.map(e => e.id), 0) + 1;
-              for (const name of sheetNames) {
-                if (!existingNames.has(name.toLowerCase())) {
-                  const defBest = {};
-                  localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
-                  base.push({ id: nextId++, name, timed: false, category: "", location: "Anywhere", best: defBest, history: [] });
-                  existingNames.add(name.toLowerCase());
+          const trySync = async () => {
+            try {
+              const sheetsData = await sheetsGet();
+              const hasData = (sheetsData.history && sheetsData.history.length > 0) || 
+                              (sheetsData.best && Object.keys(sheetsData.best).length > 0) ||
+                              (sheetsData.exercises && sheetsData.exercises.length > 0);
+              
+              if (hasData) {
+                // Add exercises in Sheets that aren't local
+                const existingNames = new Set(base.map(e => e.name.toLowerCase()));
+                const sheetNames = new Set([
+                  ...Object.keys(sheetsData.best || {}),
+                  ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean),
+                  ...(sheetsData.exercises || []).map(e => e.name).filter(Boolean)
+                ]);
+                let nextId = Math.max(0, ...base.map(e => e.id), 0) + 1;
+                for (const name of sheetNames) {
+                  if (!existingNames.has(name.toLowerCase())) {
+                    const defBest = {};
+                    localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
+                    base.push({ id: nextId++, name, timed: false, category: "", location: "Anywhere", best: defBest, history: [] });
+                  }
                 }
+                const merged = mergeFromSheets(base, sheetsData, localPeople, localLocations);
+                setExercises(merged.exercises);
+                setPeople(merged.people);
+                setLocations(merged.locations);
+                setLastSyncTime(new Date());
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged.exercises));
+                localStorage.setItem(PEOPLE_KEY, JSON.stringify(merged.people));
+                localStorage.setItem(LOCATIONS_KEY, JSON.stringify(merged.locations));
               }
-              base.sort((a, b) => a.name.localeCompare(b.name));
-
-              const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
-              const migrated = migrateRanges(merged);
-
-              // Auto-hide any new people that arrived from Sheets (meaning they were added on another device)
-              const incomingPeople = mergedPeople.filter(p => !localPeople.map(x => x.toLowerCase()).includes(p.toLowerCase()));
-              let nextHidden = localHidden;
-              if (incomingPeople.length > 0) {
-                nextHidden = [...new Set([...localHidden, ...incomingPeople])];
-                setHiddenPeople(nextHidden);
-                localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(nextHidden));
-              }
-
-              setPeople(mergedPeople);
-              setExercises(migrated);
-              if (mergedLocations && mergedLocations.length > 0) {
-                setLocations(mergedLocations);
-                localStorage.setItem(LOCATIONS_KEY, JSON.stringify(mergedLocations));
-              }
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-              localStorage.setItem(PEOPLE_KEY, JSON.stringify(mergedPeople));
+              setSyncStatus("ok");
+              return true;
+            } catch (err) {
+              console.error("Sync error:", err);
+              return false;
             }
-            setSyncStatus("ok");
-            setLastSyncTime(new Date());
-          } catch {
-            setSyncStatus("error");
-            showToast("Sheets sync failed — working offline", "error");
+          };
+
+          const success = await trySync();
+          if (!success) {
+            console.log("Sync failed, retrying in 2s...");
+            setTimeout(async () => {
+              const retrySuccess = await trySync();
+              if (!retrySuccess) {
+                setSyncStatus("error");
+                showToast("Sync Failed (Connection Error)", "error");
+              }
+            }, 2000);
           }
         }
       };

@@ -699,7 +699,7 @@
             <div class="header-right">
                 
                 <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
-                <div id="workoutBadge" class="workout-badge"></div>
+                <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
                 <button class="settings-btn" onclick="openSettings()">⚙️</button>
             </div>
         </div>
@@ -738,7 +738,7 @@
                 <div class="section-label">Exercises</div>
                 <div id="exerciseList"></div>
 
-                <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
+                <button class="complete-btn" id="completeBtn" onclick="completeWorkout()">
                     Complete Workout
                 </button>
 
@@ -862,26 +862,42 @@
 
 
         async function loadDataAndWorkout() {
+            // Initial 1s delay to let everything settle
+            await new Promise(r => setTimeout(r, 1000));
             showLoading();
-            try {
-                const json = await sheetsGet();
-                globalData = json;
-                
+            const trySync = async () => {
                 try {
-                    const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
-                    const all = globalData.people || ['Brian'];
-                    const visible = all.filter(p => !hidden.includes(p));
-                    if (visible.length > 0) activePeople = visible;
-                    else activePeople = [all[0]];
-                } catch {
-                    activePeople = [(globalData.people || ['Brian'])[0]];
+                    const json = await sheetsGet();
+                    globalData = json;
+                    
+                    try {
+                        const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+                        const all = globalData.people || ['Brian'];
+                        const visible = all.filter(p => !hidden.includes(p));
+                        if (visible.length > 0) activePeople = visible;
+                        else activePeople = [all[0]];
+                    } catch {
+                        activePeople = [(globalData.people || ['Brian'])[0]];
+                    }
+                    
+                    setupSelectors();
+                    generateWorkout();
+                    return true;
+                } catch (err) {
+                    console.error("Sync error:", err);
+                    return false;
                 }
-                
-                setupSelectors();
-                generateWorkout();
-            } catch (err) {
-                showError('Could not connect to your sheet. Check your URL in settings.');
-                console.error(err);
+            };
+
+            const success = await trySync();
+            if (!success) {
+                console.log("Sync failed, retrying in 2s...");
+                setTimeout(async () => {
+                    const retrySuccess = await trySync();
+                    if (!retrySuccess) {
+                        showError('Could not connect to your sheet. Check your URL in settings.');
+                    }
+                }, 2000);
             }
         }
 
@@ -896,6 +912,29 @@
 
         function changeLocation() {
             localStorage.setItem(LOC_KEY, document.getElementById('locationSelect').value);
+            generateWorkout();
+        }
+
+        function getRepRange(workoutNum) {
+            const position = ((workoutNum - 1) % 16);
+            if (position < 4) return '8-12';
+            if (position < 8) return '1-3';
+            if (position < 12) return '13+';
+            return '4-7';
+        }
+
+        function getRangeKeyFromLabel(label) {
+            if (label === '1-3') return 'r1_3';
+            if (label === '4-7') return 'r4_7';
+            if (label === '8-12') return 'r8_12';
+            if (label === '13+') return 'r13_plus';
+            return 'r8_12';
+        }
+
+        function togglePushPull() {
+            const lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
+            const newType = lastType === 'Push' ? 'Pull' : 'Push';
+            localStorage.setItem(TYPE_KEY, newType);
             generateWorkout();
         }
 
@@ -927,10 +966,11 @@
                  pick(['Plank Core', 'Rotational Core']),
              ];
              
+             const range = getRepRange(num);
              currentWorkout = {
                  type: type,
                  workoutNum: num,
-                 repRange: '8-12', 
+                 repRange: range, 
                  exercises: genExercises
              };
              
@@ -996,9 +1036,10 @@
                 `;
                 
                 activePeople.forEach(p => {
+                    const rangeKey = getRangeKeyFromLabel(workout.repRange);
                     const maxData = currentMaxes[ex.name]?.[p] || {};
-                    const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
-                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
+                    const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
+                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${workout.repRange} Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
                 });
                 
                 headerHTML += `
@@ -1207,12 +1248,59 @@
                        <div style="font-weight:600; font-size:11px; color:var(--accent);">${h.person.toUpperCase()}</div>
                        ${h.note ? `<div style="font-size:9px; color:var(--muted); font-style:italic;">${h.note}</div>` : ''}
                    </div>
-                   <div style="text-align:right;">
-                       <div style="font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text);">${resultText}</div>
-                       <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                   <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                       <div>
+                           <div style="font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text);">${resultText}</div>
+                           <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                       </div>
+                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', ${idx})" 
+                               style="background:none; border:none; color:#ff4444; cursor:pointer; padding:4px; opacity:0.6;" title="Delete Entry">
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                       </button>
                    </div>
                 </div>`;
             }).join('');
+        }
+
+        async function deletePlanHistory(event, date, person, exercise, reps, weight, idx) {
+            event.stopPropagation();
+            if(!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
+            
+            const btn = event.currentTarget;
+            btn.style.opacity = '0.3';
+            btn.disabled = true;
+            
+            const payload = {
+                action: "deleteLog",
+                date: date,
+                person: person,
+                exercise: exercise,
+                reps: reps.toString(),
+                weight: weight.toString()
+            };
+            
+            try {
+                const res = await sheetsPost(payload);
+                if (res) {
+                    // Update global data and refresh list
+                    if(globalData.history) {
+                        globalData.history = globalData.history.filter(h => 
+                            !(h.date === date && h.person.toLowerCase() === person.toLowerCase() && 
+                              h.exercise === exercise && h.reps.toString() === reps.toString() && 
+                              h.weight.toString() === weight.toString())
+                        );
+                    }
+                    toggleHistory({ stopPropagation: () => {} }, idx, exercise);
+                    
+                    // Signal Lift tab to refresh if open
+                    window.dispatchEvent(new CustomEvent('gym-settings-updated'));
+                }
+            } catch(e) {
+                alert("Failed to delete entry.");
+                btn.style.opacity = '0.6';
+                btn.disabled = false;
+            }
+        }
         }
 
         function toggleAccessory() {
@@ -1280,7 +1368,9 @@
                     currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
-                    if (rangeKey === 'r8_12') {
+                    
+                    const activeRangeKey = getRangeKeyFromLabel(currentWorkout.repRange);
+                    if (rangeKey === activeRangeKey) {
                         const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
                         if(valId) valId.textContent = newMaxStr;
                     }
