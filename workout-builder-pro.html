@@ -1253,7 +1253,7 @@
                            <div style="font-family:var(--mono); font-weight:600; font-size:13px; color:var(--text);">${resultText}</div>
                            <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
                        </div>
-                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', ${idx})" 
+                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', '${h.range}', ${idx})" 
                                style="background:none; border:none; color:#ff4444; cursor:pointer; padding:4px; opacity:0.6;" title="Delete Entry">
                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                        </button>
@@ -1262,7 +1262,7 @@
             }).join('');
         }
 
-        async function deletePlanHistory(event, date, person, exercise, reps, weight, idx) {
+        async function deletePlanHistory(event, date, person, exercise, reps, weight, range, idx) {
             event.stopPropagation();
             if(!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
             
@@ -1271,12 +1271,12 @@
             btn.disabled = true;
             
             const payload = {
-                action: "deleteLog",
-                date: date,
-                person: person,
+                action: "deleteHistory",
                 exercise: exercise,
+                person: person,
                 reps: reps.toString(),
-                weight: weight.toString()
+                weight: weight.toString(),
+                range: range
             };
             
             try {

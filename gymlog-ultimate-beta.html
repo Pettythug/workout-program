@@ -1436,52 +1436,56 @@
                       ${h.note ? `<div style="font-size:10px; color:var(--muted); font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
                    </div>
                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
-                      <span style="font-size:10px; color:var(--muted); background:#161616; padding:2px 6px; border-radius:4px;">${rangeLabel}</span>
-                      <span style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</span>
-                      <button onclick="deletePlanHistory(event, ${idx}, '${exerciseName.replace(/'/g, "\\'")}', '${h.date}', '${h.person}', '${h.reps}', '${h.weight}')" style="background:transparent; border:none; color:#444; cursor:pointer; font-size:12px; padding:0 4px;">✕</button>
+                      <div>
+                          <div style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</div>
+                          <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                      </div>
+                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', '${h.range}', ${idx})" 
+                               style="background:none; border:none; color:#ff4444; cursor:pointer; padding:4px; opacity:0.6;" title="Delete Entry">
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                       </button>
                    </div>
                 </div>`;
             });
             content.innerHTML = html;
         }
 
-        async function deletePlanHistory(e, idx, exerciseName, date, person, reps, weight) {
-            e.stopPropagation();
-            if (!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
-
-            const btn = e.target;
-            const originalText = btn.textContent;
-            btn.textContent = '...';
+        async function deletePlanHistory(event, date, person, exercise, reps, weight, range, idx) {
+            event.stopPropagation();
+            if(!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
+            
+            const btn = event.currentTarget;
+            btn.style.opacity = '0.3';
             btn.disabled = true;
-
-            const req = {
+            
+            const payload = {
                 action: "deleteHistory",
-                exercise: exerciseName,
-                date: date,
-                person: person.toLowerCase(),
-                reps: reps,
-                weight: weight
+                exercise: exercise,
+                person: person,
+                reps: reps.toString(),
+                weight: weight.toString(),
+                range: range
             };
-
+            
             try {
-                await sheetsPost(req);
-                // Update local memory
-                if (globalData && globalData.history) {
-                    globalData.history = globalData.history.filter(h => 
-                        !(h.exercise === exerciseName && h.date === date && h.person === person && h.reps === reps && h.weight === weight)
-                    );
+                const res = await sheetsPost(payload);
+                if (res) {
+                    // Update global data and refresh list
+                    if(globalData.history) {
+                        globalData.history = globalData.history.filter(h => 
+                            !(h.exercise === exercise && h.person.toLowerCase() === person.toLowerCase() && 
+                              h.reps.toString() === reps.toString() && h.weight.toString() === weight.toString() &&
+                              h.range === range)
+                        );
+                    }
+                    toggleHistory({ stopPropagation: () => {} }, idx, exercise);
+                    
+                    // Signal Lift tab to refresh if open
+                    if (window.refreshLiftData) window.refreshLiftData();
                 }
-                // Refresh the drawer
-                toggleHistory(new Event('click'), idx, exerciseName); // close
-                toggleHistory(new Event('click'), idx, exerciseName); // reopen to refresh
-                
-                // Notify React side to refresh Lift view
-                if (window.refreshLiftData) window.refreshLiftData();
-                
-            } catch (err) {
-                console.error(err);
-                alert('Failed to delete history entry.');
-                btn.textContent = originalText;
+            } catch(e) {
+                alert("Failed to delete entry.");
+                btn.style.opacity = '0.6';
                 btn.disabled = false;
             }
         }
