@@ -714,6 +714,33 @@
         
         let globalData = null;
 
+        const getBaseName = (name) => {
+            if (!name) return "";
+            return name
+                .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+                .replace(/ \(Single\)$/i, '')
+                .replace(/ \(Alt\)$/i, '')
+                .replace(/ \(Alternating\)$/i, '')
+                .trim();
+        };
+
+        const getMode = (name) => {
+            if (!name) return "std";
+            if (/single|one arm|one leg/i.test(name)) return 'single';
+            if (/alt/i.test(name)) return 'alt';
+            return 'std';
+        };
+
+        const getStandardizedName = (name) => {
+            const base = getBaseName(name);
+            const mode = getMode(name);
+            if (mode === 'single') return `${base} (Single)`;
+            if (mode === 'alt')    return `${base} (Alt)`;
+            return base;
+        };
+
+        let exerciseModes = {}; // tracks selected variation per card index
+
 
 
         function init() {
@@ -983,7 +1010,21 @@
              const pick = (categories) => {
                  const subset = available.filter(e => categories.includes(e.category));
                  if(subset.length === 0) return {name: `No ${categories[0]}`, category: categories[0]};
-                 return subset[Math.floor(Math.random() * subset.length)];
+                 
+                 // Group by base name so variations don't inflate pick chance
+                 const groups = {};
+                 subset.forEach(e => {
+                     const base = getBaseName(e.name);
+                     if (!groups[base]) groups[base] = [];
+                     groups[base].push(e);
+                 });
+                 
+                 const baseNames = Object.keys(groups);
+                 const pickedBase = baseNames[Math.floor(Math.random() * baseNames.length)];
+                 const variations = groups[pickedBase];
+                 
+                 // Default to 'std' if exists, else first available
+                 return variations.find(v => getMode(v.name) === 'std') || variations[0];
              };
              
              const genExercises = type === 'Push' ? [
@@ -1010,16 +1051,20 @@
              
              exerciseStatus = {};
              exerciseSetCounters = {};
+             exerciseModes = {};
+
              genExercises.forEach((e, idx) => { 
                  exerciseStatus[e.name] = 'pending'; 
                  exerciseSetCounters[idx] = 1;
+                 exerciseModes[idx] = getMode(e.name);
              });
              
              currentMaxes = {};
              genExercises.forEach(e => {
-                 currentMaxes[e.name] = {};
+                 const stdName = getStandardizedName(e.name);
+                 currentMaxes[stdName] = {};
                  activePeople.forEach(p => {
-                     currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
+                     currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
                  });
              });
              
@@ -1042,12 +1087,44 @@
             const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
             const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
 
+            const groupedByBase = {};
+            (globalData.exercises || []).forEach(ex => {
+                const base = getBaseName(ex.name);
+                if (!groupedByBase[base]) groupedByBase[base] = { variations: {} };
+                groupedByBase[base].variations[getMode(ex.name)] = ex;
+            });
+
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
                 card.id = `card-${idx}`;
+                
+                const baseName = getBaseName(ex.name);
+                const group = groupedByBase[baseName] || { variations: { [getMode(ex.name)]: ex } };
+                const activeMode = exerciseModes[idx] || getMode(ex.name);
+
                 if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
                 if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
+
+                // SMART HEADER
+                let smartHeader = `
+                <div style="background: #0a0a0a; display: flex; border-bottom: 1px solid #161616; padding: 4px 12px; alignItems: center; justifyContent: space-between">
+                    <div style="display: flex; gap: 4">
+                        ${['std', 'single', 'alt'].map(mode => {
+                            const exists = group.variations[mode];
+                            const isActive = activeMode === mode;
+                            const label = mode.toUpperCase();
+                            if (!exists) {
+                                return `<button onclick="addVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:#444; background:transparent; border:1px dashed #333; border-radius:4px; padding:2px 6px; opacity:0.8; cursor:pointer;">+ ${label}</button>`;
+                            }
+                            const color = isActive ? 'var(--accent)' : 'transparent';
+                            const textColor = isActive ? '#000' : 'var(--accent)';
+                            const bg = isActive ? 'var(--accent)' : 'rgba(249,115,22,0.05)';
+                            return `<button onclick="switchVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:${isActive ? '#000' : 'var(--accent)'}; background:${bg}; border:1px solid ${isActive ? 'transparent' : 'rgba(249,115,22,0.2)'}; border-radius:4px; padding:2px 6px; cursor:pointer;">${label}</button>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size: 8px; color: #333; letter-spacing: 1px; font-family:var(--mono);">SMART CARD</div>
+                </div>`;
 
                 // Filter Swaps by Current Exercise Category
                 const availableSwapProps = (globalData.exercises || []).filter(e => 
@@ -1105,7 +1182,7 @@
                     </div>
                 `).join('');
 
-                card.innerHTML = headerHTML + `
+                card.innerHTML = smartHeader + headerHTML + `
                 <div class="history-drawer" id="history-drawer-${idx}">
                    <div style="font-size:11px; color:var(--muted); margin-bottom:8px; font-family:var(--mono); text-transform:uppercase; letter-spacing:0.5px;">Recent History</div>
                    <div id="history-list-${idx}">Loading...</div>
@@ -1149,6 +1226,68 @@
 
             hideLoading();
             document.getElementById('workoutContent').style.display = 'block';
+        }
+
+        function switchVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            let targetName = base;
+            if (mode === 'single') targetName = `${base} (Single)`;
+            if (mode === 'alt')    targetName = `${base} (Alt)`;
+            
+            const found = globalData.exercises.find(e => e.name === targetName);
+            if (!found) return; // Should not happen with current logic
+
+            // Update state
+            exerciseModes[idx] = mode;
+            const oldName = currentEx.name;
+            currentWorkout.exercises[idx] = found;
+            
+            if (exerciseStatus[oldName]) {
+                exerciseStatus[found.name] = exerciseStatus[oldName];
+                delete exerciseStatus[oldName];
+            }
+            
+            const stdName = getStandardizedName(found.name);
+            if (!currentMaxes[stdName]) {
+                currentMaxes[stdName] = {};
+                activePeople.forEach(p => {
+                    currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                });
+            }
+
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx);
+        }
+
+        async function addVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            const targetName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+            
+            if (!confirm(`Create "${targetName}" variation?`)) return;
+
+            const req = {
+               action: "saveExercise",
+               exercise: targetName,
+               category: currentEx.category,
+               location: currentEx.location || "Anywhere",
+               timed: false
+            };
+            
+            try {
+                await sheetsPost(req);
+                const newEx = {
+                    name: targetName,
+                    category: currentEx.category,
+                    location: currentEx.location || "Anywhere",
+                    timed: false
+                };
+                globalData.exercises.push(newEx);
+                switchVariation(idx, mode);
+            } catch(e) {
+                alert("Failed to create variation.");
+            }
         }
 
         function showSwap(idx) {
@@ -1222,10 +1361,12 @@
             delete exerciseStatus[oldName];
             exerciseStatus[newName] = 'pending';
             exerciseSetCounters[idx] = 1;
+            exerciseModes[idx] = getMode(newName);
 
-            currentMaxes[newName] = {};
+            const stdName = getStandardizedName(newName);
+            currentMaxes[stdName] = {};
             activePeople.forEach(p => {
-                 currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
+                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
             });
             
             renderWorkout(currentWorkout, currentWorkout.exercises);
@@ -1368,6 +1509,8 @@
             
             let bannerMsg = "";
 
+            const stdExName = getStandardizedName(exerciseName);
+
             for (const p of activePeople) {
                 const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
                 const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
@@ -1390,15 +1533,15 @@
                    timed: false
                 });
                 
-                const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
+                const existing = currentMaxes[stdExName]?.[p]?.[rangeKey];
                 let isNew = !existing;
                 if (existing) {
                     if (weight > parseFloat(existing.weight)) isNew = true;
                 }
                 if (isNew) {
-                    if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
-                    if(!currentMaxes[exerciseName][p]) currentMaxes[exerciseName][p] = {};
-                    currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
+                    if(!currentMaxes[stdExName]) currentMaxes[stdExName] = {};
+                    if(!currentMaxes[stdExName][p]) currentMaxes[stdExName][p] = {};
+                    currentMaxes[stdExName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
                     
@@ -1534,8 +1677,9 @@
             document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
 
             let maxInfo = '';
+            const stdAccName = getStandardizedName(currentAccessory);
             activePeople.forEach(p => {
-                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const accMaxObj = globalData.best?.[stdAccName]?.[p.toLowerCase()] || {};
                 const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
                 maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
             });
@@ -1591,7 +1735,8 @@
                    timed: false
                 });
                 
-                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const stdAccName = getStandardizedName(currentAccessory);
+                const accMaxObj = globalData.best?.[stdAccName]?.[p.toLowerCase()] || {};
                 const existing = accMaxObj[rangeKey];
                 let isNew = !existing;
                 if (existing && weight > parseFloat(existing.weight)) isNew = true;

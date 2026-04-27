@@ -17,13 +17,10 @@ This is a quick reference for what's in the folder and what's active vs archived
 
 ---
 
-## Latest Audit & Cleanup (April 2026)
-
-- **Centralized Core**: Migrated all apps to `gym-core.js`. No more duplicated logic.
-- **Tab-Syncing**: Added a broadcast system. Changing settings in one tab updates all open tracker tabs instantly.
-- **Contrast Fixes**: Fixed visibility issues in the Settings modal (explicit color styles for roster labels).
-- **Builder Restoration**: Fixed a rendering regression in the Pro Builder.
-- **File Renames**: Simplified naming (V3 -> Pro) and promoted Ultimate Beta to Live.
+- **Smart Card Variations**: Standardized "(Single)" and "(Alt)" grouping across the entire ecosystem (Ultimate, Pro, and Builder).
+- **Variation Toggling**: Integrated Smart Card headers for on-the-fly mode switching.
+- **Batch Creation**: Added multi-variation creation to the "Add Exercise" flows.
+- **Database Normalization**: Standardized historical data lookups to use base exercise names.
 
 ---
 
