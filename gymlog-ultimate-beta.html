@@ -11,7 +11,99 @@
   <title>LIFT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="gym-core.js"></script>
+  <script>
+    /**
+     * GYM LOG CORE ENGINE (v1.0.0) - INLINED FOR BETA STABILITY
+     */
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+    const STORAGE_KEY       = "gym-tracker-v4";
+    const PEOPLE_KEY        = "gym-tracker-people-v1";
+    const LOCATIONS_KEY     = "gym-tracker-locations-v1";
+    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
+    const ACTIVE_LOCATION_KEY = "gym-active-location-v1";
+    const ACTIVE_TYPE_KEY     = "gym-active-type-v1";
+    const DEFAULT_PEOPLE    = ["Brian", "Dad"];
+    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
+    const EXERCISE_CATEGORIES = ["Explosive", "Knee Dominant", "Hip Dominant", "Horizontal Push", "Horizontal Pull", "Vertical Push", "Vertical Pull", "Rotational Core", "Plank Core", "Accessory"];
+    const REP_RANGES = [
+        { key: "r1_3",     label: "1-3"  },
+        { key: "r4_7",     label: "4-7"  },
+        { key: "r8_12",    label: "8-12" },
+        { key: "r13_plus", label: "13+"  }
+    ];
+
+    function parseTime(val) {
+        const str = String(val || "").trim();
+        if (!str) return 0;
+        if (str.includes(":")) {
+            const [m, s] = str.split(":");
+            return (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+        }
+        return parseInt(str) || 0;
+    }
+    function formatTime(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+    function normalizeTimeInput(val) {
+        const str = String(val || "").trim();
+        if (!str || /^\d+:\d+$/.test(str)) return str;
+        if (/^\d+$/.test(str)) return formatTime(parseInt(str));
+        return str;
+    }
+    function parseWeight(w) { const n = parseFloat(String(w).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; }
+    function todayStr() { return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+    function getRange(reps) {
+        const n = parseInt(reps);
+        if (n >= 1  && n <= 3)  return "r1_3";
+        if (n >= 4  && n <= 7)  return "r4_7";
+        if (n >= 8  && n <= 12) return "r8_12";
+        if (n >= 13)            return "r13_plus";
+        return null;
+    }
+    function migrateRanges(exercises) {
+        return exercises.map(ex => {
+            const newBest = {};
+            for (const person of Object.keys(ex.best || {})) {
+                newBest[person] = {};
+                for (const [key, val] of Object.entries(ex.best[person] || {})) {
+                    const nk = key === "r15_20" ? "r13_plus" : key;
+                    if (!newBest[person][nk] || parseWeight(val?.weight) > parseWeight(newBest[person][nk]?.weight)) {
+                        newBest[person][nk] = val;
+                    }
+                }
+            }
+            const newHistory = (ex.history || []).map(h => h.range === "r15_20" ? { ...h, range: "r13_plus" } : h);
+            return { ...ex, best: newBest, history: newHistory };
+        });
+    }
+    async function sheetsGet() {
+        const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        return json.data;
+    }
+    async function sheetsPost(payload) {
+        const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+        const encoded = encodeURIComponent(JSON.stringify(payload));
+        const res = await fetch(url + "?payload=" + encoded);
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        return json.data;
+    }
+    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
+        const { history, best, people: sPeople, exercises: sEx, locations: sLocs } = sheetsData;
+        const people = (sPeople && sPeople.length > 0) ? sPeople : localPeople;
+        const mergedLocs = [...new Set([...localLocations, ...(sLocs || [])])];
+        const merged = localExercises.map(ex => {
+            const sHist = history.filter(h => h.exercise === ex.name);
+            const sB = best[ex.name];
+            const sInfo = (sEx || []).find(e => e.name === ex.name);
+            const b = {}; people.forEach(p => { b[p.toLowerCase()] = {}; });
+            return { ...ex, timed: sInfo?.timed ?? ex.timed ?? false, category: sInfo?.category ?? ex.category ?? "", location: sInfo?.location ?? ex.location ?? "Anywhere", history: sHist, best: sB || b };
+        });
+        return { exercises: merged, people, locations: mergedLocs };
+    }
+    function notifySettingsUpdated() { window.dispatchEvent(new Event('gym-settings-updated')); }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
@@ -715,19 +807,7 @@
   
   <div id="builder-root">
     
-    <div id="configScreen" style="display:none;">
-        <div class="config-screen">
-            <h2>Setup</h2>
-            <p>Paste your Google Apps Script deployment URL to connect your workout sheet.</p>
-            <div class="config-label">Deployment URL</div>
-            <input type="text" class="config-input" id="apiUrlInput"
-                placeholder="https://script.google.com/macros/s/..." />
-            <button class="config-btn" onclick="saveConfig()">Connect Sheet</button>
-            <p class="config-note">Saved locally on your device only.</p>
-        </div>
-    </div>
-
-        <!-- SETTINGS MODAL -->
+    <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
         <div class="modal">
             <h3>Settings</h3>
@@ -743,96 +823,90 @@
         </div>
     </div>
 
-    
-        <div class="header">
-            <div class="header-left">
-                <h1>PLAN</h1>
-                <p id="headerSub">Loading...</p>
-            </div>
-            <div class="header-right">
-                
-                <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
-                <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
-                <button class="settings-btn" onclick="openSettings()">⚙️</button>
-            </div>
+    <div class="header">
+        <div class="header-left">
+            <h1>PLAN</h1>
+            <p id="headerSub">Loading...</p>
+        </div>
+        <div class="header-right">
+            <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
+            <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
+            <button class="settings-btn" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="loadingState" class="loading">
+            <span class="loading-dot">●</span>
+            <span class="loading-dot">●</span>
+            <span class="loading-dot">●</span>
         </div>
 
-        <div class="main">
-            <div id="loadingState" class="loading">
-                <span class="loading-dot">●</span>
-                <span class="loading-dot">●</span>
-                <span class="loading-dot">●</span>
+        <div id="errorState" class="error-state" style="display:none;"></div>
+
+        <div id="successState" class="success-state" style="display:none;">
+            <div class="check">✓</div>
+            <h2>Workout Complete!</h2>
+            <p>Great work. Come back for your next session.</p>
+        </div>
+
+        <div id="workoutContent" style="display:none;">
+            <div class="info-bar">
+                <div class="info-item">
+                    <div class="label">Workout</div>
+                    <div class="value" id="infoWorkoutNum">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Reps</div>
+                    <div class="value" id="infoRepRange">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Sets</div>
+                    <div class="value">3</div>
+                </div>
             </div>
 
-            <div id="errorState" class="error-state" style="display:none;"></div>
+            <div class="section-label">Exercises</div>
+            <div id="exerciseList"></div>
 
-            <div id="successState" class="success-state" style="display:none;">
-                <div class="check">✓</div>
-                <h2>Workout Complete!</h2>
-                <p>Great work. Come back for your next session.</p>
-            </div>
+            <button class="complete-btn" id="completeBtn" onclick="completeWorkout()">
+                Complete Workout
+            </button>
 
-            <div id="workoutContent" style="display:none;">
-                <div class="info-bar">
-                    <div class="info-item">
-                        <div class="label">Workout</div>
-                        <div class="value" id="infoWorkoutNum">—</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="label">Reps</div>
-                        <div class="value" id="infoRepRange">—</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="label">Sets</div>
-                        <div class="value">3</div>
-                    </div>
-                </div>
+            <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
+                + Got more time? Suggest an accessory
+            </button>
 
-                <div class="section-label">Exercises</div>
-                <div id="exerciseList"></div>
-
-                <button class="complete-btn" id="completeBtn" onclick="completeWorkout()" disabled>
-                    Complete Workout
-                </button>
-
-                <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
-                    + Got more time? Suggest an accessory
-                </button>
-
-                <div id="accessorySection" style="display:none; margin-top: 16px;">
-                    <div class="section-label">Accessory — Optional</div>
-                    <div class="exercise-card" id="accessoryCard">
-                        <div class="exercise-header" onclick="toggleAccessory()">
-                            <div class="exercise-info">
-                                <div class="exercise-category">Accessory</div>
-                                <div class="exercise-name" id="accessoryName">—</div>
-                                <div class="exercise-max" id="accessoryMax"></div>
-                            </div>
-                            <div class="expand-icon">
-                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                    <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5"
-                                        stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </div>
+            <div id="accessorySection" style="display:none; margin-top: 16px;">
+                <div class="section-label">Accessory — Optional</div>
+                <div class="exercise-card" id="accessoryCard">
+                    <div class="exercise-header" onclick="toggleAccessory()">
+                        <div class="exercise-info">
+                            <div class="exercise-category">Accessory</div>
+                            <div class="exercise-name" id="accessoryName">—</div>
+                            <div class="exercise-max" id="accessoryMax"></div>
                         </div>
-                        <div class="set-logger" id="accessoryLogger" style="display:none;">
-                            <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
-                                                        <div class="sets-list" id="accSetsList">
-                            </div>
-                            <button class="complete-btn" style="padding:12px; margin-top:8px; margin-bottom:12px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
-                            <div class="new-max-banner" id="acc-maxbanner"></div>
-                            <div class="exercise-actions">
-                                <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
-                            </div>
+                        <div class="expand-icon">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
                         </div>
                     </div>
-                    <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different
-                        Exercise</button>
+                    <div class="set-logger" id="accessoryLogger" style="display:none;">
+                        <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
+                        <div class="sets-list" id="accSetsList"></div>
+                        <button class="complete-btn" style="padding:12px; margin-top:8px; margin-bottom:12px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
+                        <div class="new-max-banner" id="acc-maxbanner"></div>
+                        <div class="exercise-actions">
+                            <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
+                        </div>
+                    </div>
                 </div>
-
+                <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
             </div>
         </div>
-    
+    </div>
   </div>
 
   <div class="bottom-nav">
@@ -872,31 +946,32 @@
         } catch(e) {}
     }
     
-        const TYPE_KEY = 'builder_last_workout_type';
-        const NUM_KEY = 'builder_workout_num';
-        const LOC_KEY = 'builder_location';
-        const ACTIVE_PEOPLE_KEY = 'builder_active_people';
-        
-        let API_URL = '';
-        let currentWorkout = null;
-        let exerciseStatus = {};
-        let currentMaxes = {};
-        let currentAccessory = null;
-        let activePeople = [];
-        let exerciseSetCounters = {}; // tracks setNum per exercise idx
-        let accessorySetCounter = 1;
-        
-        let globalData = null;
+    const TYPE_KEY = 'builder_last_workout_type';
+    const NUM_KEY = 'builder_workout_num';
+    const LOC_KEY = 'builder_location';
+    
+    let currentWorkout = null;
+    let exerciseStatus = {};
+    let currentMaxes = {};
+    let currentAccessory = null;
+    let activePeople = [];
+    let exerciseSetCounters = {}; 
+    let accessorySetCounter = 1;
+    let globalData = null;
 
-
-
-        function initBuilder() {
-            document.getElementById('configScreen').style.display = 'none';
-            loadDataAndWorkout();
+    function initBuilder() {
+        if (!window.builderInitialized) {
+            window.addEventListener('gym-settings-updated', () => {
+                setupSelectors(); 
+                generateWorkout();
+            });
+            window.builderInitialized = true;
         }
+        loadDataAndWorkout();
+    }
 
         function openSettings() {
-            document.getElementById('settingsUrlInput').value = SCRIPT_URL;
+            document.getElementById('settingsUrlInput').value = localStorage.getItem('gym_api_url') || SCRIPT_URL;
             
             const container = document.getElementById('activePeopleCheckboxes');
             const allPeople = globalData.people || ['Brian'];
@@ -919,7 +994,7 @@
 
         function saveSettings() {
             const url = document.getElementById('settingsUrlInput').value.trim();
-            if (url) API_URL = url;
+            if (url) localStorage.setItem('gym_api_url', url);
             
             const cbs = document.querySelectorAll('.person-cb');
             let selected = [];
@@ -936,7 +1011,9 @@
             
             activePeople = selected;
             localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
-            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected)); // Keep for legacy compatibility if needed
+            
+            // Sync Location if changed (Plan side uses a simple select)
+            localStorage.setItem(ACTIVE_LOCATION_KEY, document.getElementById('locationSelect').value);
             
             // Notify other components (like React) that settings changed
             notifySettingsUpdated();
@@ -954,10 +1031,12 @@
             }
         }
 
-        async function loadDataAndWorkout() {
+        async function loadDataAndWorkout(preFetchedData = null) {
             showLoading();
             try {
-                const json = await sheetsGet();
+                // If we have pre-fetched data (from the React Master Sync), use it.
+                // Otherwise, fetch it ourselves (fallback).
+                const json = preFetchedData || await sheetsGet();
                 globalData = json;
                 
                 try {
@@ -978,32 +1057,75 @@
             }
         }
 
+        // Global hook for the React "Master Sync" to push data into the Plan side
+        window.updatePlanData = (data) => {
+            if (typeof loadDataAndWorkout === 'function') {
+                loadDataAndWorkout(data);
+            }
+        };
+
         function setupSelectors() {
             const locSelect = document.getElementById('locationSelect');
             const locOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
             locSelect.innerHTML = locOptions.map(l => `<option value="${l}">${l}</option>`).join('');
-            const savedLoc = localStorage.getItem(LOC_KEY) || 'Anywhere';
+            
+            // Check global active location first
+            const savedLoc = localStorage.getItem(ACTIVE_LOCATION_KEY) || localStorage.getItem(LOC_KEY) || 'Anywhere';
             if(locOptions.includes(savedLoc)) locSelect.value = savedLoc;
             locSelect.style.display = 'inline-block';
         }
 
         function changeLocation() {
-            localStorage.setItem(LOC_KEY, document.getElementById('locationSelect').value);
+            const val = document.getElementById('locationSelect').value;
+            localStorage.setItem(LOC_KEY, val);
+            localStorage.setItem(ACTIVE_LOCATION_KEY, val);
+            notifySettingsUpdated();
             generateWorkout();
         }
 
-                function togglePushPull() {
+        function togglePushPull() {
             if(!currentWorkout || !currentWorkout.type) return;
-            const newType = currentWorkout.type === 'push' ? 'pull' : 'push';
-            localStorage.setItem(TYPE_KEY, currentWorkout.type);
-            generateWorkout(globalData.exercises, globalData.best);
+            const newType = currentWorkout.type.toLowerCase() === 'push' ? 'Pull' : 'Push';
+            
+            // Save to both legacy and global keys
+            localStorage.setItem(TYPE_KEY, currentWorkout.type.toLowerCase() === 'push' ? 'Push' : 'Pull');
+            localStorage.setItem(ACTIVE_TYPE_KEY, newType);
+            
+            notifySettingsUpdated();
+            generateWorkout();
+        }
+
+        function getRepRange(workoutNum) {
+             const position = ((workoutNum - 1) % 16);
+             if (position < 4)  return "8-12";
+             if (position < 8)  return "1-3";
+             if (position < 12) return "13+"; // Normalized from 15-20
+             return "4-7";
+        }
+
+        function getRangeKeyFromLabel(label) {
+             if (label === "1-3") return "r1_3";
+             if (label === "4-7") return "r4_7";
+             if (label === "8-12") return "r8_12";
+             return "r13_plus";
         }
 
         function generateWorkout() {
              const loc = document.getElementById('locationSelect').value;
-             let lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
-             let type = lastType === 'Push' ? 'Pull' : 'Push';
+             
+             // Check global type first
+             let lastTypeGlobal = localStorage.getItem(ACTIVE_TYPE_KEY);
+             let type;
+             if (lastTypeGlobal) {
+                 type = lastTypeGlobal;
+             } else {
+                 let lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
+                 type = lastType.toLowerCase() === 'push' ? 'Pull' : 'Push';
+             }
+             
              let num = parseInt(localStorage.getItem(NUM_KEY) || '0') + 1;
+             const activeRange = getRepRange(num);
+             const rangeKey = getRangeKeyFromLabel(activeRange);
              
              const available = (globalData.exercises || []).filter(e => !e.timed && (e.location === 'Anywhere' || e.location === loc || !e.location));
              
@@ -1030,7 +1152,7 @@
              currentWorkout = {
                  type: type,
                  workoutNum: num,
-                 repRange: '8-12', 
+                 repRange: activeRange, 
                  exercises: genExercises
              };
              
@@ -1097,8 +1219,9 @@
                 
                 activePeople.forEach(p => {
                     const maxData = currentMaxes[ex.name]?.[p] || {};
-                    const currentMax = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
-                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
+                    const rangeKey = getRangeKeyFromLabel(workout.repRange);
+                    const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
+                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${workout.repRange} Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
                 });
                 
                 headerHTML += `
@@ -1312,13 +1435,55 @@
                       <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person.toUpperCase()}</div>
                       ${h.note ? `<div style="font-size:10px; color:var(--muted); font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
                    </div>
-                   <div style="text-align:right;">
-                      <span style="font-size:10px; color:var(--muted); background:#161616; padding:2px 6px; border-radius:4px; margin-right:6px;">${rangeLabel}</span>
+                   <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                      <span style="font-size:10px; color:var(--muted); background:#161616; padding:2px 6px; border-radius:4px;">${rangeLabel}</span>
                       <span style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</span>
+                      <button onclick="deletePlanHistory(event, ${idx}, '${exerciseName.replace(/'/g, "\\'")}', '${h.date}', '${h.person}', '${h.reps}', '${h.weight}')" style="background:transparent; border:none; color:#444; cursor:pointer; font-size:12px; padding:0 4px;">✕</button>
                    </div>
                 </div>`;
             });
             content.innerHTML = html;
+        }
+
+        async function deletePlanHistory(e, idx, exerciseName, date, person, reps, weight) {
+            e.stopPropagation();
+            if (!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
+
+            const btn = e.target;
+            const originalText = btn.textContent;
+            btn.textContent = '...';
+            btn.disabled = true;
+
+            const req = {
+                action: "deleteHistory",
+                exercise: exerciseName,
+                date: date,
+                person: person.toLowerCase(),
+                reps: reps,
+                weight: weight
+            };
+
+            try {
+                await sheetsPost(req);
+                // Update local memory
+                if (globalData && globalData.history) {
+                    globalData.history = globalData.history.filter(h => 
+                        !(h.exercise === exerciseName && h.date === date && h.person === person && h.reps === reps && h.weight === weight)
+                    );
+                }
+                // Refresh the drawer
+                toggleHistory(new Event('click'), idx, exerciseName); // close
+                toggleHistory(new Event('click'), idx, exerciseName); // reopen to refresh
+                
+                // Notify React side to refresh Lift view
+                if (window.refreshLiftData) window.refreshLiftData();
+                
+            } catch (err) {
+                console.error(err);
+                alert('Failed to delete history entry.');
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
         }
 
         function toggleAccessory() {
@@ -1326,20 +1491,6 @@
             const card = document.getElementById('accessoryCard');
             card.classList.toggle('open');
             logger.style.display = card.classList.contains('open') ? 'block' : 'none';
-        }
-
-        function getRangeForReps(reps) {
-            if (reps <= 3) return '1-3';
-            if (reps <= 7) return '4-7';
-            if (reps <= 12) return '8-12';
-            return '13+';
-        }
-        
-        function getRangeKey(rangeLabel) {
-            if (rangeLabel === '1-3') return 'r1_3';
-            if (rangeLabel === '4-7') return 'r4_7';
-            if (rangeLabel === '8-12') return 'r8_12';
-            return 'r13_plus';
         }
 
         async function logSet(cardIdx, exerciseName) {
@@ -1361,8 +1512,8 @@
                 const reps = parseInt(repsVal);
                 const weight = parseFloat(weightVal) || 0;
                 
-                const repRange = getRangeForReps(reps);
-                const rangeKey = getRangeKey(repRange);
+                const rangeKey = getRange(reps);
+                const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
                 entries.push({
                    date: dateStr,
@@ -1386,7 +1537,7 @@
                     currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
-                    if (rangeKey === 'r8_12') {
+                    if (rangeKey === getRangeKeyFromLabel(currentWorkout.repRange)) {
                         const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
                         if(valId) valId.textContent = newMaxStr;
                     }
@@ -1453,7 +1604,6 @@
 
         function checkAllComplete() {
             const allResolved = Object.values(exerciseStatus).every(s => s === 'done' || s === 'skipped');
-            document.getElementById('completeBtn').disabled = !allResolved;
             if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
         }
 
@@ -1478,14 +1628,25 @@
             document.getElementById('accessorySection').style.display = 'block';
             
             const loc = document.getElementById('locationSelect').value;
-            const availableAcc = (globalData.exercises || []).filter(e => e.category === 'Accessory' && (e.location === 'Anywhere' || e.location === loc || !e.location));
+            const availableAcc = (globalData.exercises || []).filter(e => 
+                e.category === 'Accessory' && 
+                (e.location === 'Anywhere' || e.location === loc || !e.location) &&
+                e.name !== currentAccessory
+            );
             
             if(availableAcc.length === 0) {
-                document.getElementById('accessoryName').textContent = 'No accessories available';
-                return;
+                // If only 1 accessory exists total, we have to show it
+                const onlyAcc = (globalData.exercises || []).filter(e => e.category === 'Accessory');
+                if (onlyAcc.length > 0) {
+                    currentAccessory = onlyAcc[0].name;
+                } else {
+                    document.getElementById('accessoryName').textContent = 'No accessories available';
+                    return;
+                }
+            } else {
+                const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
+                currentAccessory = picked.name;
             }
-            const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
-            currentAccessory = picked.name;
             
             accessorySetCounter = 1;
             
@@ -1494,9 +1655,10 @@
 
             let maxInfo = '';
             activePeople.forEach(p => {
+                const accRangeKey = getRangeKeyFromLabel(currentWorkout.repRange);
                 const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
-                const accMax = accMaxObj['r8_12'] ? `${accMaxObj['r8_12'].reps}x${accMaxObj['r8_12'].weight}` : '—';
-                maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} 8-12 Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
+                const accMax = accMaxObj[accRangeKey] ? `${accMaxObj[accRangeKey].reps}x${accMaxObj[accRangeKey].weight}` : '—';
+                maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${currentWorkout.repRange} Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
             });
             document.getElementById('accessoryMax').innerHTML = maxInfo;
             
@@ -1536,8 +1698,8 @@
                 
                 const reps = parseInt(repsVal);
                 const weight = parseFloat(weightVal) || 0;
-                const repRange = getRangeForReps(reps);
-                const rangeKey = getRangeKey(repRange);
+                const rangeKey = getRange(reps);
+                const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
                 entries.push({
                    date: dateStr,
@@ -1602,6 +1764,16 @@
         function showLoading() { document.getElementById('loadingState').style.display = 'block'; document.getElementById('errorState').style.display = 'none'; document.getElementById('workoutContent').style.display = 'none'; document.getElementById('successState').style.display = 'none'; }
         function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
         function showError(msg) { hideLoading(); document.getElementById('errorState').style.display = 'block'; document.getElementById('errorState').textContent = msg; }
+        
+        async function initBuilder() {
+            // Check if we have data from the Master Sync (React side)
+            if (window.ultimateSyncData) {
+                loadDataAndWorkout(window.ultimateSyncData);
+            } else {
+                // Fallback if Plan is somehow accessed before Master Sync
+                loadDataAndWorkout();
+            }
+        }
 
     
   </script>
@@ -1649,13 +1821,21 @@
         loadData(); 
         
         const handleSync = () => {
-          // Re-load only local settings to avoid unnecessary network fetch
+          // Re-load hidden people
           const localHidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
           setHiddenPeople(localHidden);
+          
+          // Sync Location Filter
+          const activeLoc = localStorage.getItem(ACTIVE_LOCATION_KEY);
+          if (activeLoc) setLocationFilter(activeLoc === 'Anywhere' ? 'all' : activeLoc);
         };
         
         window.addEventListener('gym-settings-updated', handleSync);
-        return () => window.removeEventListener('gym-settings-updated', handleSync);
+        window.refreshLiftData = () => loadData();
+        return () => {
+          window.removeEventListener('gym-settings-updated', handleSync);
+          delete window.refreshLiftData;
+        };
       }, []);
 
       const showToast = (msg, type = "success") => {
@@ -1664,7 +1844,7 @@
       };
 
       // ── LOAD ───────────────────────────────────────────────────────────────
-      const loadData = async () => {
+      const loadData = async (isRetry = false) => {
         // Step 1: read people + locations from localStorage
         let localPeople = DEFAULT_PEOPLE;
         try {
@@ -1707,18 +1887,21 @@
         setExercises(base);
         setLoading(false);
 
-        // Step 3: sync from Sheets
+        // Step 3: sync from Sheets (with retry logic)
         if (scriptConfigured) {
           setSyncStatus("syncing");
           try {
+            // Give the browser 1s to settle on first load
+            if (!isRetry) await new Promise(r => setTimeout(r, 1000));
+            
             const sheetsData = await sheetsGet();
-            const hasData = sheetsData.history.length > 0 || Object.keys(sheetsData.best).length > 0;
+            const hasData = (sheetsData.history || []).length > 0 || Object.keys(sheetsData.best || {}).length > 0 || (sheetsData.exercises || []).length > 0;
             if (hasData) {
-              // Add exercises in Sheets that aren't local
               const existingNames = new Set(base.map(e => e.name.toLowerCase()));
               const sheetNames = new Set([
                 ...Object.keys(sheetsData.best || {}),
                 ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean),
+                ...(sheetsData.exercises || []).map(e => e.name).filter(Boolean),
               ]);
               let nextId = Math.max(0, ...base.map(e => e.id), 0) + 1;
               for (const name of sheetNames) {
@@ -1734,7 +1917,6 @@
               const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
               const migrated = migrateRanges(merged);
 
-              // Auto-hide any new people that arrived from Sheets (meaning they were added on another device)
               const incomingPeople = mergedPeople.filter(p => !localPeople.map(x => x.toLowerCase()).includes(p.toLowerCase()));
               let nextHidden = localHidden;
               if (incomingPeople.length > 0) {
@@ -1754,7 +1936,19 @@
             }
             setSyncStatus("ok");
             setLastSyncTime(new Date());
-          } catch {
+            
+            // MASTER SYNC PUSH
+            window.ultimateSyncData = sheetsData;
+            if (window.updatePlanData) {
+                window.updatePlanData(sheetsData);
+            }
+          } catch (err) {
+            console.warn("Sync attempt failed:", err);
+            if (!isRetry) {
+                console.log("Retrying sync in 2 seconds...");
+                setTimeout(() => loadData(true), 2000);
+                return;
+            }
             setSyncStatus("error");
             showToast("Sheets sync failed — working offline", "error");
           }
