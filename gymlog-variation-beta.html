@@ -1900,6 +1900,59 @@
           return 'std';
       };
 
+      const getStandardizedName = (name) => {
+          let n = name
+              .replace(/\bdumbell\b/gi, 'Dumbbell')
+              .replace(/\b(one arm|one-arm|single arm|single-arm|one armed|one leg|one-leg|single leg|single-leg|single)\b/gi, 'TEMP_SINGLE')
+              .replace(/\b(alternating|alt)\b/gi, 'TEMP_ALT')
+              .replace(/\s+/g, ' ')
+              .trim();
+          
+          const isSingle = /TEMP_SINGLE/i.test(n);
+          const isAlt = /TEMP_ALT/i.test(n);
+          
+          let base = n
+              .replace(/TEMP_SINGLE/g, '')
+              .replace(/TEMP_ALT/g, '')
+              .replace(/[\(\)]/g, '') // strip old parens
+              .replace(/\s+/g, ' ')
+              .trim();
+          
+          if (isSingle) return `${base} (Single)`;
+          if (isAlt) return `${base} (Alt)`;
+          return base;
+      };
+
+
+      const addVariation = async (group, mode) => {
+          const parent = group.variations['std'] || Object.values(group.variations)[0];
+          const suffix = mode === 'single' ? '(Single)' : '(Alt)';
+          const newName = `${group.baseName} ${suffix}`;
+          
+          if (exercises.some(e => e.name === newName)) return;
+
+          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+          const defBest = {};
+          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+          
+          const newEx = {
+            id: maxId + 1, name: newName, timed: parent.timed,
+            category: parent.category, location: parent.location, best: defBest, history: [],
+          };
+          
+          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+          await persist(updated);
+          
+          if (scriptConfigured) {
+            try {
+              await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+            } catch {}
+          }
+          
+          setExerciseModes(prev => ({ ...prev, [group.baseName]: mode }));
+          showToast(`${mode.toUpperCase()} variation added!`);
+      };
+
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
       useEffect(() => { 
@@ -2545,6 +2598,7 @@
         );
       }
 
+
       // ════════════════════════════════════════════════════════════════════════
       // MAIN LIST VIEW
       // ════════════════════════════════════════════════════════════════════════
@@ -2657,32 +2711,54 @@
                           </div>
 
                           {/* Variation Selector Chips */}
-                          {modesAvailable.length > 1 && (
-                            <div style={{ display: "flex", gap: 6, padding: "0 12px 10px", marginTop: -4 }}>
+                          <div style={{ display: "flex", gap: 6, padding: "0 12px 10px", marginTop: -4 }}>
                                 {['std', 'single', 'alt'].map(m => {
-                                    if (!group.variations[m]) return null;
+                                    const ex = group.variations[m];
                                     const active = mode === m;
-                                    return (
-                                        <button 
-                                            key={m}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setExerciseModes(prev => ({ ...prev, [group.baseName]: m }));
-                                            }}
-                                            style={{
-                                                fontSize: 8, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                                                fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700,
-                                                background: active ? "#1a1100" : "#0e0e0e",
-                                                color: active ? "#f97316" : "#444",
-                                                border: active ? "1px solid #f97316" : "1px solid #1a1a1a"
-                                            }}
-                                        >
-                                            {m === 'std' ? 'STD' : m === 'single' ? 'SINGLE' : 'ALT'}
-                                        </button>
-                                    );
+                                    
+                                    if (ex) {
+                                        return (
+                                            <button 
+                                                key={m}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setExerciseModes(prev => ({ ...prev, [group.baseName]: m }));
+                                                }}
+                                                style={{
+                                                    fontSize: 8, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+                                                    fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700,
+                                                    background: active ? "#1a1100" : "#0e0e0e",
+                                                    color: active ? "#f97316" : "#444",
+                                                    border: active ? "1px solid #f97316" : "1px solid #1a1a1a"
+                                                }}
+                                            >
+                                                {m === 'std' ? 'STD' : m === 'single' ? 'SINGLE' : 'ALT'}
+                                            </button>
+                                        );
+                                    } else {
+                                        // Missing variation: Show "+" button
+                                        if (m === 'std') return null; // Should always have std or something else
+                                        return (
+                                            <button 
+                                                key={m}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    addVariation(group, m);
+                                                }}
+                                                style={{
+                                                    fontSize: 8, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+                                                    fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700,
+                                                    background: "transparent",
+                                                    color: "rgba(249, 115, 22, 0.3)",
+                                                    border: "1px dashed rgba(249, 115, 22, 0.2)"
+                                                }}
+                                            >
+                                                + {m.toUpperCase()}
+                                            </button>
+                                        );
+                                    }
                                 })}
-                            </div>
-                          )}
+                          </div>
 
                           {/* Best results grid */}
                           {hasData && (

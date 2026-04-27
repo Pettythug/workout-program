@@ -141,7 +141,7 @@ function err(msg) {
 
 function clearDataRows(sheet) {
   if (sheet.getLastRow() > 1) {
-    sheet.deleteRows(2, sheet.getLastRow() - 1);
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
   }
 }
 

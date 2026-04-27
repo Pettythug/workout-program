@@ -1879,6 +1879,11 @@
       const [categoryFilter,setCategoryFilter]= useState("");
       const [newLocName,    setNewLocName]    = useState("");
       const [hiddenPeople,  setHiddenPeople]  = useState([]);
+      
+      // Variation Tracking
+      const [exerciseModes, setExerciseModes] = useState({}); // { baseName: 'std'|'single'|'alt' }
+      const [createSingle,  setCreateSingle]  = useState(false);
+      const [createAlt,     setCreateAlt]     = useState(false);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -1902,6 +1907,77 @@
           delete window.refreshLiftData;
         };
       }, []);
+
+      const getBaseName = (name) => {
+          return name
+              .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+              .replace(/ \(Single\)$/i, '')
+              .replace(/ \(Alt\)$/i, '')
+              .replace(/ \(Alternating\)$/i, '')
+              .trim();
+      };
+
+      const getMode = (name) => {
+          if (/single|one arm|one leg/i.test(name)) return 'single';
+          if (/alt/i.test(name)) return 'alt';
+          return 'std';
+      };
+
+      const getStandardizedName = (name) => {
+          const base = getBaseName(name);
+          const mode = getMode(name);
+          if (mode === 'single') return `${base} (Single)`;
+          if (mode === 'alt')    return `${base} (Alt)`;
+          return base;
+      };
+
+      const addVariation = async (group, mode) => {
+          const parent = group.variations['std'] || Object.values(group.variations)[0];
+          const base = group.baseName;
+          const newName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+          
+          if (exercises.some(e => e.name.toLowerCase() === newName.toLowerCase())) {
+              setExerciseModes(prev => ({ ...prev, [base]: mode }));
+              return;
+          }
+
+          setSyncStatus("syncing");
+          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+          const defBest = {};
+          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+          
+          const newEx = {
+            id: maxId + 1,
+            name: newName,
+            timed: parent.timed,
+            category: parent.category,
+            location: parent.location,
+            best: defBest,
+            history: [],
+          };
+
+          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+          setExercises(updated);
+          setExerciseModes(prev => ({ ...prev, [base]: mode }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+          if (scriptConfigured) {
+            try {
+              await sheetsPost({ 
+                  action: "saveExercise", 
+                  exercise: newEx.name, 
+                  timed: newEx.timed, 
+                  category: newEx.category, 
+                  location: newEx.location 
+              });
+              setSyncStatus("ok");
+            } catch (e) {
+              setSyncStatus("error");
+            }
+          } else {
+              setSyncStatus("ok");
+          }
+      };
 
       const showToast = (msg, type = "success") => {
         setToast({ msg, type });
@@ -2169,22 +2245,39 @@
       // ── ADD EXERCISE ───────────────────────────────────────────────────────
       const addExercise = async () => {
         if (!newName.trim()) return showToast("Name required", "error");
-        const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
-        const defBest = {};
-        people.forEach(p => { defBest[p.toLowerCase()] = {}; });
-        const newEx = {
-          id: maxId + 1, name: newName.trim(), timed: newExTimed,
-          category: newExCategory, location: newExLocation, best: defBest, history: [],
-        };
-        const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
-        await persist(updated);
-        if (scriptConfigured) {
-          try {
-            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
-          } catch {}
+        if (exercises.some(e => e.name.toLowerCase() === newName.trim().toLowerCase()))
+          return showToast("Already exists", "error");
+
+        const baseName = newName.trim();
+        const namesToCreate = [baseName];
+        if (createSingle) namesToCreate.push(`${baseName} (Single)`);
+        if (createAlt)    namesToCreate.push(`${baseName} (Alt)`);
+
+        let currentExercises = [...exercises];
+        
+        for (const name of namesToCreate) {
+            const maxId = currentExercises.reduce((m, e) => Math.max(m, e.id), 0);
+            const defBest = {};
+            people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+            const newEx = {
+              id: maxId + 1, name: name, timed: newExTimed,
+              category: newExCategory, location: newExLocation, best: defBest, history: [],
+            };
+            currentExercises = [...currentExercises, newEx];
+            
+            if (scriptConfigured) {
+              try {
+                await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+              } catch {}
+            }
         }
+
+        const sorted = currentExercises.sort((a, b) => a.name.localeCompare(b.name));
+        await persist(sorted);
+
         setNewName(""); setNewExTimed(false); setNewExCategory(""); setNewExLocation("Anywhere");
-        showToast("Exercise added!");
+        setCreateSingle(false); setCreateAlt(false);
+        showToast(namesToCreate.length > 1 ? "Exercises added!" : "Exercise added!");
         setView("list");
       };
 
@@ -2491,6 +2584,19 @@
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
+              
+              <div style={whoLabel}>VARIATIONS</div>
+              <div style={{ display: "flex", gap: 15, padding: "5px 0" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                      <input type="checkbox" checked={createSingle} onChange={e => setCreateSingle(e.target.checked)} />
+                      Single Arm/Leg
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                      <input type="checkbox" checked={createAlt} onChange={e => setCreateAlt(e.target.checked)} />
+                      Alternating
+                  </label>
+              </div>
+
               <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
             </div>
             {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
@@ -2575,119 +2681,168 @@
           )}
 
           <div style={s.listWrap}>
-            {filtered.map(ex => {
-              const isExpanded = expanded === ex.id;
-              const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
-              return (
-                <div key={ex.id} style={s.card}>
-                  <div style={s.cardHeader}>
-                    <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
-                        {ex.name}
-                        {ex.timed && <span style={s.timedPill}>⏱</span>}
-                      </div>
-                      {ex.category && <div style={s.categoryLabel}>{ex.category.toUpperCase()}</div>}
-                    </div>
-                    <div style={s.cardActions}>
-                      <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
-                      <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
-                    </div>
-                  </div>
+            {(() => {
+                const grouped = {};
+                filtered.forEach(ex => {
+                    const base = getBaseName(ex.name);
+                    if (!grouped[base]) grouped[base] = { baseName: base, variations: {} };
+                    const mode = getMode(ex.name);
+                    grouped[base].variations[mode] = ex;
+                });
 
-                  {/* Best results grid */}
-                  {hasData && (
-                    <div style={s.rangeGrid}>
-                      {ex.timed ? (
-                        /* Timed: single "Best Duration" column */
-                        <div>
-                          <div style={s.rangeHeaderRow}>
-                            <div style={s.personCol} />
-                            <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
-                            <div style={s.rangeColHeader}>WEIGHT</div>
-                          </div>
-                          {visiblePeople.map(person => {
-                            const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
-                            return (
-                              <div key={person} style={s.rangeRow}>
-                                <div style={s.personCol}>{person}</div>
-                                <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
-                                  {b ? b.reps : <span style={s.dash}>—</span>}
+                return Object.values(grouped).map(group => {
+                    const activeMode = exerciseModes[group.baseName] || 'std';
+                    const ex = group.variations[activeMode] || Object.values(group.variations)[0];
+                    const isExpanded = expanded === ex.id;
+                    const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
+
+                    return (
+                        <div key={group.baseName} style={s.card}>
+                            {/* SMART CARD HEADER: Variation Toggles */}
+                            <div style={{ background: "#0a0a0a", display: "flex", borderBottom: "1px solid #161616", padding: "4px 12px", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                    {['std', 'single', 'alt'].map(mode => {
+                                        const exists = group.variations[mode];
+                                        const isActive = activeMode === mode;
+                                        if (!exists) {
+                                            return (
+                                                <button 
+                                                    key={mode}
+                                                    onClick={() => addVariation(group, mode)}
+                                                    style={{ ...s.timedPill, border: "1px dashed #333", background: "transparent", color: "#444", opacity: 0.8 }}
+                                                >
+                                                    + {mode.toUpperCase()}
+                                                </button>
+                                            );
+                                        }
+                                        return (
+                                            <button 
+                                                key={mode}
+                                                onClick={() => setExerciseModes(prev => ({ ...prev, [group.baseName]: mode }))}
+                                                style={{ 
+                                                    ...s.timedPill, 
+                                                    background: isActive ? "#f97316" : "#1a1100", 
+                                                    color: isActive ? "#000" : "#f97316",
+                                                    borderColor: isActive ? "transparent" : "#f9731630"
+                                                }}
+                                            >
+                                                {mode.toUpperCase()}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
-                                  {b?.weight || <span style={s.dash}>—</span>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        /* Reps: full 4-column range grid */
-                        <div>
-                          <div style={s.rangeHeaderRow}>
-                            <div style={s.personCol} />
-                            {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
-                          </div>
-                          {visiblePeople.map(person => (
-                            <div key={person} style={s.rangeRow}>
-                              <div style={s.personCol}>{person}</div>
-                              {REP_RANGES.map(r => {
-                                const b   = ex.best?.[person.toLowerCase()]?.[r.key];
-                                const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
-                                return (
-                                  <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
-                                    {val || <span style={s.dash}>—</span>}
-                                  </div>
-                                );
-                              })}
+                                <div style={{ fontSize: 8, color: "#333", letterSpacing: 1 }}>SMART CARD</div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                  {/* History */}
-                  {isExpanded && (
-                    <div style={s.history}>
-                      {(ex.history || []).length === 0 ? (
-                        <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
-                      ) : (
-                        <>
-                          <div style={s.historyTitle}>HISTORY</div>
-                          {(ex.history || []).map((h, i) => {
-                            const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
-                            const result = h.timed
-                              ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
-                              : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
-                            return (
-                              <div key={i} style={s.historyRow}>
-                                <div style={s.historyLeft}>
-                                  <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
-                                  <div style={s.historyMeta}>
-                                    <span style={s.historyPerson}>{displayName}</span>
-                                    <span style={s.historyRange}>
-                                      {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
-                                    </span>
-                                    <span style={s.historyResult}>{result}</span>
+                            <div style={s.cardHeader}>
+                                <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                                    {ex.name}
+                                    {ex.timed && <span style={s.timedPill}>⏱</span>}
                                   </div>
-                                  {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                                  {ex.category && <div style={s.categoryLabel}>{ex.category.toUpperCase()}</div>}
                                 </div>
-                                <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
-                                  onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
-                                  title="Delete Entry">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                                <div style={s.cardActions}>
+                                  <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
+                                  <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
+                                </div>
+                            </div>
+
+                            {/* Best results grid */}
+                            {hasData && (
+                                <div style={s.rangeGrid}>
+                                  {ex.timed ? (
+                                    /* Timed: single "Best Duration" column */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
+                                        <div style={s.rangeColHeader}>WEIGHT</div>
+                                      </div>
+                                      {visiblePeople.map(person => {
+                                        const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
+                                        return (
+                                          <div key={person} style={s.rangeRow}>
+                                            <div style={s.personCol}>{person}</div>
+                                            <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
+                                              {b ? b.reps : <span style={s.dash}>—</span>}
+                                            </div>
+                                            <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
+                                              {b?.weight || <span style={s.dash}>—</span>}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    /* Reps: full 4-column range grid */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
+                                      </div>
+                                      {visiblePeople.map(person => (
+                                        <div key={person} style={s.rangeRow}>
+                                          <div style={s.personCol}>{person}</div>
+                                          {REP_RANGES.map(r => {
+                                            const b   = ex.best?.[person.toLowerCase()]?.[r.key];
+                                            const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                                            return (
+                                              <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
+                                                {val || <span style={s.dash}>—</span>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                            )}
+
+                            {/* History */}
+                            {isExpanded && (
+                                <div style={s.history}>
+                                  {(ex.history || []).length === 0 ? (
+                                    <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
+                                  ) : (
+                                    <>
+                                      <div style={s.historyTitle}>HISTORY</div>
+                                      {(ex.history || []).map((h, i) => {
+                                        const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
+                                        const result = h.timed
+                                          ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
+                                          : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
+                                        return (
+                                          <div key={i} style={s.historyRow}>
+                                            <div style={s.historyLeft}>
+                                              <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
+                                              <div style={s.historyMeta}>
+                                                <span style={s.historyPerson}>{displayName}</span>
+                                                <span style={s.historyRange}>
+                                                  {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
+                                                </span>
+                                                <span style={s.historyResult}>{result}</span>
+                                              </div>
+                                              {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                                            </div>
+                                            <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
+                                              onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
+                                              title="Delete Entry">
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                });
+            })()}
             {filtered.length === 0 && (
               <div style={s.noResults}>{search ? `No results for "${search}"` : "No exercises yet"}</div>
             )}

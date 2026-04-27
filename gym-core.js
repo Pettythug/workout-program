@@ -109,8 +109,23 @@ async function sheetsGet() {
 
 async function sheetsPost(payload) {
     const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
-    const encoded = encodeURIComponent(JSON.stringify(payload));
-    const res = await fetch(url + "?payload=" + encoded);
+    const payloadStr = JSON.stringify(payload);
+    let res;
+    
+    // If payload is massive (like syncAll), use true POST to avoid URL limits
+    if (payloadStr.length > 1500 || payload.action === "syncAll") {
+        res = await fetch(url, {
+            method: "POST",
+            body: payloadStr,
+            // Using text/plain avoids CORS preflight OPTIONS request
+            headers: { "Content-Type": "text/plain;charset=utf-8" }
+        });
+    } else {
+        // Fallback to GET tunneling for standard small ops
+        const encoded = encodeURIComponent(payloadStr);
+        res = await fetch(url + "?payload=" + encoded);
+    }
+    
     const json = await res.json();
     if (json.status !== "ok") throw new Error(json.message);
     return json.data;
