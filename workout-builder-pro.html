@@ -847,16 +847,9 @@
             notifySettingsUpdated();
             
             closeSettingsModal();
-            if (currentWorkout) {
-                currentMaxes = {};
-                currentWorkout.exercises.forEach(e => {
-                    currentMaxes[e.name] = {};
-                    activePeople.forEach(p => {
-                        currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
-                    });
-                });
-                renderWorkout(currentWorkout, currentWorkout.exercises);
-            }
+            
+            // RE-SYNC WORKOUT DATA FOR NEW ROSTER
+            loadDataAndWorkout();
         }
 
 
@@ -880,24 +873,33 @@
                         activePeople = [(globalData.people || ['Brian'])[0]];
                     }
                     
-                    // SYNC WORKOUT NUMBER FROM SPREADSHEET
+                    // SYNC WORKOUT NUMBER AND TYPE FROM SPREADSHEET
                     if (globalData.settings) {
-                        const cloudNum = parseInt(globalData.settings.builder_workout_num || '0');
-                        const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
+                        const primaryUser = (activePeople[0] || 'Brian').toLowerCase();
+                        const cloudNum = parseInt(globalData.settings[`builder_workout_num_${primaryUser}`] || '0');
+                        const cloudType = globalData.settings[`builder_workout_type_${primaryUser}`] || '';
                         
+                        const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
+                        const localType = localStorage.getItem(TYPE_KEY) || '';
+                        
+                        // 1. Sync Workout Number
                         if (cloudNum > 0) {
-                            // Cloud has data: Cloud is the BOSS.
                             if (cloudNum !== localNum) {
-                                console.log(`Cloud sync: ${localNum} -> ${cloudNum}`);
+                                console.log(`Cloud sync (Num) for ${primaryUser}: ${localNum} -> ${cloudNum}`);
                                 localStorage.setItem(NUM_KEY, cloudNum.toString());
                             }
                         } else if (localNum > 0) {
-                            // Cloud is empty: Seed it with local data.
-                            console.log(`Seeding cloud with local workout num: ${localNum}`);
+                            console.log(`Seeding cloud with local workout num for ${primaryUser}: ${localNum}`);
                             sheetsPost({
                                 action: "saveSettings",
-                                settings: { "builder_workout_num": localNum.toString() }
+                                settings: { [`builder_workout_num_${primaryUser}`]: localNum.toString() }
                             }).catch(e => console.warn("Initial seeding failed:", e));
+                        }
+
+                        // 2. Sync Workout Type (Push/Pull)
+                        if (cloudType && cloudType !== localType) {
+                            console.log(`Cloud sync (Type) for ${primaryUser}: ${localType} -> ${cloudType}`);
+                            localStorage.setItem(TYPE_KEY, cloudType);
                         }
                     }
                     
