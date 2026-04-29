@@ -877,7 +877,21 @@
     const LOC_KEY = 'builder_location';
     
     let currentWorkout = null;
-    let exerciseStatus = {};
+    
+        const PLANNER_NOTES_KEY = 'gym-planner-notes';
+        let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
+        
+        async function savePlannerNote(exName, note) {
+            plannerNotes[exName] = note;
+            localStorage.setItem(PLANNER_NOTES_KEY, JSON.stringify(plannerNotes));
+            if (SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE") {
+                try {
+                    await sheetsPost({ action: "saveExerciseNote", exercise: exName, note: note });
+                } catch(e) {}
+            }
+        }
+
+let exerciseStatus = {};
     let currentMaxes = {};
     let currentAccessory = null;
     let activePeople = [];
@@ -1147,6 +1161,31 @@
              return "r13_plus";
         }
 
+        const getBaseName = (name) => {
+            if (!name) return "";
+            return name
+                .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+                .replace(/ \(Single\)$/i, '')
+                .replace(/ \(Alt\)$/i, '')
+                .replace(/ \(Alternating\)$/i, '')
+                .trim();
+        };
+
+        const getMode = (name) => {
+            if (!name) return "std";
+            if (/single|one arm|one leg/i.test(name)) return 'single';
+            if (/alt/i.test(name)) return 'alt';
+            return 'std';
+        };
+
+        const getStandardizedName = (name) => {
+            const base = getBaseName(name);
+            const mode = getMode(name);
+            if (mode === 'single') return `${base} (Single)`;
+            if (mode === 'alt')    return `${base} (Alt)`;
+            return base;
+        };
+
         function generateWorkout() {
              const loc = document.getElementById('locationSelect').value;
              
@@ -1169,7 +1208,21 @@
              const pick = (categories) => {
                  const subset = available.filter(e => categories.includes(e.category));
                  if(subset.length === 0) return {name: `No ${categories[0]}`, category: categories[0]};
-                 return subset[Math.floor(Math.random() * subset.length)];
+                 
+                 // Group by base name so variations don't inflate pick chance
+                 const groups = {};
+                 subset.forEach(e => {
+                     const base = getBaseName(e.name);
+                     if (!groups[base]) groups[base] = [];
+                     groups[base].push(e);
+                 });
+                 
+                 const baseNames = Object.keys(groups);
+                 const pickedBase = baseNames[Math.floor(Math.random() * baseNames.length)];
+                 const variations = groups[pickedBase];
+                 
+                 // Default to 'std' if exists, else first available
+                 return variations.find(v => getMode(v.name) === 'std') || variations[0];
              };
              
              const genExercises = type === 'Push' ? [
@@ -1195,16 +1248,20 @@
              
              exerciseStatus = {};
              exerciseSetCounters = {};
+             exerciseModes = {};
+
              genExercises.forEach((e, idx) => { 
                  exerciseStatus[e.name] = 'pending'; 
                  exerciseSetCounters[idx] = 1;
+                 exerciseModes[idx] = getMode(e.name);
              });
              
              currentMaxes = {};
              genExercises.forEach(e => {
-                 currentMaxes[e.name] = {};
+                 const stdName = getStandardizedName(e.name);
+                 currentMaxes[stdName] = {};
                  activePeople.forEach(p => {
-                     currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
+                     currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
                  });
              });
              
@@ -1227,12 +1284,42 @@
             const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
             const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
 
+            const groupedByBase = {};
+            (globalData.exercises || []).forEach(ex => {
+                const base = getBaseName(ex.name);
+                if (!groupedByBase[base]) groupedByBase[base] = { variations: {} };
+                groupedByBase[base].variations[getMode(ex.name)] = ex;
+            });
+
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
                 card.id = `card-${idx}`;
+                
+                const baseName = getBaseName(ex.name);
+                const group = groupedByBase[baseName] || { variations: { [getMode(ex.name)]: ex } };
+                const activeMode = exerciseModes[idx] || getMode(ex.name);
+
                 if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
                 if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
+
+                // SMART HEADER
+                let smartHeader = `
+                <div style="background: #0a0a0a; display: flex; border-bottom: 1px solid #161616; padding: 4px 12px; align-items: center; justify-content: space-between">
+                    <div style="display: flex; gap: 4px">
+                        ${['std', 'single', 'alt'].map(mode => {
+                            const exists = group.variations[mode];
+                            if (!exists) return '';
+                            const isActive = activeMode === mode;
+                            const label = mode.toUpperCase();
+                            const bg = isActive ? 'var(--accent)' : '#1a1100';
+                            const textColor = isActive ? '#000' : 'var(--accent)';
+                            const border = isActive ? '1px solid transparent' : '1px solid #f9731630';
+                            return `<button onclick="switchVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:${textColor}; background:${bg}; border:${border}; border-radius:4px; padding:1px 5px; cursor:pointer; letter-spacing:1px;">${label}</button>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size: 8px; color: #333; letter-spacing: 1px; font-family:var(--mono); font-weight:700;">SMART CARD</div>
+                </div>`;
 
                 // Filter Swaps by Current Exercise Category
                 const availableSwapProps = (globalData.exercises || []).filter(e => 
@@ -1251,14 +1338,25 @@
                   <div class="exercise-info">
                     <div class="exercise-category">${ex.category}</div>
                     <div class="exercise-name">${ex.name}</div>
-                    <div class="exercise-max">
+                    <div class="planner-note-wrap" onclick="event.stopPropagation()" style="margin-top: 6px;">
+                        <input 
+                            type="text" 
+                            class="planner-note-input" 
+                            placeholder="Add cue/note..." 
+                            value="${plannerNotes[ex.name] || ''}" 
+                            oninput="savePlannerNote('${ex.name.replace(/'/g, "\\'")}', this.value)"
+                            style="width: 100%; background: #000; border: 1px solid #161616; border-radius: 4px; padding: 4px 8px; font-size: 10px; font-family: var(--mono); color: var(--accent); outline: none;"
+                        />
+                    </div>
+                    <div class="exercise-max" style="font-family:var(--mono); font-size:10px; color:#666; margin-top:4px;">
                 `;
                 
                 activePeople.forEach(p => {
-                    const maxData = currentMaxes[ex.name]?.[p] || {};
+                    const stdName = getStandardizedName(ex.name);
+                    const maxData = currentMaxes[stdName]?.[p] || {};
                     const rangeKey = getRangeKeyFromLabel(workout.repRange);
                     const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
-                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${workout.repRange} Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
+                    headerHTML += `<span style="margin-right:8px;">${p}: <span style="color:var(--accent);" id="maxval-${idx}-${p}">${currentMax}</span></span>`;
                 });
                 
                 headerHTML += `
@@ -1270,7 +1368,14 @@
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                   </div>
-                  <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
+                  <div class="exercise-status" id="status-icon-${idx}" style="display:flex; align-items:center; gap:8px;">
+                    ${(exerciseStatus[ex.name] === 'done' || exerciseStatus[ex.name] === 'skipped') ? 
+                        `<button onclick="event.stopPropagation(); undoStatus(${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="background: rgba(249,115,22,0.1); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px; font-size: 9px; font-family: var(--mono); font-weight: 700; cursor: pointer; letter-spacing:1px; white-space:nowrap;">UNDO</button>` : ''
+                    }
+                    <span style="color: ${exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666'}; font-weight: bold; font-size: 18px; line-height:1;">
+                        ${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}
+                    </span>
+                  </div>
                   <div class="expand-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1297,7 +1402,7 @@
                     </div>
                 `).join('');
 
-                card.innerHTML = headerHTML + `
+                card.innerHTML = smartHeader + headerHTML + `
                 <div class="set-logger" id="logger-${idx}">
                   <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
                   
@@ -1318,12 +1423,20 @@
                    <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
                       ${selectOptions}
                    </select>
-                   <div id="swap-custom-block-${idx}" style="margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px;">
+                   <div id="swap-custom-block-${idx}" style="display:none; margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px; border:1px solid var(--border);">
                        <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="New Machine Name..." style="width:100%; margin-bottom:8px; font-size:14px; padding:8px;">
-                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface);">
+                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface); margin-bottom:10px;">
                           ${customLocDropdownHTML}
                        </select>
-                       <p style="font-size:10px; color:var(--muted); margin-top:6px;">Saving as a <span style="font-weight:600;">${ex.category}</span> exercise.</p>
+                       <div style="display:flex; gap:12px; padding:4px 2px;">
+                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
+                               <input type="checkbox" id="swap-single-${idx}"> + SINGLE
+                           </label>
+                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
+                               <input type="checkbox" id="swap-alt-${idx}"> + ALT
+                           </label>
+                       </div>
+                       <p style="font-size:9px; color:var(--muted); margin-top:8px;">Saving as a <span style="color:var(--accent);">${ex.category}</span> exercise.</p>
                    </div>
                    <div style="display:flex; gap:8px;">
                      <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm</button>
@@ -1367,32 +1480,31 @@
             if (selectVal === 'custom') {
                 const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
                 let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
+                const createSingle = document.getElementById(`swap-single-${idx}`).checked;
+                const createAlt = document.getElementById(`swap-alt-${idx}`).checked;
+
                 if (!typed) { alert('Please enter a custom machine name.'); return; }
                 
                 newName = typed;
                 btn.textContent = 'Saving...';
                 btn.disabled = true;
                 
-                const req = {
-                   action: "saveExercise",
-                   exercise: newName,
-                   category: newCat,
-                   location: selectedLoc,
-                   timed: false
-                };
-                
-                try {
-                    await sheetsPost(req);
-                    // Add directly to in-memory global data so algorithm recognizes it immediately
-                    globalData.exercises.push({
-                        name: newName,
-                        category: newCat,
-                        location: selectedLoc,
-                        timed: false
-                    });
-                } catch(e) {
-                    console.error(e);
-                    alert("Warning: Could not save the new exercise to the master database. It will still swap for this session.");
+                const namesToCreate = [newName];
+                if (createSingle) namesToCreate.push(`${newName} (Single)`);
+                if (createAlt)    namesToCreate.push(`${newName} (Alt)`);
+
+                for (const name of namesToCreate) {
+                    const req = {
+                       action: "saveExercise",
+                       exercise: name,
+                       category: newCat,
+                       location: selectedLoc,
+                       timed: false
+                    };
+                    try {
+                        await sheetsPost(req);
+                        globalData.exercises.push({ name, category: newCat, location: selectedLoc, timed: false });
+                    } catch(e) { console.error(e); }
                 }
                 
                 btn.textContent = 'Confirm';
@@ -1410,20 +1522,121 @@
             delete exerciseStatus[oldName];
             exerciseStatus[newName] = 'pending';
             exerciseSetCounters[idx] = 1;
+            exerciseModes[idx] = getMode(newName);
 
-            currentMaxes[newName] = {};
+            const stdName = getStandardizedName(newName);
+            currentMaxes[stdName] = {};
             activePeople.forEach(p => {
-                 currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
+                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
             });
             
             renderWorkout(currentWorkout, currentWorkout.exercises);
             toggleCard(idx);
         }
 
+        function switchVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            let targetName = base;
+            if (mode === 'single') targetName = `${base} (Single)`;
+            if (mode === 'alt')    targetName = `${base} (Alt)`;
+            
+            const found = globalData.exercises.find(e => e.name === targetName);
+            if (!found) return;
+
+            // Update state
+            exerciseModes[idx] = mode;
+            const oldName = currentEx.name;
+            currentWorkout.exercises[idx] = found;
+            
+            if (exerciseStatus[oldName]) {
+                exerciseStatus[found.name] = exerciseStatus[oldName];
+                delete exerciseStatus[oldName];
+            }
+            
+            const stdName = getStandardizedName(found.name);
+            if (!currentMaxes[stdName]) {
+                currentMaxes[stdName] = {};
+                activePeople.forEach(p => {
+                    currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                });
+            }
+
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx);
+        }
+
+        async function addVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            const targetName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+            
+            if (!confirm(`Create "${targetName}" variation?`)) return;
+
+            const req = {
+               action: "saveExercise",
+               exercise: targetName,
+               category: currentEx.category,
+               location: currentEx.location || "Anywhere",
+               timed: false
+            };
+            
+            try {
+                await sheetsPost(req);
+                const newEx = {
+                    name: targetName,
+                    category: currentEx.category,
+                    location: currentEx.location || "Anywhere",
+                    timed: false
+                };
+                globalData.exercises.push(newEx);
+                switchVariation(idx, mode);
+            } catch(e) {
+                alert("Failed to create variation.");
+            }
+        }
+
+        function undoStatus(idx, exName) {
+            delete exerciseStatus[exName];
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+        }
+
         function toggleCard(idx) {
             const card = document.getElementById(`card-${idx}`);
             if (card.classList.contains('done') || card.classList.contains('skipped')) return;
             card.classList.toggle('open');
+        }
+
+        function renderHistory(idx, exerciseName) {
+            const content = document.getElementById(`history-content-${idx}`);
+            const ex = currentWorkout.exercises[idx];
+            const history = (globalData.history || []).filter(h => h.exercise === exerciseName);
+            
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:#444;font-size:12px;">No history found.</div>';
+                return;
+            }
+
+            let html = '';
+            history.slice(-10).reverse().forEach((h, hIdx) => {
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:#666;">${h.date || 'Today'}</div>
+                        <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person?.toUpperCase()}</div>
+                        ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                    </div>
+                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                        <div>
+                            <div style="font-size:12px; font-weight:600; color:#ddd;">
+                                ${ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                            </div>
+                            <div style="font-size:9px; color:#444; font-family:var(--mono);">${ex.timed ? "⏱" : (h.range ? h.range.replace("r", "").replace("_", "-") : "")}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            content.innerHTML = html;
         }
 
         function toggleHistory(e, idx, exerciseName) {
@@ -1437,7 +1650,7 @@
             }
             
             drawer.style.display = 'block';
-            content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
+            renderHistory(idx, getStandardizedName(exerciseName));
             
             const history = (globalData.history || []).filter(h => 
                 h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
@@ -1534,7 +1747,7 @@
             logger.style.display = card.classList.contains('open') ? 'block' : 'none';
         }
 
-        async function logSet(cardIdx, exerciseName) {
+        async function logSet(cardIdx, exerciseName) { const ex = currentWorkout.exercises[cardIdx];
             const setNum = exerciseSetCounters[cardIdx] || 1;
             const btn = document.getElementById(`logbtn-${cardIdx}`);
             btn.textContent = 'Saving...'; 
@@ -1551,7 +1764,11 @@
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                const weight = parseFloat(weightVal) || 0;
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
                 
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
@@ -1560,22 +1777,23 @@
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightVal || "",
+                   weight: weightValFixed || "",
                    range: rangeKey,
                    note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
                 });
                 
-                const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
+                const stdExName = getStandardizedName(exerciseName);
+                const existing = currentMaxes[stdExName]?.[p]?.[rangeKey];
                 let isNew = !existing;
                 if (existing) {
                     if (weight > parseFloat(existing.weight)) isNew = true;
                 }
                 if (isNew) {
-                    if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
-                    if(!currentMaxes[exerciseName][p]) currentMaxes[exerciseName][p] = {};
-                    currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
+                    if(!currentMaxes[stdExName]) currentMaxes[stdExName] = {};
+                    if(!currentMaxes[stdExName][p]) currentMaxes[stdExName][p] = {};
+                    currentMaxes[stdExName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
                     if (rangeKey === getRangeKeyFromLabel(currentWorkout.repRange)) {
@@ -1594,12 +1812,23 @@
 
             const req = {
                action: "logSet",
-               exercise: exerciseName,
+               exercise: getStandardizedName(exerciseName),
                entries: entries
             };
             
             try {
                 await sheetsPost(req);
+                
+                // Update local history for instant feedback
+                const entriesWithEx = entries.map(e => ({ ...e, exercise: getStandardizedName(exerciseName) }));
+                if (!globalData.history) globalData.history = [];
+                globalData.history.push(...entriesWithEx);
+                
+                // If history drawer is open, refresh it
+                const drawer = document.getElementById(`history-drawer-${cardIdx}`);
+                if (drawer && drawer.style.display === 'block') {
+                    renderHistory(cardIdx, getStandardizedName(exerciseName));
+                }
                 
                 if (bannerMsg) {
                     const banner = document.getElementById(`maxbanner-${cardIdx}`);
@@ -1630,7 +1859,7 @@
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('done');
-            document.getElementById(`status-icon-${idx}`).textContent = '✓';
+            exerciseStatus[exerciseName] = 'done'; renderWorkout(currentWorkout, currentWorkout.exercises);
             checkAllComplete();
         }
 
@@ -1639,7 +1868,7 @@
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('skipped');
-            document.getElementById(`status-icon-${idx}`).textContent = '—';
+            exerciseStatus[exerciseName] = 'skipped'; renderWorkout(currentWorkout, currentWorkout.exercises);
             checkAllComplete();
         }
 
@@ -1762,7 +1991,11 @@
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                const weight = parseFloat(weightVal) || 0;
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
@@ -1770,7 +2003,7 @@
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightVal || "",
+                   weight: weightValFixed || "",
                    range: rangeKey,
                    note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
@@ -1867,6 +2100,7 @@
       const [logInputs,     setLogInputs]     = useState({});   // keyed by person.toLowerCase()
       const [logNote,       setLogNote]       = useState("");
       const [logError,      setLogError]      = useState("");
+      const [historyExId,   setHistoryExId]   = useState(null);
       const [setCount,      setSetCount]      = useState(1);
       const [newName,       setNewName]       = useState("");
       const [newExTimed,    setNewExTimed]    = useState(false);
@@ -1880,78 +2114,11 @@
       const [newLocName,    setNewLocName]    = useState("");
       const [hiddenPeople,  setHiddenPeople]  = useState([]);
       
-      // New: Variation Tracking
+      // Variation Tracking
       const [exerciseModes, setExerciseModes] = useState({}); // { baseName: 'std'|'single'|'alt' }
       const [createSingle,  setCreateSingle]  = useState(false);
       const [createAlt,     setCreateAlt]     = useState(false);
-
-      const getBaseName = (name) => {
-          return name
-              .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
-              .replace(/ \(Single\)$/i, '')
-              .replace(/ \(Alt\)$/i, '')
-              .replace(/ \(Alternating\)$/i, '')
-              .trim();
-      };
-
-      const getMode = (name) => {
-          if (/single|one arm|one leg/i.test(name)) return 'single';
-          if (/alt/i.test(name)) return 'alt';
-          return 'std';
-      };
-
-      const getStandardizedName = (name) => {
-          let n = name
-              .replace(/\bdumbell\b/gi, 'Dumbbell')
-              .replace(/\b(one arm|one-arm|single arm|single-arm|one armed|one leg|one-leg|single leg|single-leg|single)\b/gi, 'TEMP_SINGLE')
-              .replace(/\b(alternating|alt)\b/gi, 'TEMP_ALT')
-              .replace(/\s+/g, ' ')
-              .trim();
-          
-          const isSingle = /TEMP_SINGLE/i.test(n);
-          const isAlt = /TEMP_ALT/i.test(n);
-          
-          let base = n
-              .replace(/TEMP_SINGLE/g, '')
-              .replace(/TEMP_ALT/g, '')
-              .replace(/[\(\)]/g, '') // strip old parens
-              .replace(/\s+/g, ' ')
-              .trim();
-          
-          if (isSingle) return `${base} (Single)`;
-          if (isAlt) return `${base} (Alt)`;
-          return base;
-      };
-
-
-      const addVariation = async (group, mode) => {
-          const parent = group.variations['std'] || Object.values(group.variations)[0];
-          const suffix = mode === 'single' ? '(Single)' : '(Alt)';
-          const newName = `${group.baseName} ${suffix}`;
-          
-          if (exercises.some(e => e.name === newName)) return;
-
-          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
-          const defBest = {};
-          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
-          
-          const newEx = {
-            id: maxId + 1, name: newName, timed: parent.timed,
-            category: parent.category, location: parent.location, best: defBest, history: [],
-          };
-          
-          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
-          await persist(updated);
-          
-          if (scriptConfigured) {
-            try {
-              await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
-            } catch {}
-          }
-          
-          setExerciseModes(prev => ({ ...prev, [group.baseName]: mode }));
-          showToast(`${mode.toUpperCase()} variation added!`);
-      };
+      const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: 'done'|'skipped' }
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -1975,6 +2142,95 @@
           delete window.refreshLiftData;
         };
       }, []);
+
+      const getBaseName = (name) => {
+          return name
+              .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+              .replace(/ \(Single\)$/i, '')
+              .replace(/ \(Alt\)$/i, '')
+              .replace(/ \(Alternating\)$/i, '')
+              .trim();
+      };
+
+      const getMode = (name) => {
+          if (/single|one arm|one leg/i.test(name)) return 'single';
+          if (/alt/i.test(name)) return 'alt';
+          return 'std';
+      };
+
+      const getStandardizedName = (name) => {
+          const base = getBaseName(name);
+          const mode = getMode(name);
+          if (mode === 'single') return `${base} (Single)`;
+          if (mode === 'alt')    return `${base} (Alt)`;
+          return base;
+      };
+
+      const addVariation = async (group, mode) => {
+          const parent = group.variations['std'] || Object.values(group.variations)[0];
+          const base = group.baseName;
+          const newName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+          
+          if (exercises.some(e => e.name.toLowerCase() === newName.toLowerCase())) {
+              setExerciseModes(prev => ({ ...prev, [base]: mode }));
+              return;
+          }
+
+          setSyncStatus("syncing");
+          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+          const defBest = {};
+          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+          
+          const newEx = {
+            id: maxId + 1,
+            name: newName,
+            timed: parent.timed,
+            category: parent.category,
+            location: parent.location,
+            best: defBest,
+            history: [],
+          };
+
+          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+          setExercises(updated);
+          setExerciseModes(prev => ({ ...prev, [base]: mode }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+          if (scriptConfigured) {
+            try {
+              await sheetsPost({ 
+                  action: "saveExercise", 
+                  exercise: newEx.name, 
+                  timed: newEx.timed, 
+                  category: newEx.category, 
+                  location: newEx.location 
+              });
+              setSyncStatus("ok");
+            } catch (e) {
+              setSyncStatus("error");
+            }
+          } else {
+              setSyncStatus("ok");
+          }
+      };
+
+      const toggleStatus = (exName, status) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            if (status === 'undo') delete next[exName];
+            else next[exName] = status;
+            return next;
+        });
+      };
+
+      const normalizeDuration = (val) => {
+        if (!val || val.toString().includes(':')) return val;
+        const seconds = parseInt(val);
+        if (isNaN(seconds)) return val;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
 
       const showToast = (msg, type = "success") => {
         setToast({ msg, type });
@@ -2118,6 +2374,10 @@
       const activePeople = whoMode === "all" ? visiblePeople : [people.find(p => p === whoMode)].filter(Boolean);
 
       // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
+      const openHistory = (id) => {
+        setHistoryExId(historyExId === id ? null : id);
+      };
+
       const openLog = (id) => {
         setLogExId(id);
         setSets([]);
@@ -2206,6 +2466,28 @@
       const finishLogging = () => { setView("list"); setExpanded(logExId); };
 
       // ── DELETE HELPERS ─────────────────────────────────────────────────────
+      const deleteLog = async (exId, entry) => {
+        if (!confirm(`Delete entry for ${entry.person?.toUpperCase()}?`)) return;
+        const ex = exercises.find(e => e.id === exId);
+        const updated = exercises.map(ex => {
+          if (ex.id !== exId) return ex;
+          const newHistory = (ex.history || []).filter(h => h !== entry);
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = {}; });
+          newHistory.forEach(h => {
+            const current = newBest[h.person]?.[h.range];
+            if (!current || isBetter(h, current, ex.timed))
+              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
+          });
+          return { ...ex, best: newBest, history: newHistory };
+        });
+        await persist(updated, null, {
+          action: "deleteHistory", exercise: ex.name,
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
+        });
+        showToast("Entry deleted");
+      };
+
       const deleteHistoryEntry = async (exId, histIdx) => {
         const ex    = exercises.find(e => e.id === exId);
         const entry = ex?.history?.[histIdx];
@@ -2242,11 +2524,13 @@
       // ── ADD EXERCISE ───────────────────────────────────────────────────────
       const addExercise = async () => {
         if (!newName.trim()) return showToast("Name required", "error");
-        
-        const base = newName.trim();
-        const namesToCreate = [base];
-        if (createSingle) namesToCreate.push(`${base} (Single)`);
-        if (createAlt) namesToCreate.push(`${base} (Alt)`);
+        if (exercises.some(e => e.name.toLowerCase() === newName.trim().toLowerCase()))
+          return showToast("Already exists", "error");
+
+        const baseName = newName.trim();
+        const namesToCreate = [baseName];
+        if (createSingle) namesToCreate.push(`${baseName} (Single)`);
+        if (createAlt)    namesToCreate.push(`${baseName} (Alt)`);
 
         let currentExercises = [...exercises];
         
@@ -2579,7 +2863,8 @@
                   <option key={loc} value={loc}>{loc}</option>
                 ))}
               </select>
-              <div style={s.whoLabel}>VARIATIONS</div>
+              
+              <div style={whoLabel}>VARIATIONS</div>
               <div style={{ display: "flex", gap: 15, padding: "5px 0" }}>
                   <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
                       <input type="checkbox" checked={createSingle} onChange={e => setCreateSingle(e.target.checked)} />
@@ -2597,7 +2882,6 @@
           </div>
         );
       }
-
 
       // ════════════════════════════════════════════════════════════════════════
       // MAIN LIST VIEW
@@ -2686,170 +2970,202 @@
                 });
 
                 return Object.values(grouped).map(group => {
-                    const mode = exerciseModes[group.baseName] || 'std';
-                    // If active mode doesn't exist for this group, fallback to std or first available
-                    const activeEx = group.variations[mode] || group.variations['std'] || Object.values(group.variations)[0];
-                    const isExpanded = expanded === activeEx.id;
-                    const hasData = visiblePeople.some(p => Object.keys(activeEx.best?.[p.toLowerCase()] || {}).length > 0);
-                    const modesAvailable = Object.keys(group.variations);
+                    const activeMode = exerciseModes[group.baseName] || 'std';
+                    const ex = group.variations[activeMode] || Object.values(group.variations)[0];
+                    const isExpanded = expanded === ex.id;
+                    const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
 
                     return (
                         <div key={group.baseName} style={s.card}>
-                          <div style={s.cardHeader}>
-                            <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : activeEx.id)}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
-                                {activeEx.name}
-                                {activeEx.timed && <span style={s.timedPill}>⏱</span>}
-                              </div>
-                              {activeEx.category && <div style={s.categoryLabel}>{activeEx.category.toUpperCase()}</div>}
-                            </div>
-                            <div style={s.cardActions}>
-                              <button style={s.logBtn} onClick={() => openLog(activeEx.id)}>+ LOG</button>
-                              <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: activeEx.id })}>✕</button>
-                            </div>
-                          </div>
-
-                          {/* Variation Selector Chips */}
-                          <div style={{ display: "flex", gap: 6, padding: "0 12px 10px", marginTop: -4 }}>
-                                {['std', 'single', 'alt'].map(m => {
-                                    const ex = group.variations[m];
-                                    const active = mode === m;
-                                    
-                                    if (ex) {
+                            {/* SMART CARD HEADER: Variation Toggles */}
+                            <div style={{ background: "#0a0a0a", display: "flex", borderBottom: "1px solid #161616", padding: "4px 12px", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                    {['std', 'single', 'alt'].map(mode => {
+                                        const exists = group.variations[mode];
+                                        const isActive = activeMode === mode;
+                                        if (!exists) return null;
                                         return (
                                             <button 
-                                                key={m}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setExerciseModes(prev => ({ ...prev, [group.baseName]: m }));
-                                                }}
-                                                style={{
-                                                    fontSize: 8, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                                                    fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700,
-                                                    background: active ? "#1a1100" : "#0e0e0e",
-                                                    color: active ? "#f97316" : "#444",
-                                                    border: active ? "1px solid #f97316" : "1px solid #1a1a1a"
+                                                key={mode}
+                                                onClick={() => setExerciseModes(prev => ({ ...prev, [group.baseName]: mode }))}
+                                                style={{ 
+                                                    ...s.timedPill, 
+                                                    background: isActive ? "#f97316" : "#1a1100", 
+                                                    color: isActive ? "#000" : "#f97316",
+                                                    borderColor: isActive ? "transparent" : "#f9731630"
                                                 }}
                                             >
-                                                {m === 'std' ? 'STD' : m === 'single' ? 'SINGLE' : 'ALT'}
+                                                {mode.toUpperCase()}
                                             </button>
                                         );
-                                    } else {
-                                        // Missing variation: Show "+" button
-                                        if (m === 'std') return null; // Should always have std or something else
-                                        return (
-                                            <button 
-                                                key={m}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    addVariation(group, m);
-                                                }}
-                                                style={{
-                                                    fontSize: 8, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                                                    fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700,
-                                                    background: "transparent",
-                                                    color: "rgba(249, 115, 22, 0.3)",
-                                                    border: "1px dashed rgba(249, 115, 22, 0.2)"
-                                                }}
-                                            >
-                                                + {m.toUpperCase()}
-                                            </button>
-                                        );
-                                    }
-                                })}
-                          </div>
-
-                          {/* Best results grid */}
-                          {hasData && (
-                            <div style={s.rangeGrid}>
-                              {activeEx.timed ? (
-                                /* Timed: single "Best Duration" column */
-                                <div>
-                                  <div style={s.rangeHeaderRow}>
-                                    <div style={s.personCol} />
-                                    <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
-                                    <div style={s.rangeColHeader}>WEIGHT</div>
-                                  </div>
-                                  {visiblePeople.map(person => {
-                                    const b = activeEx.best?.[person.toLowerCase()]?.["r13_plus"];
-                                    return (
-                                      <div key={person} style={s.rangeRow}>
-                                        <div style={s.personCol}>{person}</div>
-                                        <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
-                                          {b ? b.reps : <span style={s.dash}>—</span>}
-                                        </div>
-                                        <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
-                                          {b?.weight || <span style={s.dash}>—</span>}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                    })}
                                 </div>
-                              ) : (
-                                /* Reps: full 4-column range grid */
-                                <div>
-                                  <div style={s.rangeHeaderRow}>
-                                    <div style={s.personCol} />
-                                    {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
-                                  </div>
-                                  {visiblePeople.map(person => (
-                                    <div key={person} style={s.rangeRow}>
-                                      <div style={s.personCol}>{person}</div>
-                                      {REP_RANGES.map(r => {
-                                        const b   = activeEx.best?.[person.toLowerCase()]?.[r.key];
-                                        const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                                <div style={{ fontSize: 8, color: "#333", letterSpacing: 1 }}>SMART CARD</div>
+                            </div>
+
+                            <div style={s.cardHeader}>
+                                <div style={{ display: "flex", alignItems: "center", flex: 1 }} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
+                                    <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                                    <div style={s.cardName}>
+                                        <div style={s.categoryLabel}>{ex.category?.toUpperCase()}</div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                            {ex.name}
+                                            {ex.timed && <span style={s.timedPill}>⏱</span>}
+                                        </div>
+                                        <div style={s.cardMax}>
+                                            {visiblePeople.map(p => {
+                                                const m = ex.best?.[p.toLowerCase()]?.['r8_12'];
+                                                if (!m) return null;
+                                                return <span key={p} style={{ marginRight: 8 }}>{p}: {m.reps}x{m.weight}</span>;
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                                    {exerciseStatus[ex.name] && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleStatus(ex.name, 'undo'); }}
+                                            style={{ background: 'rgba(249,115,22,0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 4, padding: '2px 6px', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' }}
+                                        >
+                                            UNDO
+                                        </button>
+                                        <span style={{ fontSize: 18, color: exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666', fontWeight: 'bold' }}>
+                                            {exerciseStatus[ex.name] === 'done' ? '✓' : '—'}
+                                        </span>
+                                    </div>
+                                )}
+                                <div style={s.cardActions}>
+                                    <button style={s.historyBtn} onClick={(e) => { e.stopPropagation(); openHistory(ex.id); }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: historyExId === ex.id ? "var(--accent)" : "currentColor" }}>
+                                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                    </button>
+                                    <button style={s.logBtn} onClick={() => openLog(ex.id)}>LOG</button>
+                                    <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
+                                </div>
+                            </div>
+
+                            {/* History Drawer */}
+                            {historyExId === ex.id && (
+                                <div style={{ background: "#0e0e0e", borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "12px 16px" }}>
+                                    <div style={{ fontSize: 10, color: "#444", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>RECENT HISTORY</div>
+                                    {(!ex.history || ex.history.length === 0) ? (
+                                        <div style={{ padding: 10, textAlign: "center", color: "#444", fontSize: 12 }}>No history found for this exercise.</div>
+                                    ) : (
+                                        ex.history.slice(-10).reverse().map((h, i) => (
+                                            <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #1a1a1a" }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: 10, color: "#666" }}>{h.date || "Unknown Date"}</div>
+                                                    <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>{h.person?.toUpperCase()}</div>
+                                                    {h.note && <div style={{ fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 }}>{h.note}</div>}
+                                                </div>
+                                                <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 8 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#ddd" }}>
+                                                            {ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                                                        </div>
+                                                        <div style={{ fontSize: 9, color: "#444", fontFamily: "var(--mono)" }}>{ex.timed ? "⏱" : h.range?.replace("r", "").replace("_", "-")}</div>
+                                                    </div>
+                                                    <button onClick={() => deleteLog(ex.id, h)} style={{ background: "none", border: "none", color: "#ff4444", cursor: "pointer", padding: 4, opacity: 0.6 }} title="Delete Entry">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Best results grid */}
+                            {hasData && (
+                                <div style={s.rangeGrid}>
+                                  {ex.timed ? (
+                                    /* Timed: single "Best Duration" column */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
+                                        <div style={s.rangeColHeader}>WEIGHT</div>
+                                      </div>
+                                      {visiblePeople.map(person => {
+                                        const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
                                         return (
-                                          <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
-                                            {val || <span style={s.dash}>—</span>}
+                                          <div key={person} style={s.rangeRow}>
+                                            <div style={s.personCol}>{person}</div>
+                                            <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
+                                              {b ? b.reps : <span style={s.dash}>—</span>}
+                                            </div>
+                                            <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
+                                              {b?.weight || <span style={s.dash}>—</span>}
+                                            </div>
                                           </div>
                                         );
                                       })}
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* History */}
-                          {isExpanded && (
-                            <div style={s.history}>
-                              {(activeEx.history || []).length === 0 ? (
-                                <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
-                              ) : (
-                                <>
-                                  <div style={s.historyTitle}>HISTORY</div>
-                                  {(activeEx.history || []).map((h, i) => {
-                                    const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
-                                    const result = h.timed
-                                      ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
-                                      : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
-                                    return (
-                                      <div key={i} style={s.historyRow}>
-                                        <div style={s.historyLeft}>
-                                          <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
-                                          <div style={s.historyMeta}>
-                                            <span style={s.historyPerson}>{displayName}</span>
-                                            <span style={s.historyRange}>
-                                              {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
-                                            </span>
-                                            <span style={s.historyResult}>{result}</span>
-                                          </div>
-                                          {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
-                                        </div>
-                                        <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
-                                          onClick={() => setConfirmDelete({ type: "history", exId: activeEx.id, histIdx: i })}
-                                          title="Delete Entry">
-                                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                        </button>
+                                  ) : (
+                                    /* Reps: full 4-column range grid */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
                                       </div>
-                                    );
-                                  })}
-                                </>
-                              )}
-                            </div>
-                          )}
+                                      {visiblePeople.map(person => (
+                                        <div key={person} style={s.rangeRow}>
+                                          <div style={s.personCol}>{person}</div>
+                                          {REP_RANGES.map(r => {
+                                            const b   = ex.best?.[person.toLowerCase()]?.[r.key];
+                                            const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                                            return (
+                                              <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
+                                                {val || <span style={s.dash}>—</span>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                            )}
+
+                            {/* History */}
+                            {isExpanded && (
+                                <div style={s.history}>
+                                  {(ex.history || []).length === 0 ? (
+                                    <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
+                                  ) : (
+                                    <>
+                                      <div style={s.historyTitle}>HISTORY</div>
+                                      {(ex.history || []).map((h, i) => {
+                                        const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
+                                        const result = h.timed
+                                          ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
+                                          : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
+                                        return (
+                                          <div key={i} style={s.historyRow}>
+                                            <div style={s.historyLeft}>
+                                              <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
+                                              <div style={s.historyMeta}>
+                                                <span style={s.historyPerson}>{displayName}</span>
+                                                <span style={s.historyRange}>
+                                                  {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
+                                                </span>
+                                                <span style={s.historyResult}>{result}</span>
+                                              </div>
+                                              {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                                            </div>
+                                            <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
+                                              onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
+                                              title="Delete Entry">
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </div>
+                            )}
                         </div>
                     );
                 });

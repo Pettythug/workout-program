@@ -877,7 +877,21 @@
     const LOC_KEY = 'builder_location';
     
     let currentWorkout = null;
-    let exerciseStatus = {};
+    
+        const PLANNER_NOTES_KEY = 'gym-planner-notes';
+        let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
+        
+        async function savePlannerNote(exName, note) {
+            plannerNotes[exName] = note;
+            localStorage.setItem(PLANNER_NOTES_KEY, JSON.stringify(plannerNotes));
+            if (SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE") {
+                try {
+                    await sheetsPost({ action: "saveExerciseNote", exercise: exName, note: note });
+                } catch(e) {}
+            }
+        }
+
+let exerciseStatus = {};
     let currentMaxes = {};
     let currentAccessory = null;
     let activePeople = [];
@@ -1295,11 +1309,9 @@
                     <div style="display: flex; gap: 4px">
                         ${['std', 'single', 'alt'].map(mode => {
                             const exists = group.variations[mode];
+                            if (!exists) return '';
                             const isActive = activeMode === mode;
                             const label = mode.toUpperCase();
-                            if (!exists) {
-                                return `<button onclick="addVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:#444; background:transparent; border:1px dashed #333; border-radius:4px; padding:1px 5px; opacity:0.8; cursor:pointer;">+ ${label}</button>`;
-                            }
                             const bg = isActive ? 'var(--accent)' : '#1a1100';
                             const textColor = isActive ? '#000' : 'var(--accent)';
                             const border = isActive ? '1px solid transparent' : '1px solid #f9731630';
@@ -1326,6 +1338,16 @@
                   <div class="exercise-info">
                     <div class="exercise-category">${ex.category}</div>
                     <div class="exercise-name">${ex.name}</div>
+                    <div class="planner-note-wrap" onclick="event.stopPropagation()" style="margin-top: 6px;">
+                        <input 
+                            type="text" 
+                            class="planner-note-input" 
+                            placeholder="Add cue/note..." 
+                            value="${plannerNotes[ex.name] || ''}" 
+                            oninput="savePlannerNote('${ex.name.replace(/'/g, "\\'")}', this.value)"
+                            style="width: 100%; background: #000; border: 1px solid #161616; border-radius: 4px; padding: 4px 8px; font-size: 10px; font-family: var(--mono); color: var(--accent); outline: none;"
+                        />
+                    </div>
                     <div class="exercise-max" style="font-family:var(--mono); font-size:10px; color:#666; margin-top:4px;">
                 `;
                 
@@ -1346,7 +1368,14 @@
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                   </div>
-                  <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
+                  <div class="exercise-status" id="status-icon-${idx}" style="display:flex; align-items:center; gap:8px;">
+                    ${(exerciseStatus[ex.name] === 'done' || exerciseStatus[ex.name] === 'skipped') ? 
+                        `<button onclick="event.stopPropagation(); undoStatus(${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="background: rgba(249,115,22,0.1); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px; font-size: 9px; font-family: var(--mono); font-weight: 700; cursor: pointer; letter-spacing:1px; white-space:nowrap;">UNDO</button>` : ''
+                    }
+                    <span style="color: ${exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666'}; font-weight: bold; font-size: 18px; line-height:1;">
+                        ${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}
+                    </span>
+                  </div>
                   <div class="expand-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1567,10 +1596,47 @@
             }
         }
 
+        function undoStatus(idx, exName) {
+            delete exerciseStatus[exName];
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+        }
+
         function toggleCard(idx) {
             const card = document.getElementById(`card-${idx}`);
             if (card.classList.contains('done') || card.classList.contains('skipped')) return;
             card.classList.toggle('open');
+        }
+
+        function renderHistory(idx, exerciseName) {
+            const content = document.getElementById(`history-content-${idx}`);
+            const ex = currentWorkout.exercises[idx];
+            const history = (globalData.history || []).filter(h => h.exercise === exerciseName);
+            
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:#444;font-size:12px;">No history found.</div>';
+                return;
+            }
+
+            let html = '';
+            history.slice(-10).reverse().forEach((h, hIdx) => {
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:#666;">${h.date || 'Today'}</div>
+                        <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person?.toUpperCase()}</div>
+                        ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                    </div>
+                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                        <div>
+                            <div style="font-size:12px; font-weight:600; color:#ddd;">
+                                ${ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                            </div>
+                            <div style="font-size:9px; color:#444; font-family:var(--mono);">${ex.timed ? "⏱" : (h.range ? h.range.replace("r", "").replace("_", "-") : "")}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            content.innerHTML = html;
         }
 
         function toggleHistory(e, idx, exerciseName) {
@@ -1584,7 +1650,7 @@
             }
             
             drawer.style.display = 'block';
-            content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
+            renderHistory(idx, getStandardizedName(exerciseName));
             
             const history = (globalData.history || []).filter(h => 
                 h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
@@ -1681,7 +1747,7 @@
             logger.style.display = card.classList.contains('open') ? 'block' : 'none';
         }
 
-        async function logSet(cardIdx, exerciseName) {
+        async function logSet(cardIdx, exerciseName) { const ex = currentWorkout.exercises[cardIdx];
             const setNum = exerciseSetCounters[cardIdx] || 1;
             const btn = document.getElementById(`logbtn-${cardIdx}`);
             btn.textContent = 'Saving...'; 
@@ -1698,7 +1764,11 @@
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                const weight = parseFloat(weightVal) || 0;
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
                 
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
@@ -1707,7 +1777,7 @@
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightVal || "",
+                   weight: weightValFixed || "",
                    range: rangeKey,
                    note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
@@ -1749,6 +1819,17 @@
             try {
                 await sheetsPost(req);
                 
+                // Update local history for instant feedback
+                const entriesWithEx = entries.map(e => ({ ...e, exercise: getStandardizedName(exerciseName) }));
+                if (!globalData.history) globalData.history = [];
+                globalData.history.push(...entriesWithEx);
+                
+                // If history drawer is open, refresh it
+                const drawer = document.getElementById(`history-drawer-${cardIdx}`);
+                if (drawer && drawer.style.display === 'block') {
+                    renderHistory(cardIdx, getStandardizedName(exerciseName));
+                }
+                
                 if (bannerMsg) {
                     const banner = document.getElementById(`maxbanner-${cardIdx}`);
                     if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
@@ -1778,7 +1859,7 @@
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('done');
-            document.getElementById(`status-icon-${idx}`).textContent = '✓';
+            exerciseStatus[exerciseName] = 'done'; renderWorkout(currentWorkout, currentWorkout.exercises);
             checkAllComplete();
         }
 
@@ -1787,7 +1868,7 @@
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('skipped');
-            document.getElementById(`status-icon-${idx}`).textContent = '—';
+            exerciseStatus[exerciseName] = 'skipped'; renderWorkout(currentWorkout, currentWorkout.exercises);
             checkAllComplete();
         }
 
@@ -1910,7 +1991,11 @@
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                const weight = parseFloat(weightVal) || 0;
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
@@ -1918,7 +2003,7 @@
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightVal || "",
+                   weight: weightValFixed || "",
                    range: rangeKey,
                    note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
@@ -2033,6 +2118,7 @@
       const [exerciseModes, setExerciseModes] = useState({}); // { baseName: 'std'|'single'|'alt' }
       const [createSingle,  setCreateSingle]  = useState(false);
       const [createAlt,     setCreateAlt]     = useState(false);
+      const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: 'done'|'skipped' }
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -2126,6 +2212,24 @@
           } else {
               setSyncStatus("ok");
           }
+      };
+
+      const toggleStatus = (exName, status) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            if (status === 'undo') delete next[exName];
+            else next[exName] = status;
+            return next;
+        });
+      };
+
+      const normalizeDuration = (val) => {
+        if (!val || val.toString().includes(':')) return val;
+        const seconds = parseInt(val);
+        if (isNaN(seconds)) return val;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
       };
 
       const showToast = (msg, type = "success") => {
@@ -2879,17 +2983,7 @@
                                     {['std', 'single', 'alt'].map(mode => {
                                         const exists = group.variations[mode];
                                         const isActive = activeMode === mode;
-                                        if (!exists) {
-                                            return (
-                                                <button 
-                                                    key={mode}
-                                                    onClick={() => addVariation(group, mode)}
-                                                    style={{ ...s.timedPill, border: "1px dashed #333", background: "transparent", color: "#444", opacity: 0.8 }}
-                                                >
-                                                    + {mode.toUpperCase()}
-                                                </button>
-                                            );
-                                        }
+                                        if (!exists) return null;
                                         return (
                                             <button 
                                                 key={mode}
@@ -2927,6 +3021,19 @@
                                         </div>
                                     </div>
                                 </div>
+                                    {exerciseStatus[ex.name] && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleStatus(ex.name, 'undo'); }}
+                                            style={{ background: 'rgba(249,115,22,0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 4, padding: '2px 6px', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' }}
+                                        >
+                                            UNDO
+                                        </button>
+                                        <span style={{ fontSize: 18, color: exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666', fontWeight: 'bold' }}>
+                                            {exerciseStatus[ex.name] === 'done' ? '✓' : '—'}
+                                        </span>
+                                    </div>
+                                )}
                                 <div style={s.cardActions}>
                                     <button style={s.historyBtn} onClick={(e) => { e.stopPropagation(); openHistory(ex.id); }}>
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: historyExId === ex.id ? "var(--accent)" : "currentColor" }}>
