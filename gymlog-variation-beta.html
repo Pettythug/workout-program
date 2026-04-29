@@ -751,8 +751,8 @@
 
     <div class="header">
         <div class="header-left">
-            <h1>PLAN</h1>
-            <p id="headerSub">Loading...</p>
+            <h1 style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</h1>
+            <p id="headerSub" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading...</p>
         </div>
         <div class="header-right">
             <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
@@ -907,7 +907,7 @@ let exerciseStatus = {};
             });
             window.builderInitialized = true;
         }
-        loadDataAndWorkout();
+        // loadDataAndWorkout(); // Wait for Master Sync to trigger
     }
 
         function openSettings() {
@@ -1043,7 +1043,7 @@ let exerciseStatus = {};
             
             const newLeader = (activePeople.includes(newPrimary) ? newPrimary : (activePeople[0] || 'Brian')).toLowerCase();
             if (oldLeader !== newLeader) {
-                loadDataAndWorkout();
+                // loadDataAndWorkout(); // Wait for Master Sync to trigger
             } else if (currentWorkout) {
                 renderWorkout(currentWorkout, currentWorkout.exercises);
             }
@@ -1186,6 +1186,24 @@ let exerciseStatus = {};
             return base;
         };
 
+        function undoCompletion() {
+            const raw = localStorage.getItem('gym-last-workout-snapshot');
+            if (!raw) return;
+            const snapshot = JSON.parse(raw);
+            
+            currentWorkout = snapshot.workout;
+            exerciseStatus = snapshot.status;
+            exerciseSetCounters = snapshot.counters;
+            exerciseModes = snapshot.modes;
+            
+            // Re-decrement the workout number
+            let num = parseInt(localStorage.getItem(NUM_KEY) || '1') - 1;
+            localStorage.setItem(NUM_KEY, num);
+            
+            localStorage.removeItem('gym-last-workout-snapshot');
+            renderWorkout();
+        }
+
         function generateWorkout() {
              const loc = document.getElementById('locationSelect').value;
              
@@ -1225,19 +1243,27 @@ let exerciseStatus = {};
                  return variations.find(v => getMode(v.name) === 'std') || variations[0];
              };
              
-             const genExercises = type === 'Push' ? [
-                 pick(['Explosive']),
-                 pick(['Knee Dominant']),
-                 pick(['Vertical Push']),
-                 pick(['Horizontal Push']),
-                 pick(['Rotational Core', 'Plank Core']),
-             ] : [
-                 pick(['Explosive']),
-                 pick(['Hip Dominant']),
-                 pick(['Vertical Pull']),
-                 pick(['Horizontal Pull']),
-                 pick(['Plank Core', 'Rotational Core']),
-             ];
+             const lockKey = `saved_workout_${num}`;
+             const lockedData = localStorage.getItem(lockKey);
+             let genExercises = [];
+
+             if (lockedData) {
+                 try {
+                     const parsed = JSON.parse(lockedData);
+                     if (parsed.type === type) {
+                         genExercises = parsed.exercises;
+                     } else { throw new Error("Type mismatch"); }
+                 } catch(e) { }
+             }
+
+             if (genExercises.length === 0) {
+                 genExercises = type === 'Push' ? [
+                     pick(['Explosive']), pick(['Knee Dominant']), pick(['Vertical Push']), pick(['Horizontal Push']), pick(['Rotational Core', 'Plank Core']),
+                 ] : [
+                     pick(['Explosive']), pick(['Hip Dominant']), pick(['Vertical Pull']), pick(['Horizontal Pull']), pick(['Plank Core', 'Rotational Core']),
+                 ];
+                 localStorage.setItem(lockKey, JSON.stringify({ type, exercises: genExercises }));
+             }
              
              currentWorkout = {
                  type: type,
@@ -1383,6 +1409,10 @@ let exerciseStatus = {};
                   </div>
                 </div>
                 <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
+                    <div>
+                      <div class="builder-title" style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</div>
+                      <div class="builder-subtitle" id="builder-roster-text" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading roster...</div>
+                    </div>
                     <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
                     <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
                 </div>`;
@@ -1390,15 +1420,16 @@ let exerciseStatus = {};
                 const curSetNum = exerciseSetCounters[idx] || 1;
 
                 let inputsHTML = activePeople.map(p => `
-                    <div class="person-block">
-                        <div class="person-label">${p}</div>
-                        <div class="set-row">
+                    <div class="person-block" style="margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <div class="person-label" style="font-weight:800; color:var(--accent); font-family:var(--mono);">${p.toUpperCase()}</div>
                             <div class="set-input-group">
-                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
+                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99" style="text-align:center;">
                               <span class="set-separator">×</span>
-                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
+                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999" style="text-align:center;">
                             </div>
                         </div>
+                        <input type="text" id="note-${idx}-${p}" placeholder="Note for ${p}..." style="width:100%; background:#050505; border:1px solid #1a1a1a; border-radius:4px; padding:6px 10px; font-size:11px; color:#888; font-family:var(--mono); outline:none;">
                     </div>
                 `).join('');
 
@@ -1761,6 +1792,7 @@ let exerciseStatus = {};
             for (const p of activePeople) {
                 const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
                 const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
+                const noteVal = document.getElementById(`note-${cardIdx}-${p}`)?.value || "";
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
@@ -1773,13 +1805,15 @@ let exerciseStatus = {};
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
+                const finalNote = noteVal ? `${noteVal} — Set ${setNum} (Workout #${currentWorkout.workoutNum})` : `Set ${setNum} (Workout #${currentWorkout.workoutNum})`;
+                
                 entries.push({
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
                    weight: weightValFixed || "",
                    range: rangeKey,
-                   note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
+                   note: finalNote,
                    setNum: setNum,
                    timed: false
                 });
@@ -1863,13 +1897,46 @@ let exerciseStatus = {};
             checkAllComplete();
         }
 
-        function skipExercise(idx, exerciseName) {
-            exerciseStatus[exerciseName] = 'skipped';
-            const card = document.getElementById(`card-${idx}`);
-            card.classList.remove('open');
-            card.classList.add('skipped');
-            exerciseStatus[exerciseName] = 'skipped'; renderWorkout(currentWorkout, currentWorkout.exercises);
-            checkAllComplete();
+        async function skipExercise(idx, exerciseName) {
+            const reason = document.querySelector(`#card-${idx} .planner-note-input`)?.value || "";
+            const btn = document.querySelector(`#card-${idx} .skip-btn`);
+            
+            if (btn) {
+                btn.textContent = 'Skipping...';
+                btn.disabled = true;
+            }
+
+            const entries = activePeople.map(p => ({
+                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                person: p.toLowerCase(),
+                reps: "0",
+                weight: "0",
+                range: "r13_plus",
+                note: `SKIPPED: ${reason || "No reason provided"} — (Workout #${currentWorkout.workoutNum})`,
+                setNum: 1,
+                timed: false
+            }));
+
+            try {
+                await sheetsPost({
+                    action: "logSet",
+                    exercise: getStandardizedName(exerciseName),
+                    entries: entries
+                });
+                
+                exerciseStatus[exerciseName] = 'skipped';
+                const card = document.getElementById(`card-${idx}`);
+                card.classList.remove('open');
+                card.classList.add('skipped');
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+                checkAllComplete();
+            } catch (e) {
+                alert("Failed to sync skip to Sheets. Check connection.");
+                if (btn) {
+                    btn.textContent = 'Skip';
+                    btn.disabled = false;
+                }
+            }
         }
 
         function checkAllComplete() {
@@ -2005,7 +2072,7 @@ let exerciseStatus = {};
                    reps: reps.toString(),
                    weight: weightValFixed || "",
                    range: rangeKey,
-                   note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
+                   note: `Accessory Set ${setNum} (Workout #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
                 });
@@ -2069,7 +2136,7 @@ let exerciseStatus = {};
                 loadDataAndWorkout(window.ultimateSyncData);
             } else {
                 // Fallback if Plan is somehow accessed before Master Sync
-                loadDataAndWorkout();
+                // loadDataAndWorkout(); // Wait for Master Sync to trigger
             }
         }
 
@@ -2419,18 +2486,25 @@ let exerciseStatus = {};
             if (!rawDur) continue; // Skip if empty
             const normalized = normalizeTimeInput(rawDur);
             if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person}`; break; }
+            const perPersonNote = input.note?.trim() || "";
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
+
             newEntries.push({
               date, person: key, reps: normalized, weight: input.weight || "",
-              range: "r13_plus", note: logNote, setNum: setCount, timed: true,
+              range: "r13_plus", note: finalNote, setNum: setCount, timed: true,
             });
           } else {
             const repsVal = input.reps?.trim();
             if (!repsVal) continue; // Skip if empty
             const range = getRange(repsVal);
             if (!range) { err = `${person}'s reps must fit a range`; break; }
+            
+            const perPersonNote = input.note?.trim() || "";
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
+
             newEntries.push({
               date, person: key, reps: repsVal, weight: input.weight || "",
-              range, note: logNote, setNum: setCount, timed: false,
+              range, note: finalNote, setNum: setCount, timed: false,
             });
           }
         }
@@ -2736,67 +2810,57 @@ let exerciseStatus = {};
                 const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
                 const bestVal  = getBest(logExId, key, rangeKey || "r13_plus");
                 return (
-                  <div key={person} style={s.personBlock}>
-                    <div style={s.personBlockLabel}>{person.toUpperCase()}</div>
-                    <div style={s.inlineRow}>
-                      {ex?.timed ? (
-                        <div style={s.inlineField}>
-                          <label style={s.label}>DURATION (mm:ss)</label>
-                          <input
-                            id={`duration-${key}`}
-                            name={`duration-${key}`}
-                            style={s.input}
-                            placeholder="e.g. 1:30 or 90"
-                            value={input.duration || ""}
-                            onChange={e => updateLogInput(key, "duration", e.target.value)}
-                          />
-                          {input.duration && (
-                            <div style={s.rangeTag}>⏱ {normalizeTimeInput(input.duration)}</div>
+                  <div key={person} style={{ ...s.personBlock, marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ ...s.personBlockLabel, marginBottom: 0 }}>{person.toUpperCase()}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {ex?.timed ? (
+                            <div style={s.inlineField}>
+                              <input
+                                id={`duration-${key}`}
+                                style={{ ...s.input, width: 80, textAlign: "center" }}
+                                placeholder="mm:ss"
+                                value={input.duration || ""}
+                                onChange={e => updateLogInput(key, "duration", e.target.value)}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <input
+                                id={`reps-${key}`}
+                                style={{ ...s.input, width: 60, textAlign: "center" }}
+                                placeholder="Reps"
+                                type="number"
+                                value={input.reps || ""}
+                                onChange={e => updateLogInput(key, "reps", e.target.value)}
+                              />
+                              <span style={{ color: "#333", fontWeight: "bold" }}>X</span>
+                            </div>
                           )}
-                        </div>
-                      ) : (
-                        <div style={s.inlineField}>
-                          <label style={s.label}>REPS</label>
                           <input
-                            id={`reps-${key}`}
-                            name={`reps-${key}`}
-                            style={s.input}
-                            placeholder="e.g. 8"
-                            type="number"
-                            value={input.reps || ""}
-                            onChange={e => updateLogInput(key, "reps", e.target.value)}
+                            id={`weight-${key}`}
+                            style={{ ...s.input, width: 70, textAlign: "center" }}
+                            placeholder={ex?.timed ? "lbs" : "lbs"}
+                            value={input.weight || ""}
+                            onChange={e => updateLogInput(key, "weight", e.target.value)}
                           />
-                          {rangeKey && <div style={s.rangeTag}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
                         </div>
-                      )}
-                      <div style={s.inlineField}>
-                        <label style={s.label}>WEIGHT</label>
-                        <input
-                          id={`weight-${key}`}
-                          name={`weight-${key}`}
-                          style={s.input}
-                          placeholder={ex?.timed ? "lbs (optional)" : "e.g. 135"}
-                          value={input.weight || ""}
-                          onChange={e => updateLogInput(key, "weight", e.target.value)}
-                        />
-                        {rangeKey && bestVal && <div style={s.bestTag}>Best: {bestVal}</div>}
-                      </div>
+                    </div>
+                    <input 
+                      placeholder={`Note for ${person}...`}
+                      style={{ ...s.input, fontSize: 11, padding: "6px 12px", background: "#050505", border: "1px solid #1a1a1a", color: "#888" }}
+                      value={input.note || ""}
+                      onChange={e => updateLogInput(key, "note", e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        {rangeKey && <div style={{ ...s.rangeTag, fontSize: 9 }}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
+                        {rangeKey && bestVal && <div style={{ ...s.bestTag, fontSize: 9 }}>Best: {bestVal}</div>}
                     </div>
                   </div>
                 );
               })}
 
-              <div style={s.inlineField}>
-                <label style={s.label}>NOTE (optional)</label>
-                <input
-                  id="note-input"
-                  name="note"
-                  style={s.input}
-                  placeholder="e.g. felt strong, pin #7"
-                  value={logNote}
-                  onChange={e => setLogNote(e.target.value)}
-                />
-              </div>
+
               {logError && <div style={s.error}>{logError}</div>}
               <div style={s.logBtnRow}>
                 <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>

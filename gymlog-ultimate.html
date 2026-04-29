@@ -751,8 +751,8 @@
 
     <div class="header">
         <div class="header-left">
-            <h1>PLAN</h1>
-            <p id="headerSub">Loading...</p>
+            <h1 style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</h1>
+            <p id="headerSub" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading...</p>
         </div>
         <div class="header-right">
             <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
@@ -1409,6 +1409,10 @@ let exerciseStatus = {};
                   </div>
                 </div>
                 <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
+                    <div>
+                      <div class="builder-title" style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</div>
+                      <div class="builder-subtitle" id="builder-roster-text" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading roster...</div>
+                    </div>
                     <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
                     <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
                 </div>`;
@@ -1893,13 +1897,46 @@ let exerciseStatus = {};
             checkAllComplete();
         }
 
-        function skipExercise(idx, exerciseName) {
-            exerciseStatus[exerciseName] = 'skipped';
-            const card = document.getElementById(`card-${idx}`);
-            card.classList.remove('open');
-            card.classList.add('skipped');
-            exerciseStatus[exerciseName] = 'skipped'; renderWorkout(currentWorkout, currentWorkout.exercises);
-            checkAllComplete();
+        async function skipExercise(idx, exerciseName) {
+            const reason = document.querySelector(`#card-${idx} .planner-note-input`)?.value || "";
+            const btn = document.querySelector(`#card-${idx} .skip-btn`);
+            
+            if (btn) {
+                btn.textContent = 'Skipping...';
+                btn.disabled = true;
+            }
+
+            const entries = activePeople.map(p => ({
+                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                person: p.toLowerCase(),
+                reps: "0",
+                weight: "0",
+                range: "r13_plus",
+                note: `SKIPPED: ${reason || "No reason provided"} — (Workout #${currentWorkout.workoutNum})`,
+                setNum: 1,
+                timed: false
+            }));
+
+            try {
+                await sheetsPost({
+                    action: "logSet",
+                    exercise: getStandardizedName(exerciseName),
+                    entries: entries
+                });
+                
+                exerciseStatus[exerciseName] = 'skipped';
+                const card = document.getElementById(`card-${idx}`);
+                card.classList.remove('open');
+                card.classList.add('skipped');
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+                checkAllComplete();
+            } catch (e) {
+                alert("Failed to sync skip to Sheets. Check connection.");
+                if (btn) {
+                    btn.textContent = 'Skip';
+                    btn.disabled = false;
+                }
+            }
         }
 
         function checkAllComplete() {

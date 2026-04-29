@@ -30,7 +30,7 @@ const EXERCISES_TAB = "GymLog_Exercises"; // exercise metadata: timed flag + cat
 const HISTORY_HEADERS   = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep Range", "Note", "Set #"];
 const BEST_HEADERS      = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS    = ["Name"];
-const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location"];
+const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note"];
 const SETTINGS_TAB      = "GymLog_Settings";
 const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
@@ -69,6 +69,7 @@ function doGet(e) {
       if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
       if (payload.action === "getSettings")    return gymlog_handleGetSettings();
       if (payload.action === "saveSettings")   return gymlog_handleSaveSettings(payload);
+      if (payload.action === "saveExerciseNote") return gymlog_handleSaveExerciseNote(payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -100,6 +101,7 @@ function doPost(e) {
     if (payload.action === "savePeople")     return gymlog_handleSavePeople(payload);
     if (payload.action === "saveExercise")   return gymlog_handleSaveExercise(payload);
     if (payload.action === "saveSettings")   return gymlog_handleSaveSettings(payload);
+    if (payload.action === "saveExerciseNote") return gymlog_handleSaveExerciseNote(payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -231,6 +233,7 @@ function gymlog_doGet() {
       timed:    r[1] === true || String(r[1]).toLowerCase() === "true",
       category: String(r[2] || "").trim(),
       location: String(r[3] || "Anywhere").trim() || "Anywhere",
+      note:     String(r[4] || "").trim(),
     })).filter(e => e.name);
 
     // Derive unique non-default locations from exercises for the frontend location picker
@@ -368,7 +371,7 @@ function gymlog_handleSyncMeta(payload) {
     const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
     clearDataRows(exSheet);
     exMeta.forEach(ex => {
-      exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || "", ex.location || "Anywhere"]);
+      exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || "", ex.location || "Anywhere", ex.note || ""]);
     });
   }
 
@@ -426,7 +429,7 @@ function gymlog_handleSyncAll(payload) {
   const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
   clearDataRows(exSheet);
   exercises.forEach(ex => {
-    exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || ""]);
+    exSheet.appendRow([ex.name, ex.timed ? true : false, ex.category || "", ex.location || "Anywhere", ex.note || ""]);
   });
 
   return ok({ synced: exercises.length });
@@ -456,7 +459,7 @@ function gymlog_handleSaveExercise(payload) {
     }
   }
 
-  const row = [exercise, timed ? true : false, category || "", location || "Anywhere"];
+  const row = [exercise, timed ? true : false, category || "", location || "Anywhere", payload.note || ""];
   if (rowIndex > 0) {
     exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).setValues([row]);
   } else {
@@ -464,6 +467,34 @@ function gymlog_handleSaveExercise(payload) {
   }
 
   return ok({ saved: exercise });
+}
+
+function gymlog_handleSaveExerciseNote(payload) {
+  const { exercise, note } = payload;
+  if (!exercise) return err("No exercise name provided");
+
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  const lastRow = exSheet.getLastRow();
+  let rowIndex  = -1;
+  if (lastRow > 1) {
+    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < names.length; i++) {
+      if (String(names[i][0]).trim().toLowerCase() === String(exercise).trim().toLowerCase()) {
+        rowIndex = i + 2;
+        break;
+      }
+    }
+  }
+
+  if (rowIndex > 0) {
+    // Update only the Note column (column 5)
+    exSheet.getRange(rowIndex, 5).setValue(note || "");
+    return ok({ savedNote: exercise });
+  } else {
+    // If exercise doesn't exist in metadata, create it with just the note
+    exSheet.appendRow([exercise, false, "", "Anywhere", note || ""]);
+    return ok({ createdMetadata: exercise });
+  }
 }
 
 

@@ -271,6 +271,7 @@
       const [toast,         setToast]         = useState(null);
       const [confirmDelete, setConfirmDelete] = useState(null);
       const [whoMode,       setWhoMode]       = useState("all");
+      const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: "done"|"skipped" }
       const [logExId,       setLogExId]       = useState(null);
       const [sets,          setSets]          = useState([]);
       const [logInputs,     setLogInputs]     = useState({});   // keyed by person.toLowerCase()
@@ -378,6 +379,24 @@
           } else {
               setSyncStatus("ok");
           }
+      };
+
+      const normalizeDuration = (val) => {
+        if (!val || val.toString().includes(':')) return val;
+        const seconds = parseInt(val);
+        if (isNaN(seconds)) return val;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
+
+      const toggleStatus = (exName, status) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            if (status === 'undo') delete next[exName];
+            else next[exName] = status;
+            return next;
+        });
       };
 
       const showToast = (msg, type = "success") => {
@@ -987,7 +1006,7 @@
           <div style={s.header}>
             <div>
               <div style={{ display: "flex", alignItems: "center" }}>
-                <div style={s.title}>GYM LOG PRO</div>
+                <div style={{ ...s.title, fontSize: 20, letterSpacing: 5 }}>LIFT</div>
                 {syncDot}
               </div>
               <div style={s.subtitle}>{visiblePeople.join(" & ")} · {exercises.length} exercises</div>
@@ -1118,6 +1137,19 @@
                                   </div>
                                   {ex.category && <div style={s.categoryLabel}>{ex.category.toUpperCase()}</div>}
                                 </div>
+                                {exerciseStatus[ex.name] && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleStatus(ex.name, 'undo'); }}
+                                            style={{ background: 'rgba(249,115,22,0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 4, padding: '2px 6px', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' }}
+                                        >
+                                            UNDO
+                                        </button>
+                                        <span style={{ fontSize: 18, color: exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666', fontWeight: 'bold' }}>
+                                            {exerciseStatus[ex.name] === 'done' ? '✓' : '—'}
+                                        </span>
+                                    </div>
+                                )}
                                 <div style={s.cardActions}>
                                   <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
                                   <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
@@ -1234,7 +1266,7 @@
       header:           { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 12px", borderBottom: "1px solid #1a1a1a", flexShrink: 0 },
       title:            { fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" },
       subtitle:         { fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3 },
-      headerTitle:      { fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#f97316", flex: 1, textAlign: "center" },
+      headerTitle:      { fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#f97316", flex: 1, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" },
       addIconBtn:       { background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontSize: 15 },
       backBtn:          { background: "transparent", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: 1, width: 60, textAlign: "left" },
       searchWrap:       { display: "flex", alignItems: "center", margin: "10px 12px 6px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "0 10px", flexShrink: 0 },
