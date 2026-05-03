@@ -65,6 +65,15 @@ function todayStr() {
     return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function normalizeDuration(val) {
+    if (!val || val.toString().includes(':')) return val;
+    const seconds = parseInt(val);
+    if (isNaN(seconds)) return val;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 // ── LOGIC UTILITIES ───────────────────────────────────────────────────────
 function getRange(reps) {
     const n = parseInt(reps);
@@ -74,6 +83,31 @@ function getRange(reps) {
     if (n >= 8  && n <= 12) return "r8_12";
     if (n >= 13)            return "r13_plus";
     return null;
+}
+
+function getBaseName(name) {
+    if (!name) return "";
+    return name
+        .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+        .replace(/ \(Single\)$/i, '')
+        .replace(/ \(Alt\)$/i, '')
+        .replace(/ \(Alternating\)$/i, '')
+        .trim();
+}
+
+function getMode(name) {
+    if (!name) return "std";
+    if (/single|one arm|one leg/i.test(name)) return 'single';
+    if (/alt/i.test(name)) return 'alt';
+    return 'std';
+}
+
+function getStandardizedName(name) {
+    const base = getBaseName(name);
+    const mode = getMode(name);
+    if (mode === 'single') return `${base} (Single)`;
+    if (mode === 'alt')    return `${base} (Alt)`;
+    return base;
 }
 
 function isBetter(newEntry, oldEntry, timed) {
@@ -99,12 +133,24 @@ function migrateRanges(exercises) {
 }
 
 // ── API COMMUNICATION ─────────────────────────────────────────────────────
-async function sheetsGet() {
+let globalDataPromise = null;
+async function sheetsGet(forceRefresh = false) {
+    if (!forceRefresh && globalDataPromise) {
+        return globalDataPromise;
+    }
+
     const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
-    const res = await fetch(url);
-    const json = await res.json();
-    if (json.status !== "ok") throw new Error(json.message);
-    return json.data;
+    globalDataPromise = fetch(url).then(async res => {
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        window.gymGlobalData = json.data;
+        return json.data;
+    }).catch(err => {
+        globalDataPromise = null;
+        throw err;
+    });
+
+    return globalDataPromise;
 }
 
 async function sheetsPost(payload) {
@@ -162,4 +208,46 @@ function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations
 // ── BROADCAST SYSTEM ──────────────────────────────────────────────────────
 function notifySettingsUpdated() {
     window.dispatchEvent(new Event('gym-settings-updated'));
+}
+
+// ── UI UTILITIES ──────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.position = 'fixed';
+        container.style.bottom = '80px';
+        container.style.left = '50%';
+        container.style.transform = 'translateX(-50%)';
+        container.style.zIndex = '9999';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.gap = '8px';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.textContent = msg;
+    toast.style.background = type === 'error' ? '#ef4444' : '#22c55e';
+    toast.style.color = '#fff';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '8px';
+    toast.style.fontFamily = "'DM Sans', sans-serif";
+    toast.style.fontSize = '14px';
+    toast.style.fontWeight = '600';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    
+    container.appendChild(toast);
+    
+    // trigger reflow
+    void toast.offsetWidth;
+    toast.style.opacity = '1';
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 2400);
 }
