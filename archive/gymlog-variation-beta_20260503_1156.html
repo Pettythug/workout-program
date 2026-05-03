@@ -131,30 +131,6 @@
             color: var(--text);
             outline: none;
             cursor: pointer;
-            max-width: 120px; /* Prevent it from pushing everything else off */
-        }
-
-        /* Mobile Header Fix */
-        @media (max-width: 480px) {
-            .header {
-                padding: 12px 12px;
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            .header-left {
-                flex: 1 1 100%;
-                border-bottom: 1px solid #1a1a1a;
-                padding-bottom: 8px;
-            }
-            .header-right {
-                flex: 1 1 100%;
-                justify-content: space-between;
-                gap: 4px;
-            }
-            .header-select {
-                flex: 1;
-                min-width: 0;
-            }
         }
 
         .main {
@@ -1142,7 +1118,7 @@ let exerciseStatus = {};
         function setupSelectors() {
             const locSelect = document.getElementById('locationSelect');
             const locOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
-            locSelect.innerHTML = locOptions.map(l => `<option value="${l}">${l === 'Anywhere' ? 'ANYWHERE / ALL LOCATIONS' : l.toUpperCase()}</option>`).join('');
+            locSelect.innerHTML = locOptions.map(l => `<option value="${l}">${l}</option>`).join('');
             
             // Check global active location first
             const savedLoc = localStorage.getItem(ACTIVE_LOCATION_KEY) || localStorage.getItem(LOC_KEY) || 'Anywhere';
@@ -1154,13 +1130,6 @@ let exerciseStatus = {};
             const val = document.getElementById('locationSelect').value;
             localStorage.setItem(LOC_KEY, val);
             localStorage.setItem(ACTIVE_LOCATION_KEY, val);
-            
-            // Clear the cached workout picks and active state so generateWorkout()
-            // re-draws exercises filtered by the new location.
-            const num = parseInt(localStorage.getItem(NUM_KEY) || '0') + 1;
-            localStorage.removeItem(`saved_workout_${num}`);
-            localStorage.removeItem('gym-active-workout-state');
-            
             notifySettingsUpdated();
             generateWorkout();
         }
@@ -1354,7 +1323,7 @@ let exerciseStatus = {};
             // Build Location Options for Custom Machine Injection
             const activeLoc = document.getElementById('locationSelect').value;
             const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
-            const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l === 'Anywhere' ? 'ANYWHERE / ALL LOCATIONS' : l.toUpperCase()}</option>`).join('');
+            const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
 
             const groupedByBase = {};
             (globalData.exercises || []).forEach(ex => {
@@ -2223,7 +2192,6 @@ let exerciseStatus = {};
       const [logNote,       setLogNote]       = useState("");
       const [logError,      setLogError]      = useState("");
       const [historyExId,   setHistoryExId]   = useState(null);
-      const [editExId,      setEditExId]      = useState(null);
       const [setCount,      setSetCount]      = useState(1);
       const [newName,       setNewName]       = useState("");
       const [newExTimed,    setNewExTimed]    = useState(false);
@@ -2242,7 +2210,6 @@ let exerciseStatus = {};
       const [createSingle,  setCreateSingle]  = useState(false);
       const [createAlt,     setCreateAlt]     = useState(false);
       const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: 'done'|'skipped' }
-      const [isSavingSet,    setIsSavingSet]    = useState(false);
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -2465,32 +2432,6 @@ let exerciseStatus = {};
       // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
       const openHistory = (id) => {
         setHistoryExId(historyExId === id ? null : id);
-        setEditExId(null);
-      };
-
-      const saveInlineMetadata = async (exId, newCat, newLoc) => {
-        const ex = exercises.find(e => e.id === exId);
-        if (!ex) return;
-        
-        setSyncStatus("syncing");
-        try {
-            await sheetsPost({ 
-                action: "saveExercise", 
-                exercise: ex.name, 
-                timed: ex.timed, 
-                category: newCat, 
-                location: newLoc 
-            });
-            const updated = exercises.map(e => e.id === exId ? { ...e, category: newCat, location: newLoc } : e);
-            setExercises(updated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-            setEditExId(null);
-            showToast("Metadata Saved ✓");
-            setSyncStatus("ok");
-        } catch(err) {
-            showToast("Failed to save metadata", "error");
-            setSyncStatus("error");
-        }
       };
 
       const openLog = (id) => {
@@ -2520,8 +2461,6 @@ let exerciseStatus = {};
 
       // ── SAVE SET ──────────────────────────────────────────────────────────
       const saveSet = async () => {
-        if (isSavingSet) return; // Guard against double-tap
-        setIsSavingSet(true);
         const ex = exercises.find(e => e.id === logExId);
         const date = todayStr();
         const newEntries = [];
@@ -2537,7 +2476,7 @@ let exerciseStatus = {};
             const normalized = normalizeTimeInput(rawDur);
             if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person}`; break; }
             const perPersonNote = input.note?.trim() || "";
-            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${localStorage.getItem('gym-workout-num') || localStorage.getItem('builder_workout_num') || "?"})` : `Set ${setCount} (Workout #${localStorage.getItem('gym-workout-num') || localStorage.getItem('builder_workout_num') || "?"})`;
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
 
             newEntries.push({
               date, person: key, reps: normalized, weight: input.weight || "",
@@ -2550,7 +2489,7 @@ let exerciseStatus = {};
             if (!range) { err = `${person}'s reps must fit a range`; break; }
             
             const perPersonNote = input.note?.trim() || "";
-            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${localStorage.getItem('gym-workout-num') || localStorage.getItem('builder_workout_num') || "?"})` : `Set ${setCount} (Workout #${localStorage.getItem('gym-workout-num') || localStorage.getItem('builder_workout_num') || "?"})`;
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
 
             newEntries.push({
               date, person: key, reps: repsVal, weight: input.weight || "",
@@ -2584,8 +2523,7 @@ let exerciseStatus = {};
         setLogInputs(inputs);
         setLogNote("");
         setSetCount(setCount + 1);
-        setIsSavingSet(false);
-        showToast(`Set ${setCount} saved! ✓`);
+        showToast(`Set ${setCount} saved!`);
       };
 
       const finishLogging = () => { setView("list"); setExpanded(logExId); };
@@ -2773,11 +2711,10 @@ let exerciseStatus = {};
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
         const catMatch  = !categoryFilter || e.category === categoryFilter;
-        // Anywhere exercises appear under ALL location filters
+        // Strict filtering for the LIFT database view
         const locMatch  = locationFilter === "all" 
-          || e.location === "Anywhere"
-          || !e.location
-          || e.location === locationFilter;
+          || e.location === locationFilter 
+          || (!e.location && locationFilter === "all");
         return nameMatch && catMatch && locMatch;
       });
 
@@ -2856,9 +2793,7 @@ let exerciseStatus = {};
                 </div>
               )}
 
-              {visiblePeople
-                .filter(person => whoMode === "all" || whoMode === person)
-                .map(person => {
+              {visiblePeople.map(person => {
                 const key      = person.toLowerCase();
                 const input    = logInputs[key] || {};
                 const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
@@ -2917,22 +2852,7 @@ let exerciseStatus = {};
 
               {logError && <div style={s.error}>{logError}</div>}
               <div style={s.logBtnRow}>
-                <button 
-                  style={{
-                    ...s.saveSetBtn,
-                    background: isSavingSet ? "rgba(249, 115, 22, 0.2)" : "rgba(249, 115, 22, 0.05)",
-                    color: "#f97316",
-                    border: isSavingSet ? "2px solid #f97316" : "2px solid #f9731680",
-                    opacity: 1, // Full opacity for text visibility
-                    cursor: isSavingSet ? "not-allowed" : "pointer",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px"
-                  }}
-                  disabled={isSavingSet}
-                  onClick={saveSet}
-                >
-                  {isSavingSet ? `Logging Set ${setCount}...` : `Log Set ${setCount}`}
-                </button>
+                <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>
                 {sets.length > 0 && <button style={s.doneBtn} onClick={finishLogging}>Done</button>}
               </div>
             </div>
@@ -3060,9 +2980,10 @@ let exerciseStatus = {};
                 const ex = group.variations[mode] || Object.values(group.variations)[0];
                 const isOpen = expanded === ex.id;
                 const isDone = exerciseStatus[ex.name] === 'done';
+                const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
                 return (
-                  <div key={group.baseName} className={`exercise-card${isDone ? ' done' : ''}`}>
+                  <div key={group.baseName} style={{ ...s.card, ...(isDone ? s.cardDone : {}), ...(isSkipped ? s.cardSkipped : {}) }}>
                     {/* SMART HEADER */}
                     <div style={s.smartHeader}>
                         <div style={{ display: "flex", gap: 4 }}>
@@ -3088,10 +3009,10 @@ let exerciseStatus = {};
                         <div style={s.smartTag}>SMART CARD</div>
                     </div>
 
-                    <div className="exercise-header" onClick={() => setExpanded(isOpen ? null : ex.id)}>
-                      <div style={{ flex: 1 }}>
-                        <div className="exercise-category">{ex.category}</div>
-                        <div className="exercise-name">{ex.name}</div>
+                    <div style={s.cardInner} onClick={() => setExpanded(isOpen ? null : ex.id)}>
+                      <div style={s.cardLeft}>
+                        <div style={s.cat}>{ex.category}</div>
+                        <div style={s.name}>{ex.name}</div>
                         <div style={s.maxRow}>
                           {visiblePeople.slice(0, 3).map(p => {
                             const rangeKey = "r8_12"; // Default visual range
@@ -3102,15 +3023,7 @@ let exerciseStatus = {};
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         {isDone && <span style={{ color: "#22c55e", fontWeight: "bold" }}>✓</span>}
-                        <button 
-                          style={{ background: "none", border: "none", color: "#666", fontSize: 14, cursor: "pointer", padding: 0 }}
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setEditExId(editExId === ex.id ? null : ex.id); 
-                            setHistoryExId(null); 
-                            if (!isOpen && editExId !== ex.id) setExpanded(ex.id);
-                          }}
-                        >⚙️</button>
+                        {isSkipped && <span style={{ color: "#666", fontWeight: "bold" }}>—</span>}
                         <div style={{ ...s.chevron, transform: isOpen ? "rotate(180deg)" : "none" }}>▼</div>
                       </div>
                     </div>
@@ -3123,59 +3036,16 @@ let exerciseStatus = {};
                         </div>
                         
                         <div style={{ ...s.actionRow, marginTop: 8 }}>
-                           {!isDone ? (
-                             <button style={s.doneActionBtn} onClick={() => toggleStatus(ex.name, 'done')}>✓ DONE</button>
+                           {!isDone && !isSkipped ? (
+                             <>
+                               <button style={s.doneActionBtn} onClick={() => toggleStatus(ex.name, 'done')}>✓ DONE</button>
+                               <button style={s.skipActionBtn} onClick={() => toggleStatus(ex.name, 'skipped')}>SKIP</button>
+                             </>
                            ) : (
-                             <button style={s.undoActionBtn} onClick={() => toggleStatus(ex.name, 'undo')}>UNDO DONE</button>
+                             <button style={s.undoActionBtn} onClick={() => toggleStatus(ex.name, 'undo')}>UNDO STATUS</button>
                            )}
+                           <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", id: ex.id })}>DELETE</button>
                         </div>
-
-                        {editExId === ex.id && (
-                          <div style={s.historyDrawer}>
-                            <div style={s.historyTitle}>EXERCISE SETTINGS</div>
-                            <div style={{ padding: "0 12px 12px" }}>
-                              <div style={{ fontSize: 10, color: "#444", marginBottom: 4, fontFamily: "'DM Mono', monospace" }}>CATEGORY</div>
-                              <select
-                                id={`edit-cat-${ex.id}`}
-                                defaultValue={ex.category}
-                                style={{ ...s.input, marginBottom: 12, padding: "12px 16px" }}
-                              >
-                                {[...new Set(exercises.map(e => e.category).filter(Boolean))].sort().map(c => (
-                                  <option key={c} value={c}>{c}</option>
-                                ))}
-                                <option value="__new__">+ Add new category...</option>
-                              </select>
-                              <div style={{ fontSize: 10, color: "#444", marginBottom: 4, fontFamily: "'DM Mono', monospace" }}>LOCATION</div>
-                              <select 
-                                id={`edit-loc-${ex.id}`}
-                                defaultValue={ex.location}
-                                style={{ ...s.input, marginBottom: 16, padding: "12px 16px" }}
-                              >
-                                {locations.map(l => <option key={l} value={l}>{l}</option>)}
-                              </select>
-                              <div style={{ display: "flex", gap: 8 }}>
-                                <button 
-                                  style={{ ...s.saveSetBtn, flex: 1, margin: 0 }}
-                                  onClick={(e) => {
-                                    let c = document.getElementById(`edit-cat-${ex.id}`).value;
-                                    if (c === '__new__') {
-                                      const typed = prompt('Enter new category name:');
-                                      if (!typed || !typed.trim()) return;
-                                      c = typed.trim();
-                                    }
-                                    const l = document.getElementById(`edit-loc-${ex.id}`).value;
-                                    e.currentTarget.textContent = "Saving...";
-                                    saveInlineMetadata(ex.id, c, l);
-                                  }}
-                                >SAVE METADATA</button>
-                                <button 
-                                  style={{ ...s.delBtn, padding: "12px 16px", margin: 0, flex: "none", width: "auto" }} 
-                                  onClick={() => setConfirmDelete({ type: "exercise", id: ex.id })}
-                                >DELETE</button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
 
                         {historyExId === ex.id && (
                           <div style={s.historyDrawer}>
@@ -3308,7 +3178,7 @@ let exerciseStatus = {};
       rangeTag: { background: "#1a1100", color: "#f97316", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontFamily: "'DM Mono', monospace" },
       bestTag: { background: "#0a0a0a", color: "#444", padding: "2px 6px", borderRadius: 4, fontSize: 10 },
       
-      saveSetBtn: { width: "100%", background: "rgba(249, 115, 22, 0.1)", color: "#f97316", border: "2px solid #f97316", borderRadius: 12, padding: 16, fontWeight: 700, fontSize: 15, cursor: "pointer", transition: "all 0.2s" },
+      saveSetBtn: { width: "100%", background: "#f97316", color: "white", border: "none", borderRadius: 12, padding: 16, fontWeight: 700, fontSize: 15, cursor: "pointer" },
       doneBtn: { width: "100%", background: "transparent", color: "#555", border: "1px solid #1a1a1a", borderRadius: 12, padding: 16, fontWeight: 600, fontSize: 15, marginTop: 12 },
       
       toast: { position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", padding: "12px 24px", borderRadius: 30, color: "white", fontSize: 14, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", zIndex: 1000 },

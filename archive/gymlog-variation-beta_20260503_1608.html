@@ -131,30 +131,6 @@
             color: var(--text);
             outline: none;
             cursor: pointer;
-            max-width: 120px; /* Prevent it from pushing everything else off */
-        }
-
-        /* Mobile Header Fix */
-        @media (max-width: 480px) {
-            .header {
-                padding: 12px 12px;
-                flex-wrap: wrap;
-                gap: 12px;
-            }
-            .header-left {
-                flex: 1 1 100%;
-                border-bottom: 1px solid #1a1a1a;
-                padding-bottom: 8px;
-            }
-            .header-right {
-                flex: 1 1 100%;
-                justify-content: space-between;
-                gap: 4px;
-            }
-            .header-select {
-                flex: 1;
-                min-width: 0;
-            }
         }
 
         .main {
@@ -2856,9 +2832,7 @@ let exerciseStatus = {};
                 </div>
               )}
 
-              {visiblePeople
-                .filter(person => whoMode === "all" || whoMode === person)
-                .map(person => {
+              {visiblePeople.map(person => {
                 const key      = person.toLowerCase();
                 const input    = logInputs[key] || {};
                 const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
@@ -2931,7 +2905,7 @@ let exerciseStatus = {};
                   disabled={isSavingSet}
                   onClick={saveSet}
                 >
-                  {isSavingSet ? `Logging Set ${setCount}...` : `Log Set ${setCount}`}
+                  {isSavingSet ? `Saving Set ${setCount}...` : `Save Set ${setCount}`}
                 </button>
                 {sets.length > 0 && <button style={s.doneBtn} onClick={finishLogging}>Done</button>}
               </div>

@@ -131,6 +131,30 @@
             color: var(--text);
             outline: none;
             cursor: pointer;
+            max-width: 120px; /* Prevent it from pushing everything else off */
+        }
+
+        /* Mobile Header Fix */
+        @media (max-width: 480px) {
+            .header {
+                padding: 12px 12px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+            .header-left {
+                flex: 1 1 100%;
+                border-bottom: 1px solid #1a1a1a;
+                padding-bottom: 8px;
+            }
+            .header-right {
+                flex: 1 1 100%;
+                justify-content: space-between;
+                gap: 4px;
+            }
+            .header-select {
+                flex: 1;
+                min-width: 0;
+            }
         }
 
         .main {

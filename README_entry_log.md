@@ -4,7 +4,7 @@ This is a quick reference for the current status of the Workout Tracker project 
 
 | File | Status | Description |
 | :--- | :--- | :--- |
-| `gymlog-ultimate.html` | **PRODUCTION** | ✅ Migrated 2026-05-03. Gear icon Exercise Settings, category dropdown, location filter fixes (LIFT + PLAN), openLog bug fixed, SKIP removed from LIFT. |
+| `gymlog-ultimate.html` | **PRODUCTION** | ✅ Migrated 2026-05-03 4:25 PM. Mobile header fix (PLAN), Person filtering (LIFT), orange button theme sync. |
 | `workout-builder-pro.html` | **ACTIVE** | AI-powered workout generator and customization engine. |
 | `index.html` | **PORTAL** | Unified hub for accessing all Pro applications. |
 | `gym-core.js` | **CORE** | The Brain. Centralized logic for time parsing, ranges, and data mapping. |
@@ -48,3 +48,5 @@ This is a quick reference for the current status of the Workout Tracker project 
 | [2026-05-03 04:08 PM] | .\archive\gymlog-variation-beta_20260503_1608.html | Pre-edit backup: Syncing button text from 'Save Set' to 'Log Set' in beta. |
 | [2026-05-03 04:13 PM] | .\archive\gymlog-ultimate_20260503_1613.html | Pre-edit backup: Implementing Person Filter in Log Set view. |
 | [2026-05-03 04:13 PM] | .\archive\gymlog-variation-beta_20260503_1613.html | Pre-edit backup: Implementing Person Filter in Log Set view (Beta). |
+| [2026-05-03 04:23 PM] | .\archive\gymlog-variation-beta_20260503_1623.html | Pre-edit backup: Fixing mobile layout for PLAN header (Push/Pull and Settings icon). |
+| [2026-05-03 04:25 PM] | .\archive\gymlog-ultimate_20260503_1625.html | Pre-migration backup: Saving production before applying mobile header fix and person filter updates. |
