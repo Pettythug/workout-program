@@ -1160,6 +1160,16 @@ let exerciseStatus = {};
              if (label === "8-12") return "r8_12";
              return "r13_plus";
         }
+        function saveWorkoutState() {
+            if (!currentWorkout) return;
+            const snapshot = {
+                workout: currentWorkout,
+                status: exerciseStatus,
+                counters: exerciseSetCounters,
+                modes: exerciseModes
+            };
+            localStorage.setItem('gym-active-workout-state', JSON.stringify(snapshot));
+        }
 
         function undoCompletion() {
             const raw = localStorage.getItem('gym-last-workout-snapshot');
@@ -1195,6 +1205,35 @@ let exerciseStatus = {};
              let num = parseInt(localStorage.getItem(NUM_KEY) || '0') + 1;
              const activeRange = getRepRange(num);
              const rangeKey = getRangeKeyFromLabel(activeRange);
+             
+             // ── STATE HYDRATION (Option B: Robust Local Storage) ──
+             const activeStateRaw = localStorage.getItem('gym-active-workout-state');
+             if (activeStateRaw) {
+                 try {
+                     const activeState = JSON.parse(activeStateRaw);
+                     if (activeState.workout && activeState.workout.workoutNum === num && activeState.workout.type === type) {
+                         currentWorkout = activeState.workout;
+                         exerciseStatus = activeState.status || {};
+                         exerciseSetCounters = activeState.counters || {};
+                         exerciseModes = activeState.modes || {};
+                         
+                         currentMaxes = {};
+                         currentWorkout.exercises.forEach(e => {
+                             const stdName = getStandardizedName(e.name);
+                             currentMaxes[stdName] = {};
+                             activePeople.forEach(p => {
+                                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                             });
+                         });
+                         
+                         renderWorkout(currentWorkout, currentWorkout.exercises);
+                         return; // Fully hydrated, skip generation!
+                     }
+                 } catch(e) {}
+             }
+             
+             // If not hydrated, clear stale state
+             localStorage.removeItem('gym-active-workout-state');
              
              const available = (globalData.exercises || []).filter(e => !e.timed && (e.location === 'Anywhere' || e.location === loc || !e.location));
              
@@ -1266,6 +1305,7 @@ let exerciseStatus = {};
                  });
              });
              
+             saveWorkoutState();
              renderWorkout(currentWorkout, genExercises);
         }
 
@@ -1536,6 +1576,7 @@ let exerciseStatus = {};
                  currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
             });
             
+            saveWorkoutState();
             renderWorkout(currentWorkout, currentWorkout.exercises);
             toggleCard(idx);
         }
@@ -1568,6 +1609,7 @@ let exerciseStatus = {};
                 });
             }
 
+            saveWorkoutState();
             renderWorkout(currentWorkout, currentWorkout.exercises);
             toggleCard(idx);
         }
@@ -1604,6 +1646,7 @@ let exerciseStatus = {};
 
         function undoStatus(idx, exName) {
             delete exerciseStatus[exName];
+            saveWorkoutState();
             renderWorkout(currentWorkout, currentWorkout.exercises);
         }
 
@@ -1852,6 +1895,8 @@ let exerciseStatus = {};
                 });
                 
                 exerciseSetCounters[cardIdx] = setNum + 1;
+                saveWorkoutState();
+                
                 btn.textContent = `Log Set ${exerciseSetCounters[cardIdx]}`;
                 btn.disabled = false;
                 
@@ -1868,7 +1913,9 @@ let exerciseStatus = {};
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('done');
-            exerciseStatus[exerciseName] = 'done'; renderWorkout(currentWorkout, currentWorkout.exercises);
+            
+            saveWorkoutState();
+            renderWorkout(currentWorkout, currentWorkout.exercises);
             checkAllComplete();
         }
 
@@ -1903,6 +1950,8 @@ let exerciseStatus = {};
                 const card = document.getElementById(`card-${idx}`);
                 card.classList.remove('open');
                 card.classList.add('skipped');
+                
+                saveWorkoutState();
                 renderWorkout(currentWorkout, currentWorkout.exercises);
                 checkAllComplete();
             } catch (e) {

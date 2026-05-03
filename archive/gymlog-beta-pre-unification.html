@@ -1,0 +1,3345 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0c0c0c" />
+  <title>LIFT</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="gym-core.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
+    #root { height: 100%; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  
+
+        :root {
+            --bg: #0c0c0c;
+            --surface: #111111;
+            --border: #1a1a1a;
+            --text: #e0e0e0;
+            --muted: #555555;
+            --accent: #f97316;
+            --accent-light: rgba(249, 115, 22, 0.1);
+            --success: #22c55e;
+            --success-light: rgba(34, 197, 94, 0.1);
+            --warning: #f59e0b;
+            --warning-light: rgba(245, 158, 11, 0.1);
+            --skip: #444444;
+            --skip-light: #161616;
+            --push: #f97316;
+            --pull: #c084fc;
+            --mono: 'DM Mono', monospace;
+            --sans: 'DM Sans', sans-serif;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 0 0 80px;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        
+
+        .header-left p {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 1px;
+            font-family: var(--mono);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .workout-badge {
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .badge-push {
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--push);
+            border: 1px solid rgba(249, 115, 22, 0.2);
+        }
+
+        .badge-pull {
+            background: rgba(192, 132, 252, 0.1);
+            color: var(--pull);
+            border: 1px solid rgba(192, 132, 252, 0.2);
+        }
+
+        .settings-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 16px;
+            cursor: pointer;
+            color: var(--muted);
+        }
+
+        .header-select {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .main {
+            padding: 16px 16px 0;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .info-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .info-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .info-item .label {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-family: var(--mono);
+        }
+
+        .info-item .value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 2px;
+            font-family: var(--mono);
+            color: var(--accent);
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            padding-left: 2px;
+        }
+
+        .exercise-card {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            margin-bottom: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+        }
+
+        .exercise-card.done {
+            opacity: 0.6;
+            border-color: var(--success);
+        }
+
+        .exercise-card.skipped {
+            opacity: 0.5;
+            border-color: var(--skip);
+        }
+
+        .exercise-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .exercise-header:active {
+            background: var(--bg);
+        }
+
+        .exercise-info {
+            flex: 1;
+        }
+
+        .exercise-category {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .exercise-name {
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: -0.2px;
+        }
+
+        .exercise-max {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            margin-top: 3px;
+        }
+
+        .exercise-max span {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .exercise-status {
+            font-size: 18px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .expand-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+            margin-left: 4px;
+        }
+
+        .exercise-card.open .expand-icon {
+            transform: rotate(180deg);
+        }
+
+        .set-logger {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 14px 16px;
+            background: var(--bg);
+        }
+
+        .exercise-card.open .set-logger {
+            display: block;
+        }
+
+        .sets-list {
+            margin-bottom: 12px;
+        }
+
+                .person-block {
+            background: #0e0e0e;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+
+        .person-label {
+            font-size: 10px;
+            color: var(--accent);
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-family: var(--mono);
+        }
+
+        .set-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .set-num {
+            display: none;
+        }
+
+        .set-input-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .set-input {
+            background: #0c0c0c;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 8px;
+            width: 70px;
+            text-align: center;
+            font-size: 16px;
+            font-family: var(--mono);
+            color: var(--text);
+            outline: none;
+        }
+
+        .set-input:focus {
+            border-color: var(--accent);
+            background: #161616;
+        }
+
+        .set-input::placeholder {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .set-separator {
+            font-size: 12px;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .set-log-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-family: var(--sans);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+        }
+
+        .set-log-btn:active {
+            opacity: 0.8;
+        }
+
+        .set-log-btn.logged {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .rep-range-hint {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .rep-range-hint strong {
+            color: var(--accent);
+        }
+
+        
+
+        .exercise-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        
+
+        .skip-btn {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .mark-done-btn:active,
+        .skip-btn:active {
+            opacity: 0.7;
+        }
+
+        .complete-btn {
+            width: 100%;
+            background: rgba(249, 115, 22, 0.1);
+            color: var(--accent);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 16px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .complete-btn:active {
+            opacity: 0.85;
+        }
+
+        .complete-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .got-more-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent-light);
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.15s;
+        }
+
+        .got-more-btn:active {
+            background: var(--accent-light);
+        }
+
+        .more-time-btn {
+            width: 100%;
+            background: rgba(249, 115, 22, 0.05);
+            color: var(--accent);
+            border: 1px dashed var(--accent);
+            border-radius: var(--radius);
+            padding: 12px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .more-time-btn:active {
+            background: var(--bg);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-family: var(--mono);
+            font-size: 13px;
+        }
+
+        .loading-dot {
+            display: inline-block;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0.3;
+            }
+
+            40% {
+                opacity: 1;
+            }
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #DC2626;
+            font-size: 13px;
+        }
+
+        .success-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .success-state .check {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .success-state h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .success-state p {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: #141414;
+            border: 1px solid #2a2a2a;
+            border-radius: 20px 20px 0 0;
+            padding: 24px 20px 40px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+        }
+        .modal h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+        .modal-label {
+            font-size: 10px;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-family: var(--mono);
+        }
+        .modal-input {
+            width: 100%;
+            background: #0c0c0c;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 13px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+        .modal-input:focus { border-color: var(--accent); }
+
+        
+
+        .modal-save-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .modal-cancel-btn {
+            width: 100%;
+            background: transparent;
+            color: var(--muted);
+            border: none;
+            padding: 10px;
+            font-family: var(--sans);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .config-screen {
+            padding: 40px 20px;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .config-screen h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.4px;
+        }
+
+        .config-screen p {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 28px;
+        }
+
+        .config-label {
+            font-size: 12px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .config-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            margin-bottom: 20px;
+        }
+
+        .config-input:focus {
+            border-color: var(--accent);
+        }
+
+        .config-btn {
+            width: 100%;
+            background: var(--text);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            padding: 14px;
+            font-family: var(--sans);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .config-note {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 12px;
+            text-align: center;
+            font-family: var(--mono);
+        }
+    
+</style>
+</head>
+
+<body>
+    <style>
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #0c0c0c;
+      border-top: 1px solid #1a1a1a;
+      display: flex;
+      z-index: 1000;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 16px;
+      background: transparent;
+      color: #555;
+      border: none;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-btn.active {
+      color: #f97316;
+      border-top: 2px solid #f97316;
+      background: #111;
+    }
+    #tracker-root, #builder-root {
+      height: 100%;
+      padding-bottom: 60px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    #tracker-root { display: block; }
+    #builder-root { display: none; }
+  </style>
+  <!-- UNIFIED SETTINGS MODAL -->
+    <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
+        <div class="modal" style="max-width:340px; max-height:85vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; color:var(--accent); letter-spacing:1px;">SETTINGS</h3>
+                <button onclick="closeSettingsModal()" style="background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="modal-label">Apps Script URL</div>
+            <input type="text" class="modal-input" id="settingsUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:11px;" />
+
+            <div class="modal-label" style="margin-top:20px;">ROSTER (Who is working out today?)</div>
+            <div id="activePeopleCheckboxes" style="margin-bottom:12px;"></div>
+            
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newPersonInput" placeholder="Add person..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewPerson()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
+
+            <div class="modal-label">LOCATIONS</div>
+            <div id="locationsList" style="margin-bottom:12px;"></div>
+            <div style="display:flex; gap:8px; margin-bottom:20px;">
+                <input type="text" id="newLocationInput" placeholder="Add location..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
+                <button onclick="addNewLocation()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+            </div>
+
+            <div id="deviceOwnerContainer" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);"></div>
+
+            <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
+                <button class="modal-save-btn" onclick="saveSettings()" style="width:100%; margin:0;">Save & Sync Everything</button>
+                <button onclick="manualSyncFromSettings()" style="background:none; border:1px solid var(--success); color:var(--success); padding:10px; border-radius:8px; font-size:11px; font-family:var(--mono); cursor:pointer;">↑ Sync Roster to Sheets</button>
+            </div>
+        </div>
+    </div>
+
+  <div id="tracker-root"></div>
+  
+  <div id="builder-root">
+
+    <div class="header">
+        <div class="header-left">
+            <h1>PLAN</h1>
+            <p id="headerSub">Loading...</p>
+        </div>
+        <div class="header-right">
+            <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
+            <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
+            <button class="settings-btn" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="loadingState" class="loading">
+            <span class="loading-dot">●</span>
+            <span class="loading-dot">●</span>
+            <span class="loading-dot">●</span>
+        </div>
+
+        <div id="errorState" class="error-state" style="display:none;"></div>
+
+        <div id="successState" class="success-state" style="display:none;">
+            <div class="check">✓</div>
+            <h2>Workout Complete!</h2>
+            <p>Great work. Come back for your next session.</p>
+        </div>
+
+        <div id="workoutContent" style="display:none;">
+            <div class="info-bar">
+                <div class="info-item">
+                    <div class="label">Workout</div>
+                    <div class="value" id="infoWorkoutNum">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Reps</div>
+                    <div class="value" id="infoRepRange">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">Sets</div>
+                    <div class="value">3</div>
+                </div>
+            </div>
+
+            <div class="section-label">Exercises</div>
+            <div id="exerciseList"></div>
+
+            <button class="complete-btn" id="completeBtn" onclick="completeWorkout()">
+                Complete Workout
+            </button>
+
+            <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
+                + Got more time? Suggest an accessory
+            </button>
+
+            <div id="accessorySection" style="display:none; margin-top: 16px;">
+                <div class="section-label">Accessory — Optional</div>
+                <div class="exercise-card" id="accessoryCard">
+                    <div class="exercise-header" onclick="toggleAccessory()">
+                        <div class="exercise-info">
+                            <div class="exercise-category">Accessory</div>
+                            <div class="exercise-name" id="accessoryName">—</div>
+                            <div class="exercise-max" id="accessoryMax"></div>
+                        </div>
+                        <div class="expand-icon">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="set-logger" id="accessoryLogger" style="display:none;">
+                        <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
+                        <div class="sets-list" id="accSetsList"></div>
+                        <button class="complete-btn" style="padding:12px; margin-top:8px; margin-bottom:12px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
+                        <div class="new-max-banner" id="acc-maxbanner"></div>
+                        <div class="exercise-actions">
+                            <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
+            </div>
+        </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+     <button id="nav-tracker" class="nav-btn active" onclick="switchView('tracker')">LIFT</button>
+     <button id="nav-builder" class="nav-btn" onclick="switchView('builder')">PLAN</button>
+  </div>
+
+  <script>
+    function switchView(view) {
+       document.getElementById('tracker-root').style.display = view === 'tracker' ? 'block' : 'none';
+       document.getElementById('builder-root').style.display = view === 'builder' ? 'block' : 'none';
+       document.getElementById('nav-tracker').classList.toggle('active', view === 'tracker');
+       document.getElementById('nav-builder').classList.toggle('active', view === 'builder');
+       
+       if(view === 'builder' && typeof initBuilder === 'function') {
+           if (!window.builderInitialized) {
+               initBuilder();
+               window.builderInitialized = true;
+           } else {
+               // If already initialized, just refresh people from common storage
+               syncPeopleToBuilder();
+           }
+       }
+    }
+
+    function syncPeopleToBuilder() {
+        try {
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || [];
+            const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+            const visible = all.filter(p => !hidden.includes(p));
+            if (visible.length > 0) {
+                activePeople = visible;
+                if (currentWorkout) {
+                    renderWorkout(currentWorkout, currentWorkout.exercises);
+                }
+            }
+        } catch(e) {}
+    }
+    
+    const TYPE_KEY = 'builder_last_workout_type';
+    const NUM_KEY = 'builder_workout_num';
+    const LOC_KEY = 'builder_location';
+    
+    let currentWorkout = null;
+    
+        const PLANNER_NOTES_KEY = 'gym-planner-notes';
+        let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
+        
+        async function savePlannerNote(exName, note) {
+            plannerNotes[exName] = note;
+            localStorage.setItem(PLANNER_NOTES_KEY, JSON.stringify(plannerNotes));
+            if (SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE") {
+                try {
+                    await sheetsPost({ action: "saveExerciseNote", exercise: exName, note: note });
+                } catch(e) {}
+            }
+        }
+
+let exerciseStatus = {};
+    let currentMaxes = {};
+    let currentAccessory = null;
+    let activePeople = [];
+    let exerciseSetCounters = {}; 
+    let accessorySetCounter = 1;
+    let globalData = null;
+
+    function initBuilder() {
+        if (!window.builderInitialized) {
+            window.addEventListener('gym-settings-updated', () => {
+                setupSelectors(); 
+                generateWorkout();
+            });
+            window.builderInitialized = true;
+        }
+        // loadDataAndWorkout(); // Wait for Master Sync to trigger
+    }
+
+        function openSettings() {
+            const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+            document.getElementById('settingsUrlInput').value = url;
+            
+            const peopleContainer = document.getElementById('activePeopleCheckboxes');
+            const locContainer = document.getElementById('locationsList');
+            const ownerContainer = document.getElementById('deviceOwnerContainer');
+            
+            const allPeople = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const allLocs = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+            const primaryUser = localStorage.getItem('builder_primary_user') || allPeople[0];
+
+            peopleContainer.innerHTML = allPeople.map(p => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); cursor:pointer; flex:1;">
+                        <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
+                        ${p}
+                    </label>
+                    <button onclick="removePersonGlobal('${p}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>
+                </div>
+            `).join('');
+
+            locContainer.innerHTML = allLocs.map(l => `
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
+                    <span style="font-size:12px; color:var(--text); opacity:${l==='Anywhere' ? 0.5 : 1}">${l}</span>
+                    ${l !== 'Anywhere' ? `<button onclick="removeLocationGlobal('${l}')" style="background:none; border:none; color:#555; padding:4px; cursor:pointer; font-size:12px;">✕</button>` : ''}
+                </div>
+            `).join('');
+
+            ownerContainer.innerHTML = `
+                <div style="font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Device Owner</div>
+                <select id="deviceOwnerSelect" style="width:100%; padding:10px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:8px; font-family:var(--sans);">
+                    ${allPeople.map(p => `<option value="${p}" ${p === primaryUser ? 'selected' : ''}>${p}</option>`).join('')}
+                </select>
+            `;
+            
+            document.getElementById('settingsModal').classList.add('open');
+        }
+        window.openSettings = openSettings;
+
+        function addNewPerson() {
+            const input = document.getElementById('newPersonInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removePersonGlobal(name) {
+            if (!confirm(`Remove ${name} from all devices?`)) return;
+            const all = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const next = all.filter(p => p !== name);
+            localStorage.setItem(PEOPLE_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        function addNewLocation() {
+            const input = document.getElementById('newLocationInput');
+            const name = input.value.trim();
+            if (!name) return;
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            if (all.includes(name)) return alert("Already exists");
+            const next = [...all, name];
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            input.value = '';
+            openSettings();
+        }
+
+        function removeLocationGlobal(name) {
+            const all = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            const next = all.filter(l => l !== name);
+            localStorage.setItem(LOCATIONS_KEY, JSON.stringify(next));
+            openSettings();
+        }
+
+        async function manualSyncFromSettings() {
+            const btn = event.currentTarget;
+            btn.textContent = "Syncing...";
+            try {
+                const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+                await sheetsPost({ action: "savePeople", people });
+                btn.textContent = "Synced ✓";
+                setTimeout(() => btn.textContent = "↑ Sync Roster to Sheets", 2000);
+            } catch(e) {
+                alert("Sync failed");
+                btn.textContent = "Retry Sync";
+            }
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('settingsUrlInput').value.trim();
+            if (url) localStorage.setItem('gym_api_url', url);
+            
+            const oldOwner = localStorage.getItem('builder_primary_user') || 'Brian';
+            const oldLeader = (activePeople.includes(oldOwner) ? oldOwner : (activePeople[0] || 'Brian')).toLowerCase();
+            
+            const cbs = document.querySelectorAll('.person-cb');
+            let hidden = [];
+            let selected = [];
+            
+            const allPeople = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            cbs.forEach(cb => { 
+                if (cb.checked) selected.push(cb.value); 
+                else hidden.push(cb.value);
+            });
+            
+            const newPrimary = document.getElementById('deviceOwnerSelect').value;
+            
+            if (selected.length === 0) {
+                selected = [newPrimary];
+                hidden = hidden.filter(h => h !== selected[0]);
+            }
+            
+            activePeople = selected;
+            localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(hidden));
+            localStorage.setItem(ACTIVE_PEOPLE_KEY, JSON.stringify(selected));
+            localStorage.setItem('builder_primary_user', newPrimary);
+            
+            // Sync Meta to Sheets (Background)
+            const people = JSON.parse(localStorage.getItem(PEOPLE_KEY)) || DEFAULT_PEOPLE;
+            const locations = JSON.parse(localStorage.getItem(LOCATIONS_KEY)) || DEFAULT_LOCATIONS;
+            sheetsPost({ action: "syncMeta", people, locations, exercises: [] }).catch(() => {});
+
+            notifySettingsUpdated();
+            closeSettingsModal();
+            
+            const newLeader = (activePeople.includes(newPrimary) ? newPrimary : (activePeople[0] || 'Brian')).toLowerCase();
+            if (oldLeader !== newLeader) {
+                // loadDataAndWorkout(); // Wait for Master Sync to trigger
+            } else if (currentWorkout) {
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+            }
+        }
+
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
+        function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
+
+        async function loadDataAndWorkout(preFetchedData = null) {
+            showLoading();
+            try {
+                // If we have pre-fetched data (from the React Master Sync), use it.
+                // Otherwise, fetch it ourselves (fallback).
+                const json = preFetchedData || await sheetsGet();
+                globalData = json;
+                
+                // SYNC WORKOUT NUMBER AND TYPE FROM SPREADSHEET
+                if (globalData.settings) {
+                    const owner = localStorage.getItem('builder_primary_user') || 'Brian';
+                    const primaryUser = (activePeople.includes(owner) ? owner : (activePeople[0] || 'Brian')).toLowerCase();
+                    const cloudNum = parseInt(globalData.settings[`builder_workout_num_${primaryUser}`] || '0');
+                    const cloudType = globalData.settings[`builder_workout_type_${primaryUser}`] || '';
+                    
+                    const localNum = parseInt(localStorage.getItem(NUM_KEY) || '0');
+                    const localType = localStorage.getItem(TYPE_KEY) || '';
+                    
+                    // 1. Sync Workout Number
+                    if (cloudNum > 0) {
+                        if (cloudNum !== localNum) {
+                            console.log(`Cloud sync (Num) for ${primaryUser}: ${localNum} -> ${cloudNum}`);
+                            localStorage.setItem(NUM_KEY, cloudNum.toString());
+                        }
+                    } else {
+                        // Cloud is empty for this user: FORCE start at 0 (Workout #1)
+                        // This prevents "Leaking" from the previous user on this device
+                        console.log(`New user detected or empty cloud (${primaryUser}): Resetting local storage to 0`);
+                        localStorage.setItem(NUM_KEY, '0');
+                    }
+
+                    // 2. Sync Workout Type (Push/Pull)
+                    if (cloudType && cloudType !== localType) {
+                        console.log(`Cloud sync (Type) for ${primaryUser}: ${localType} -> ${cloudType}`);
+                        localStorage.setItem(TYPE_KEY, cloudType);
+                    }
+                }
+                
+                try {
+                    const hidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+                    const all = globalData.people || ['Brian'];
+                    const visible = all.filter(p => !hidden.includes(p));
+                    if (visible.length > 0) activePeople = visible;
+                    else activePeople = [all[0]];
+                } catch {
+                    activePeople = [(globalData.people || ['Brian'])[0]];
+                }
+                
+                setupSelectors();
+                generateWorkout();
+            } catch (err) {
+                showError('Could not connect to your sheet. Check your URL in settings.');
+                console.error(err);
+            }
+        }
+
+        // Global hook for the React "Master Sync" to push data into the Plan side
+        window.updatePlanData = (data) => {
+            if (typeof loadDataAndWorkout === 'function') {
+                loadDataAndWorkout(data);
+            }
+        };
+
+        function setupSelectors() {
+            const locSelect = document.getElementById('locationSelect');
+            const locOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
+            locSelect.innerHTML = locOptions.map(l => `<option value="${l}">${l}</option>`).join('');
+            
+            // Check global active location first
+            const savedLoc = localStorage.getItem(ACTIVE_LOCATION_KEY) || localStorage.getItem(LOC_KEY) || 'Anywhere';
+            if(locOptions.includes(savedLoc)) locSelect.value = savedLoc;
+            locSelect.style.display = 'inline-block';
+        }
+
+        function changeLocation() {
+            const val = document.getElementById('locationSelect').value;
+            localStorage.setItem(LOC_KEY, val);
+            localStorage.setItem(ACTIVE_LOCATION_KEY, val);
+            notifySettingsUpdated();
+            generateWorkout();
+        }
+
+        function togglePushPull() {
+            if(!currentWorkout || !currentWorkout.type) return;
+            const newType = currentWorkout.type.toLowerCase() === 'push' ? 'Pull' : 'Push';
+            
+            // Save to both legacy and global keys
+            localStorage.setItem(TYPE_KEY, currentWorkout.type.toLowerCase() === 'push' ? 'Push' : 'Pull');
+            localStorage.setItem(ACTIVE_TYPE_KEY, newType);
+            
+            notifySettingsUpdated();
+            generateWorkout();
+        }
+
+        function getRepRange(workoutNum) {
+             const position = ((workoutNum - 1) % 16);
+             if (position < 4)  return "8-12";
+             if (position < 8)  return "1-3";
+             if (position < 12) return "13+"; // Normalized from 15-20
+             return "4-7";
+        }
+
+        function getRangeKeyFromLabel(label) {
+             if (label === "1-3") return "r1_3";
+             if (label === "4-7") return "r4_7";
+             if (label === "8-12") return "r8_12";
+             return "r13_plus";
+        }
+
+        const getBaseName = (name) => {
+            if (!name) return "";
+            return name
+                .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+                .replace(/ \(Single\)$/i, '')
+                .replace(/ \(Alt\)$/i, '')
+                .replace(/ \(Alternating\)$/i, '')
+                .trim();
+        };
+
+        const getMode = (name) => {
+            if (!name) return "std";
+            if (/single|one arm|one leg/i.test(name)) return 'single';
+            if (/alt/i.test(name)) return 'alt';
+            return 'std';
+        };
+
+        const getStandardizedName = (name) => {
+            const base = getBaseName(name);
+            const mode = getMode(name);
+            if (mode === 'single') return `${base} (Single)`;
+            if (mode === 'alt')    return `${base} (Alt)`;
+            return base;
+        };
+
+        function undoCompletion() {
+            const raw = localStorage.getItem('gym-last-workout-snapshot');
+            if (!raw) return;
+            const snapshot = JSON.parse(raw);
+            
+            currentWorkout = snapshot.workout;
+            exerciseStatus = snapshot.status;
+            exerciseSetCounters = snapshot.counters;
+            exerciseModes = snapshot.modes;
+            
+            // Re-decrement the workout number
+            let num = parseInt(localStorage.getItem(NUM_KEY) || '1') - 1;
+            localStorage.setItem(NUM_KEY, num);
+            
+            localStorage.removeItem('gym-last-workout-snapshot');
+            renderWorkout();
+        }
+
+        function generateWorkout() {
+             const loc = document.getElementById('locationSelect').value;
+             
+             // Check global type first
+             let lastTypeGlobal = localStorage.getItem(ACTIVE_TYPE_KEY);
+             let type;
+             if (lastTypeGlobal) {
+                 type = lastTypeGlobal;
+             } else {
+                 let lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
+                 type = lastType.toLowerCase() === 'push' ? 'Pull' : 'Push';
+             }
+             
+             let num = parseInt(localStorage.getItem(NUM_KEY) || '0') + 1;
+             const activeRange = getRepRange(num);
+             const rangeKey = getRangeKeyFromLabel(activeRange);
+             
+             const available = (globalData.exercises || []).filter(e => !e.timed && (e.location === 'Anywhere' || e.location === loc || !e.location));
+             
+             const pick = (categories) => {
+                 const subset = available.filter(e => categories.includes(e.category));
+                 if(subset.length === 0) return {name: `No ${categories[0]}`, category: categories[0]};
+                 
+                 // Group by base name so variations don't inflate pick chance
+                 const groups = {};
+                 subset.forEach(e => {
+                     const base = getBaseName(e.name);
+                     if (!groups[base]) groups[base] = [];
+                     groups[base].push(e);
+                 });
+                 
+                 const baseNames = Object.keys(groups);
+                 const pickedBase = baseNames[Math.floor(Math.random() * baseNames.length)];
+                 const variations = groups[pickedBase];
+                 
+                 // Default to 'std' if exists, else first available
+                 return variations.find(v => getMode(v.name) === 'std') || variations[0];
+             };
+             
+             const lockKey = `saved_workout_${num}`;
+             const lockedData = localStorage.getItem(lockKey);
+             let genExercises = [];
+
+             if (lockedData) {
+                 try {
+                     const parsed = JSON.parse(lockedData);
+                     if (parsed.type === type) {
+                         genExercises = parsed.exercises;
+                     } else { throw new Error("Type mismatch"); }
+                 } catch(e) { }
+             }
+
+             if (genExercises.length === 0) {
+                 genExercises = type === 'Push' ? [
+                     pick(['Explosive']), pick(['Knee Dominant']), pick(['Vertical Push']), pick(['Horizontal Push']), pick(['Rotational Core', 'Plank Core']),
+                 ] : [
+                     pick(['Explosive']), pick(['Hip Dominant']), pick(['Vertical Pull']), pick(['Horizontal Pull']), pick(['Plank Core', 'Rotational Core']),
+                 ];
+                 localStorage.setItem(lockKey, JSON.stringify({ type, exercises: genExercises }));
+             }
+             
+             currentWorkout = {
+                 type: type,
+                 workoutNum: num,
+                 repRange: activeRange, 
+                 exercises: genExercises
+             };
+             
+             exerciseStatus = {};
+             exerciseSetCounters = {};
+             exerciseModes = {};
+
+             genExercises.forEach((e, idx) => { 
+                 exerciseStatus[e.name] = 'pending'; 
+                 exerciseSetCounters[idx] = 1;
+                 exerciseModes[idx] = getMode(e.name);
+             });
+             
+             currentMaxes = {};
+             genExercises.forEach(e => {
+                 const stdName = getStandardizedName(e.name);
+                 currentMaxes[stdName] = {};
+                 activePeople.forEach(p => {
+                     currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                 });
+             });
+             
+             renderWorkout(currentWorkout, genExercises);
+        }
+
+        function renderWorkout(workout, exercises) {
+            document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
+            const badge = document.getElementById('workoutBadge');
+            badge.textContent = workout.type;
+            badge.className = `workout-badge badge-${workout.type.toLowerCase()}`;
+            document.getElementById('infoWorkoutNum').textContent = workout.workoutNum;
+            document.getElementById('infoRepRange').textContent = workout.repRange;
+
+            const list = document.getElementById('exerciseList');
+            list.innerHTML = '';
+            
+            // Build Location Options for Custom Machine Injection
+            const activeLoc = document.getElementById('locationSelect').value;
+            const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
+            const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
+
+            const groupedByBase = {};
+            (globalData.exercises || []).forEach(ex => {
+                const base = getBaseName(ex.name);
+                if (!groupedByBase[base]) groupedByBase[base] = { variations: {} };
+                groupedByBase[base].variations[getMode(ex.name)] = ex;
+            });
+
+            exercises.forEach((ex, idx) => {
+                const card = document.createElement('div');
+                card.className = 'exercise-card';
+                card.id = `card-${idx}`;
+                
+                const baseName = getBaseName(ex.name);
+                const group = groupedByBase[baseName] || { variations: { [getMode(ex.name)]: ex } };
+                const activeMode = exerciseModes[idx] || getMode(ex.name);
+
+                if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
+                if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
+
+                // SMART HEADER
+                let smartHeader = `
+                <div style="background: #0a0a0a; display: flex; border-bottom: 1px solid #161616; padding: 4px 12px; align-items: center; justify-content: space-between">
+                    <div style="display: flex; gap: 4px">
+                        ${['std', 'single', 'alt'].map(mode => {
+                            const exists = group.variations[mode];
+                            if (!exists) return '';
+                            const isActive = activeMode === mode;
+                            const label = mode.toUpperCase();
+                            const bg = isActive ? 'var(--accent)' : '#1a1100';
+                            const textColor = isActive ? '#000' : 'var(--accent)';
+                            const border = isActive ? '1px solid transparent' : '1px solid #f9731630';
+                            return `<button onclick="switchVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:${textColor}; background:${bg}; border:${border}; border-radius:4px; padding:1px 5px; cursor:pointer; letter-spacing:1px;">${label}</button>`;
+                        }).join('')}
+                    </div>
+                    <div style="font-size: 8px; color: #333; letter-spacing: 1px; font-family:var(--mono); font-weight:700;">SMART CARD</div>
+                </div>`;
+
+                // Filter Swaps by Current Exercise Category
+                const availableSwapProps = (globalData.exercises || []).filter(e => 
+                    e.category === ex.category && 
+                    (e.location === 'Anywhere' || e.location === activeLoc || !e.location) &&
+                    e.name !== ex.name
+                );
+                
+                let selectOptions = `<option value="custom" selected>-- Type Custom Machine --</option>`;
+                availableSwapProps.sort((a,b) => a.name.localeCompare(b.name)).forEach(e => {
+                    selectOptions += `<option value="${e.name}">${e.name}</option>`;
+                });
+
+                let headerHTML = `
+                <div class="exercise-header" onclick="toggleCard(${idx})">
+                  <div class="exercise-info">
+                    <div class="exercise-category">${ex.category}</div>
+                    <div class="exercise-name">${ex.name}</div>
+                    <div class="planner-note-wrap" onclick="event.stopPropagation()" style="margin-top: 6px;">
+                        <input 
+                            type="text" 
+                            class="planner-note-input" 
+                            placeholder="Add cue/note..." 
+                            value="${plannerNotes[ex.name] || ''}" 
+                            oninput="savePlannerNote('${ex.name.replace(/'/g, "\\'")}', this.value)"
+                            style="width: 100%; background: #000; border: 1px solid #161616; border-radius: 4px; padding: 4px 8px; font-size: 10px; font-family: var(--mono); color: var(--accent); outline: none;"
+                        />
+                    </div>
+                    <div class="exercise-max" style="font-family:var(--mono); font-size:10px; color:#666; margin-top:4px;">
+                `;
+                
+                activePeople.forEach(p => {
+                    const stdName = getStandardizedName(ex.name);
+                    const maxData = currentMaxes[stdName]?.[p] || {};
+                    const rangeKey = getRangeKeyFromLabel(workout.repRange);
+                    const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
+                    headerHTML += `<span style="margin-right:8px;">${p}: <span style="color:var(--accent);" id="maxval-${idx}-${p}">${currentMax}</span></span>`;
+                });
+                
+                headerHTML += `
+                    </div>
+                  </div>
+                  <div class="history-icon" onclick="toggleHistory(event, ${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="margin-right: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <div class="exercise-status" id="status-icon-${idx}" style="display:flex; align-items:center; gap:8px;">
+                    ${(exerciseStatus[ex.name] === 'done' || exerciseStatus[ex.name] === 'skipped') ? 
+                        `<button onclick="event.stopPropagation(); undoStatus(${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="background: rgba(249,115,22,0.1); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px; font-size: 9px; font-family: var(--mono); font-weight: 700; cursor: pointer; letter-spacing:1px; white-space:nowrap;">UNDO</button>` : ''
+                    }
+                    <span style="color: ${exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666'}; font-weight: bold; font-size: 18px; line-height:1;">
+                        ${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}
+                    </span>
+                  </div>
+                  <div class="expand-icon">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
+                    <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
+                    <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
+                </div>`;
+                
+                const curSetNum = exerciseSetCounters[idx] || 1;
+
+                let inputsHTML = activePeople.map(p => `
+                    <div class="person-block" style="margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <div class="person-label" style="font-weight:800; color:var(--accent); font-family:var(--mono);">${p.toUpperCase()}</div>
+                            <div class="set-input-group">
+                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99" style="text-align:center;">
+                              <span class="set-separator">×</span>
+                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999" style="text-align:center;">
+                            </div>
+                        </div>
+                        <input type="text" id="note-${idx}-${p}" placeholder="Note for ${p}..." style="width:100%; background:#050505; border:1px solid #1a1a1a; border-radius:4px; padding:6px 10px; font-size:11px; color:#888; font-family:var(--mono); outline:none;">
+                    </div>
+                `).join('');
+
+                card.innerHTML = smartHeader + headerHTML + `
+                <div class="set-logger" id="logger-${idx}">
+                  <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
+                  
+                  <div class="sets-list">
+                    ${inputsHTML}
+                    <button class="complete-btn" style="padding:12px; margin-top:8px; font-size:14px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
+                  </div>
+                  <div class="new-max-banner" id="maxbanner-${idx}"></div>
+                  <div class="exercise-actions" style="margin-top:16px;">
+                    <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
+                    <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+                    <button class="more-time-btn" onclick="showSwap(${idx})">↺ Swap</button>
+                  </div>
+                </div>
+                
+                <div class="swap-ui" id="swap-ui-${idx}" style="display:none; padding:16px;">
+                   <p style="margin-bottom:8px; font-size:12px; color:var(--muted);">Select Replacement Exercise:</p>
+                   <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
+                      ${selectOptions}
+                   </select>
+                   <div id="swap-custom-block-${idx}" style="display:none; margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px; border:1px solid var(--border);">
+                       <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="New Machine Name..." style="width:100%; margin-bottom:8px; font-size:14px; padding:8px;">
+                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface); margin-bottom:10px;">
+                          ${customLocDropdownHTML}
+                       </select>
+                       <div style="display:flex; gap:12px; padding:4px 2px;">
+                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
+                               <input type="checkbox" id="swap-single-${idx}"> + SINGLE
+                           </label>
+                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
+                               <input type="checkbox" id="swap-alt-${idx}"> + ALT
+                           </label>
+                       </div>
+                       <p style="font-size:9px; color:var(--muted); margin-top:8px;">Saving as a <span style="color:var(--accent);">${ex.category}</span> exercise.</p>
+                   </div>
+                   <div style="display:flex; gap:8px;">
+                     <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm</button>
+                     <button class="skip-btn" style="flex:1; padding:8px; font-size:14px;" onclick="hideSwap(${idx})">Cancel</button>
+                   </div>
+                </div>
+                `;
+                
+                list.appendChild(card);
+            });
+
+            hideLoading();
+            document.getElementById('workoutContent').style.display = 'block';
+        }
+
+        function showSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'none';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'block';
+            document.getElementById(`swap-select-${idx}`).value = 'custom';
+            checkCustom(idx);
+        }
+        
+        function hideSwap(idx) {
+            document.getElementById(`logger-${idx}`).style.display = 'block';
+            document.getElementById(`swap-ui-${idx}`).style.display = 'none';
+        }
+        
+        function checkCustom(idx) {
+            const val = document.getElementById(`swap-select-${idx}`).value;
+            const customBlock = document.getElementById(`swap-custom-block-${idx}`);
+            if (val === 'custom') customBlock.style.display = 'block';
+            else customBlock.style.display = 'none';
+        }
+        
+        async function confirmSwap(idx) {
+            const btn = document.getElementById(`confirm-swap-btn-${idx}`);
+            const selectVal = document.getElementById(`swap-select-${idx}`).value;
+            let newName = '';
+            let newCat = currentWorkout.exercises[idx].category;
+            
+            if (selectVal === 'custom') {
+                const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
+                let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
+                const createSingle = document.getElementById(`swap-single-${idx}`).checked;
+                const createAlt = document.getElementById(`swap-alt-${idx}`).checked;
+
+                if (!typed) { alert('Please enter a custom machine name.'); return; }
+                
+                newName = typed;
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
+                
+                const namesToCreate = [newName];
+                if (createSingle) namesToCreate.push(`${newName} (Single)`);
+                if (createAlt)    namesToCreate.push(`${newName} (Alt)`);
+
+                for (const name of namesToCreate) {
+                    const req = {
+                       action: "saveExercise",
+                       exercise: name,
+                       category: newCat,
+                       location: selectedLoc,
+                       timed: false
+                    };
+                    try {
+                        await sheetsPost(req);
+                        globalData.exercises.push({ name, category: newCat, location: selectedLoc, timed: false });
+                    } catch(e) { console.error(e); }
+                }
+                
+                btn.textContent = 'Confirm';
+                btn.disabled = false;
+                
+            } else {
+                newName = selectVal;
+                const found = globalData.exercises.find(e => e.name === newName);
+                if(found) newCat = found.category;
+            }
+            
+            const oldName = currentWorkout.exercises[idx].name;
+            currentWorkout.exercises[idx] = { name: newName, category: newCat };
+            
+            delete exerciseStatus[oldName];
+            exerciseStatus[newName] = 'pending';
+            exerciseSetCounters[idx] = 1;
+            exerciseModes[idx] = getMode(newName);
+
+            const stdName = getStandardizedName(newName);
+            currentMaxes[stdName] = {};
+            activePeople.forEach(p => {
+                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+            });
+            
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx);
+        }
+
+        function switchVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            let targetName = base;
+            if (mode === 'single') targetName = `${base} (Single)`;
+            if (mode === 'alt')    targetName = `${base} (Alt)`;
+            
+            const found = globalData.exercises.find(e => e.name === targetName);
+            if (!found) return;
+
+            // Update state
+            exerciseModes[idx] = mode;
+            const oldName = currentEx.name;
+            currentWorkout.exercises[idx] = found;
+            
+            if (exerciseStatus[oldName]) {
+                exerciseStatus[found.name] = exerciseStatus[oldName];
+                delete exerciseStatus[oldName];
+            }
+            
+            const stdName = getStandardizedName(found.name);
+            if (!currentMaxes[stdName]) {
+                currentMaxes[stdName] = {};
+                activePeople.forEach(p => {
+                    currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                });
+            }
+
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+            toggleCard(idx);
+        }
+
+        async function addVariation(idx, mode) {
+            const currentEx = currentWorkout.exercises[idx];
+            const base = getBaseName(currentEx.name);
+            const targetName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+            
+            if (!confirm(`Create "${targetName}" variation?`)) return;
+
+            const req = {
+               action: "saveExercise",
+               exercise: targetName,
+               category: currentEx.category,
+               location: currentEx.location || "Anywhere",
+               timed: false
+            };
+            
+            try {
+                await sheetsPost(req);
+                const newEx = {
+                    name: targetName,
+                    category: currentEx.category,
+                    location: currentEx.location || "Anywhere",
+                    timed: false
+                };
+                globalData.exercises.push(newEx);
+                switchVariation(idx, mode);
+            } catch(e) {
+                alert("Failed to create variation.");
+            }
+        }
+
+        function undoStatus(idx, exName) {
+            delete exerciseStatus[exName];
+            renderWorkout(currentWorkout, currentWorkout.exercises);
+        }
+
+        function toggleCard(idx) {
+            const card = document.getElementById(`card-${idx}`);
+            if (card.classList.contains('done') || card.classList.contains('skipped')) return;
+            card.classList.toggle('open');
+        }
+
+        function renderHistory(idx, exerciseName) {
+            const content = document.getElementById(`history-content-${idx}`);
+            const ex = currentWorkout.exercises[idx];
+            const history = (globalData.history || []).filter(h => h.exercise === exerciseName);
+            
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:#444;font-size:12px;">No history found.</div>';
+                return;
+            }
+
+            let html = '';
+            history.slice(-10).reverse().forEach((h, hIdx) => {
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:#666;">${h.date || 'Today'}</div>
+                        <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person?.toUpperCase()}</div>
+                        ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                    </div>
+                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                        <div>
+                            <div style="font-size:12px; font-weight:600; color:#ddd;">
+                                ${ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                            </div>
+                            <div style="font-size:9px; color:#444; font-family:var(--mono);">${ex.timed ? "⏱" : (h.range ? h.range.replace("r", "").replace("_", "-") : "")}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        }
+
+        function toggleHistory(e, idx, exerciseName) {
+            e.stopPropagation();
+            const drawer = document.getElementById(`history-drawer-${idx}`);
+            const content = document.getElementById(`history-content-${idx}`);
+            
+            if (drawer.style.display === 'block') {
+                drawer.style.display = 'none';
+                return;
+            }
+            
+            drawer.style.display = 'block';
+            renderHistory(idx, getStandardizedName(exerciseName));
+            
+            const history = (globalData.history || []).filter(h => 
+                h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
+                h.person &&
+                activePeople.map(p => p.toLowerCase().trim()).includes(h.person.toLowerCase().trim())
+            );
+            
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);">No history found for active people.</div>';
+                return;
+            }
+            
+            let html = '';
+            // Get last 10 entries, reversed
+            const recent = history.slice(-10).reverse();
+            recent.forEach(h => {
+                const exData = globalData.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
+                const isTimed = exData.timed;
+                let resultText = '';
+                if (isTimed) {
+                     resultText = h.reps + (h.weight ? ` · ${h.weight}lbs` : '');
+                } else {
+                     resultText = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
+                }
+                
+                const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
+                
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                   <div style="flex:1;">
+                      <div style="font-size:10px; color:var(--muted);">${h.date || 'Unknown Date'}</div>
+                      <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person.toUpperCase()}</div>
+                      ${h.note ? `<div style="font-size:10px; color:var(--muted); font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                   </div>
+                   <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                      <div>
+                          <div style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</div>
+                          <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
+                      </div>
+                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', '${h.range}', ${idx})" 
+                               style="background:none; border:none; color:#ff4444; cursor:pointer; padding:4px; opacity:0.6;" title="Delete Entry">
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                       </button>
+                   </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        }
+
+        async function deletePlanHistory(event, date, person, exercise, reps, weight, range, idx) {
+            event.stopPropagation();
+            if(!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
+            
+            const btn = event.currentTarget;
+            btn.style.opacity = '0.3';
+            btn.disabled = true;
+            
+            const payload = {
+                action: "deleteHistory",
+                exercise: exercise,
+                person: person,
+                reps: reps.toString(),
+                weight: weight.toString(),
+                range: range
+            };
+            
+            try {
+                const res = await sheetsPost(payload);
+                if (res) {
+                    // Update global data and refresh list
+                    if(globalData.history) {
+                        globalData.history = globalData.history.filter(h => 
+                            !(h.exercise === exercise && h.person.toLowerCase() === person.toLowerCase() && 
+                              h.reps.toString() === reps.toString() && h.weight.toString() === weight.toString() &&
+                              h.range === range)
+                        );
+                    }
+                    toggleHistory({ stopPropagation: () => {} }, idx, exercise);
+                    
+                    // Signal Lift tab to refresh if open
+                    if (window.refreshLiftData) window.refreshLiftData();
+                }
+            } catch(e) {
+                alert("Failed to delete entry.");
+                btn.style.opacity = '0.6';
+                btn.disabled = false;
+            }
+        }
+
+        function toggleAccessory() {
+            const logger = document.getElementById('accessoryLogger');
+            const card = document.getElementById('accessoryCard');
+            card.classList.toggle('open');
+            logger.style.display = card.classList.contains('open') ? 'block' : 'none';
+        }
+
+        async function logSet(cardIdx, exerciseName) { const ex = currentWorkout.exercises[cardIdx];
+            const setNum = exerciseSetCounters[cardIdx] || 1;
+            const btn = document.getElementById(`logbtn-${cardIdx}`);
+            btn.textContent = 'Saving...'; 
+            btn.disabled = true;
+
+            const entries = [];
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
+                const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
+                const noteVal = document.getElementById(`note-${cardIdx}-${p}`)?.value || "";
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
+                
+                const rangeKey = getRange(reps);
+                const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
+                
+                const finalNote = noteVal ? `${noteVal} — Set ${setNum} (Workout #${currentWorkout.workoutNum})` : `Set ${setNum} (Workout #${currentWorkout.workoutNum})`;
+                
+                entries.push({
+                   date: dateStr,
+                   person: p.toLowerCase(),
+                   reps: reps.toString(),
+                   weight: weightValFixed || "",
+                   range: rangeKey,
+                   note: finalNote,
+                   setNum: setNum,
+                   timed: false
+                });
+                
+                const stdExName = getStandardizedName(exerciseName);
+                const existing = currentMaxes[stdExName]?.[p]?.[rangeKey];
+                let isNew = !existing;
+                if (existing) {
+                    if (weight > parseFloat(existing.weight)) isNew = true;
+                }
+                if (isNew) {
+                    if(!currentMaxes[stdExName]) currentMaxes[stdExName] = {};
+                    if(!currentMaxes[stdExName][p]) currentMaxes[stdExName][p] = {};
+                    currentMaxes[stdExName][p][rangeKey] = {reps, weight};
+                    const newMaxStr = `${reps}x${weight}`;
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
+                    if (rangeKey === getRangeKeyFromLabel(currentWorkout.repRange)) {
+                        const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
+                        if(valId) valId.textContent = newMaxStr;
+                    }
+                }
+            }
+
+            if (entries.length === 0) {
+                alert('Please enter reps for at least one person.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+                return;
+            }
+
+            const req = {
+               action: "logSet",
+               exercise: getStandardizedName(exerciseName),
+               entries: entries
+            };
+            
+            try {
+                await sheetsPost(req);
+                
+                // Update local history for instant feedback
+                const entriesWithEx = entries.map(e => ({ ...e, exercise: getStandardizedName(exerciseName) }));
+                if (!globalData.history) globalData.history = [];
+                globalData.history.push(...entriesWithEx);
+                
+                // If history drawer is open, refresh it
+                const drawer = document.getElementById(`history-drawer-${cardIdx}`);
+                if (drawer && drawer.style.display === 'block') {
+                    renderHistory(cardIdx, getStandardizedName(exerciseName));
+                }
+                
+                if (bannerMsg) {
+                    const banner = document.getElementById(`maxbanner-${cardIdx}`);
+                    if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
+                }
+                
+                activePeople.forEach(p => {
+                    const rEl = document.getElementById(`reps-${cardIdx}-${p}`);
+                    const wEl = document.getElementById(`weight-${cardIdx}-${p}`);
+                    if (rEl) rEl.value = '';
+                    if (wEl) wEl.value = '';
+                });
+                
+                exerciseSetCounters[cardIdx] = setNum + 1;
+                btn.textContent = `Log Set ${exerciseSetCounters[cardIdx]}`;
+                btn.disabled = false;
+                
+            } catch(e) {
+                console.error(e);
+                alert('Failed to log set. Check console.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+            }
+        }
+
+        function markDone(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'done';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('done');
+            exerciseStatus[exerciseName] = 'done'; renderWorkout(currentWorkout, currentWorkout.exercises);
+            checkAllComplete();
+        }
+
+        async function skipExercise(idx, exerciseName) {
+            const reason = document.querySelector(`#card-${idx} .planner-note-input`)?.value || "";
+            const btn = document.querySelector(`#card-${idx} .skip-btn`);
+            
+            if (btn) {
+                btn.textContent = 'Skipping...';
+                btn.disabled = true;
+            }
+
+            const entries = activePeople.map(p => ({
+                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                person: p.toLowerCase(),
+                reps: "0",
+                weight: "0",
+                range: "r13_plus",
+                note: `SKIPPED: ${reason || "No reason provided"} — (Workout #${currentWorkout.workoutNum})`,
+                setNum: 1,
+                timed: false
+            }));
+
+            try {
+                await sheetsPost({
+                    action: "logSet",
+                    exercise: getStandardizedName(exerciseName),
+                    entries: entries
+                });
+                
+                exerciseStatus[exerciseName] = 'skipped';
+                const card = document.getElementById(`card-${idx}`);
+                card.classList.remove('open');
+                card.classList.add('skipped');
+                renderWorkout(currentWorkout, currentWorkout.exercises);
+                checkAllComplete();
+            } catch (e) {
+                alert("Failed to sync skip to Sheets. Check connection.");
+                if (btn) {
+                    btn.textContent = 'Skip';
+                    btn.disabled = false;
+                }
+            }
+        }
+
+        function checkAllComplete() {
+            const allResolved = Object.values(exerciseStatus).every(s => s === 'done' || s === 'skipped');
+            if (allResolved) document.getElementById('gotMoreBtn').style.display = 'block';
+        }
+
+        async function completeWorkout() {
+            const num = currentWorkout.workoutNum.toString();
+            const type = currentWorkout.type;
+            localStorage.setItem(TYPE_KEY, type);
+            localStorage.setItem(NUM_KEY, num);
+            
+            // SYNC TO SPREADSHEET (Smart Finish for all active people)
+            try {
+                const settings = {};
+                activePeople.forEach(p => {
+                    const name = p.toLowerCase();
+                    settings[`builder_workout_num_${name}`] = num;
+                    settings[`builder_workout_type_${name}`] = type;
+                });
+                // Fallback/Legacy global key
+                settings["builder_workout_num"] = num;
+                settings["builder_workout_type"] = type;
+
+                // Background sync (don't wait for it)
+                sheetsPost({
+                    action: "saveSettings",
+                    settings: settings
+                }).catch(e => console.warn("Background sync failed:", e));
+            } catch(e) {
+                console.warn("Failed to prepare workout settings:", e);
+            }
+            
+            document.getElementById('workoutContent').style.display = 'none';
+            document.getElementById('successState').style.display = 'block';
+            markAccessoryDone();
+        }
+
+        function markAccessoryDone() {
+            const card = document.getElementById('accessoryCard');
+            card.classList.remove('open');
+            card.classList.add('done');
+            document.getElementById('accessoryLogger').style.display = 'none';
+            document.getElementById('suggestDiffBtn').style.display = 'none';
+        }
+
+        function getAccessory() {
+            document.getElementById('gotMoreBtn').style.display = 'none';
+            document.getElementById('accessorySection').style.display = 'block';
+            
+            const loc = document.getElementById('locationSelect').value;
+            const availableAcc = (globalData.exercises || []).filter(e => 
+                e.category === 'Accessory' && 
+                (e.location === 'Anywhere' || e.location === loc || !e.location) &&
+                e.name !== currentAccessory
+            );
+            
+            if(availableAcc.length === 0) {
+                // If only 1 accessory exists total, we have to show it
+                const onlyAcc = (globalData.exercises || []).filter(e => e.category === 'Accessory');
+                if (onlyAcc.length > 0) {
+                    currentAccessory = onlyAcc[0].name;
+                } else {
+                    document.getElementById('accessoryName').textContent = 'No accessories available';
+                    return;
+                }
+            } else {
+                const picked = availableAcc[Math.floor(Math.random() * availableAcc.length)];
+                currentAccessory = picked.name;
+            }
+            
+            accessorySetCounter = 1;
+            
+            document.getElementById('accessoryName').textContent = currentAccessory;
+            document.getElementById('accessoryRepRange').textContent = currentWorkout.repRange;
+
+            let maxInfo = '';
+            activePeople.forEach(p => {
+                const accRangeKey = getRangeKeyFromLabel(currentWorkout.repRange);
+                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const accMax = accMaxObj[accRangeKey] ? `${accMaxObj[accRangeKey].reps}x${accMaxObj[accRangeKey].weight}` : '—';
+                maxInfo += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${currentWorkout.repRange} Max: <span style="color:var(--accent);font-weight:500;">${accMax}</span></div>`;
+            });
+            document.getElementById('accessoryMax').innerHTML = maxInfo;
+            
+            const accList = document.getElementById('accSetsList');
+            accList.innerHTML = activePeople.map(p => `
+                <div class="person-block">
+                    <div class="person-label">${p}</div>
+                    <div class="set-row">
+                        <div class="set-input-group">
+                          <input type="number" class="set-input" id="acc-reps-${p}" placeholder="reps" min="1" max="99">
+                          <span class="set-separator">×</span>
+                          <input type="number" class="set-input" id="acc-weight-${p}" placeholder="lbs" min="0" max="9999">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById(`acc-logbtn`).textContent = 'Log Set 1';
+            document.getElementById(`acc-logbtn`).disabled = false;
+            document.getElementById('acc-maxbanner').style.display = 'none';
+        }
+
+        async function logAccessorySet() {
+            const btn = document.getElementById(`acc-logbtn`);
+            const setNum = accessorySetCounter;
+            btn.textContent = 'Saving...'; btn.disabled = true;
+
+            const entries = [];
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            let bannerMsg = "";
+
+            for (const p of activePeople) {
+                const repsVal = document.getElementById(`acc-reps-${p}`).value;
+                const weightVal = document.getElementById(`acc-weight-${p}`).value;
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weight = parseFloat(weightValFixed) || 0;
+                const rangeKey = getRange(reps);
+                const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
+                
+                entries.push({
+                   date: dateStr,
+                   person: p.toLowerCase(),
+                   reps: reps.toString(),
+                   weight: weightValFixed || "",
+                   range: rangeKey,
+                   note: `Accessory Set ${setNum} (Workout #${currentWorkout.workoutNum})`,
+                   setNum: setNum,
+                   timed: false
+                });
+                
+                const accMaxObj = globalData.best?.[currentAccessory]?.[p.toLowerCase()] || {};
+                const existing = accMaxObj[rangeKey];
+                let isNew = !existing;
+                if (existing && weight > parseFloat(existing.weight)) isNew = true;
+                
+                if (isNew) {
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${reps}x${weight}<br>`;
+                }
+            }
+            
+            if(entries.length === 0){
+                alert('Please enter reps.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+                return;
+            }
+
+            const req = {
+               action: "logSet",
+               exercise: currentAccessory,
+               entries: entries
+            };
+            
+            try {
+                await sheetsPost(req);
+                if (bannerMsg) {
+                    const banner = document.getElementById('acc-maxbanner');
+                    banner.style.display = 'block';
+                    banner.innerHTML = bannerMsg;
+                }
+                
+                activePeople.forEach(p => {
+                    const rEl = document.getElementById(`acc-reps-${p}`);
+                    const wEl = document.getElementById(`acc-weight-${p}`);
+                    if (rEl) rEl.value = '';
+                    if (wEl) wEl.value = '';
+                });
+                
+                accessorySetCounter++;
+                btn.textContent = `Log Set ${accessorySetCounter}`;
+                btn.disabled = false;
+                
+            } catch(e) {
+                alert('Failed to log accessory set.');
+                btn.textContent = `Log Set ${setNum}`;
+                btn.disabled = false;
+            }
+        }
+
+        function showLoading() { document.getElementById('loadingState').style.display = 'block'; document.getElementById('errorState').style.display = 'none'; document.getElementById('workoutContent').style.display = 'none'; document.getElementById('successState').style.display = 'none'; }
+        function hideLoading() { document.getElementById('loadingState').style.display = 'none'; }
+        function showError(msg) { hideLoading(); document.getElementById('errorState').style.display = 'block'; document.getElementById('errorState').textContent = msg; }
+        
+        async function initBuilder() {
+            // Check if we have data from the Master Sync (React side)
+            if (window.ultimateSyncData) {
+                loadDataAndWorkout(window.ultimateSyncData);
+            } else {
+                // Fallback if Plan is somehow accessed before Master Sync
+                // loadDataAndWorkout(); // Wait for Master Sync to trigger
+            }
+        }
+
+    
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+
+    // ── MAIN COMPONENT ────────────────────────────────────────────────────────
+    function WorkoutTracker() {
+      const [exercises,     setExercises]     = useState([]);
+      const [people,        setPeople]        = useState(DEFAULT_PEOPLE);
+      const [loading,       setLoading]       = useState(true);
+      const [syncStatus,    setSyncStatus]    = useState("idle");
+      const [search,        setSearch]        = useState("");
+      const [view,          setView]          = useState("list");
+      const [expanded,      setExpanded]      = useState(null);
+      const [toast,         setToast]         = useState(null);
+      const [confirmDelete, setConfirmDelete] = useState(null);
+      const [whoMode,       setWhoMode]       = useState("all");
+      const [logExId,       setLogExId]       = useState(null);
+      const [sets,          setSets]          = useState([]);
+      const [logInputs,     setLogInputs]     = useState({});   // keyed by person.toLowerCase()
+      const [logNote,       setLogNote]       = useState("");
+      const [logError,      setLogError]      = useState("");
+      const [historyExId,   setHistoryExId]   = useState(null);
+      const [setCount,      setSetCount]      = useState(1);
+      const [newName,       setNewName]       = useState("");
+      const [newExTimed,    setNewExTimed]    = useState(false);
+      const [newExCategory, setNewExCategory] = useState("");
+      const [newExLocation, setNewExLocation] = useState("Anywhere");
+      const [newPersonName, setNewPersonName] = useState("");
+      const [lastSyncTime,  setLastSyncTime]  = useState(null);
+      const [locations,     setLocations]     = useState(DEFAULT_LOCATIONS);
+      const [locationFilter,setLocationFilter]= useState("all");
+      const [categoryFilter,setCategoryFilter]= useState("");
+      const [newLocName,    setNewLocName]    = useState("");
+      const [hiddenPeople,  setHiddenPeople]  = useState([]);
+      
+      // Variation Tracking
+      const [exerciseModes, setExerciseModes] = useState({}); // { baseName: 'std'|'single'|'alt' }
+      const [createSingle,  setCreateSingle]  = useState(false);
+      const [createAlt,     setCreateAlt]     = useState(false);
+      const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: 'done'|'skipped' }
+
+      const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
+
+      useEffect(() => { 
+        loadData(); 
+        
+        const handleSync = () => {
+          // Re-load hidden people
+          const localHidden = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY)) || [];
+          setHiddenPeople(localHidden);
+          
+          // Sync Location Filter
+          const activeLoc = localStorage.getItem(ACTIVE_LOCATION_KEY);
+          if (activeLoc) setLocationFilter(activeLoc === 'Anywhere' ? 'all' : activeLoc);
+        };
+        
+        window.addEventListener('gym-settings-updated', handleSync);
+        window.refreshLiftData = () => loadData();
+        return () => {
+          window.removeEventListener('gym-settings-updated', handleSync);
+          delete window.refreshLiftData;
+        };
+      }, []);
+
+      const getBaseName = (name) => {
+          return name
+              .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
+              .replace(/ \(Single\)$/i, '')
+              .replace(/ \(Alt\)$/i, '')
+              .replace(/ \(Alternating\)$/i, '')
+              .trim();
+      };
+
+      const getMode = (name) => {
+          if (/single|one arm|one leg/i.test(name)) return 'single';
+          if (/alt/i.test(name)) return 'alt';
+          return 'std';
+      };
+
+      const getStandardizedName = (name) => {
+          const base = getBaseName(name);
+          const mode = getMode(name);
+          if (mode === 'single') return `${base} (Single)`;
+          if (mode === 'alt')    return `${base} (Alt)`;
+          return base;
+      };
+
+      const addVariation = async (group, mode) => {
+          const parent = group.variations['std'] || Object.values(group.variations)[0];
+          const base = group.baseName;
+          const newName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
+          
+          if (exercises.some(e => e.name.toLowerCase() === newName.toLowerCase())) {
+              setExerciseModes(prev => ({ ...prev, [base]: mode }));
+              return;
+          }
+
+          setSyncStatus("syncing");
+          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+          const defBest = {};
+          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+          
+          const newEx = {
+            id: maxId + 1,
+            name: newName,
+            timed: parent.timed,
+            category: parent.category,
+            location: parent.location,
+            best: defBest,
+            history: [],
+          };
+
+          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+          setExercises(updated);
+          setExerciseModes(prev => ({ ...prev, [base]: mode }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+
+          if (scriptConfigured) {
+            try {
+              await sheetsPost({ 
+                  action: "saveExercise", 
+                  exercise: newEx.name, 
+                  timed: newEx.timed, 
+                  category: newEx.category, 
+                  location: newEx.location 
+              });
+              setSyncStatus("ok");
+            } catch (e) {
+              setSyncStatus("error");
+            }
+          } else {
+              setSyncStatus("ok");
+          }
+      };
+
+      const toggleStatus = (exName, status) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            if (status === 'undo') delete next[exName];
+            else next[exName] = status;
+            return next;
+        });
+      };
+
+      const normalizeDuration = (val) => {
+        if (!val || val.toString().includes(':')) return val;
+        const seconds = parseInt(val);
+        if (isNaN(seconds)) return val;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+      };
+
+      const showToast = (msg, type = "success") => {
+        setToast({ msg, type });
+        setTimeout(() => setToast(null), 2400);
+      };
+
+      // ── LOAD ───────────────────────────────────────────────────────────────
+      const loadData = async (isRetry = false) => {
+        // Step 1: read people + locations from localStorage
+        let localPeople = DEFAULT_PEOPLE;
+        try {
+          const sp = JSON.parse(localStorage.getItem(PEOPLE_KEY));
+          if (sp && Array.isArray(sp) && sp.length > 0) localPeople = sp;
+        } catch {}
+
+        let localLocations = DEFAULT_LOCATIONS;
+        try {
+          const sl = JSON.parse(localStorage.getItem(LOCATIONS_KEY));
+          if (sl && Array.isArray(sl) && sl.length > 0) localLocations = sl;
+        } catch {}
+
+        // Step 2: read exercises from localStorage
+        let base = [];
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+          if (saved && Array.isArray(saved)) {
+            base = saved.map(ex => {
+              if (!ex.best) {
+                const b = {};
+                localPeople.forEach(p => { b[p.toLowerCase()] = {}; });
+                return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere", best: b };
+              }
+              return { ...ex, timed: ex.timed ?? false, category: ex.category || "", location: ex.location || "Anywhere" };
+            });
+          }
+        } catch {}
+
+        base = migrateRanges(base);
+        let localHidden = [];
+        try {
+          const lh = JSON.parse(localStorage.getItem(HIDDEN_PEOPLE_KEY));
+          if (lh && Array.isArray(lh)) localHidden = lh;
+        } catch {}
+
+        setPeople(localPeople);
+        setLocations(localLocations);
+        setHiddenPeople(localHidden);
+        setExercises(base);
+        setLoading(false);
+
+        // Step 3: sync from Sheets (with retry logic)
+        if (scriptConfigured) {
+          setSyncStatus("syncing");
+          try {
+            // Give the browser 1s to settle on first load
+            if (!isRetry) await new Promise(r => setTimeout(r, 1000));
+            
+            const sheetsData = await sheetsGet();
+            const hasData = (sheetsData.history || []).length > 0 || Object.keys(sheetsData.best || {}).length > 0 || (sheetsData.exercises || []).length > 0;
+            if (hasData) {
+              const existingNames = new Set(base.map(e => e.name.toLowerCase()));
+              const sheetNames = new Set([
+                ...Object.keys(sheetsData.best || {}),
+                ...(sheetsData.history || []).map(h => h.exercise).filter(Boolean),
+                ...(sheetsData.exercises || []).map(e => e.name).filter(Boolean),
+              ]);
+              let nextId = Math.max(0, ...base.map(e => e.id), 0) + 1;
+              for (const name of sheetNames) {
+                if (!existingNames.has(name.toLowerCase())) {
+                  const defBest = {};
+                  localPeople.forEach(p => { defBest[p.toLowerCase()] = {}; });
+                  base.push({ id: nextId++, name, timed: false, category: "", location: "Anywhere", best: defBest, history: [] });
+                  existingNames.add(name.toLowerCase());
+                }
+              }
+              base.sort((a, b) => a.name.localeCompare(b.name));
+
+              const { exercises: merged, people: mergedPeople, locations: mergedLocations } = mergeFromSheets(base, sheetsData, localPeople, localLocations);
+              const migrated = migrateRanges(merged);
+
+              const incomingPeople = mergedPeople.filter(p => !localPeople.map(x => x.toLowerCase()).includes(p.toLowerCase()));
+              let nextHidden = localHidden;
+              if (incomingPeople.length > 0) {
+                nextHidden = [...new Set([...localHidden, ...incomingPeople])];
+                setHiddenPeople(nextHidden);
+                localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(nextHidden));
+              }
+
+              setPeople(mergedPeople);
+              setExercises(migrated);
+              if (mergedLocations && mergedLocations.length > 0) {
+                setLocations(mergedLocations);
+                localStorage.setItem(LOCATIONS_KEY, JSON.stringify(mergedLocations));
+              }
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+              localStorage.setItem(PEOPLE_KEY, JSON.stringify(mergedPeople));
+            }
+            setSyncStatus("ok");
+            setLastSyncTime(new Date());
+            
+            // MASTER SYNC PUSH
+            window.ultimateSyncData = sheetsData;
+            if (window.updatePlanData) {
+                window.updatePlanData(sheetsData);
+            }
+          } catch (err) {
+            console.warn("Sync attempt failed:", err);
+            if (!isRetry) {
+                console.log("Retrying sync in 2 seconds...");
+                setTimeout(() => loadData(true), 2000);
+                return;
+            }
+            setSyncStatus("error");
+            showToast("Sheets sync failed — working offline", "error");
+          }
+        }
+      };
+
+      // ── PERSIST ────────────────────────────────────────────────────────────
+      const persist = async (newExercises, newPeople = null, sheetsPayload = null) => {
+        setExercises(newExercises);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newExercises));
+        if (newPeople) {
+          setPeople(newPeople);
+          localStorage.setItem(PEOPLE_KEY, JSON.stringify(newPeople));
+        }
+        if (scriptConfigured && sheetsPayload) {
+          setSyncStatus("syncing");
+          try {
+            await sheetsPost(sheetsPayload);
+            setSyncStatus("ok");
+          } catch {
+            setSyncStatus("error");
+            showToast("Saved locally — Sheets sync failed", "error");
+          }
+        }
+      };
+
+      // People currently being tracked in the log screen
+      const visiblePeople = people.filter(p => !hiddenPeople.includes(p));
+      const activePeople = whoMode === "all" ? visiblePeople : [people.find(p => p === whoMode)].filter(Boolean);
+
+      // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
+      const openHistory = (id) => {
+        setHistoryExId(historyExId === id ? null : id);
+      };
+
+      const openLog = (id) => {
+        setLogExId(id);
+        setSets([]);
+        const inputs = {};
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        setLogInputs(inputs);
+        setLogNote("");
+        setLogError("");
+        setSetCount(1);
+        setView("log");
+      };
+
+      const updateLogInput = (personKey, field, value) => {
+        setLogInputs(prev => ({ ...prev, [personKey]: { ...prev[personKey], [field]: value } }));
+        setLogError("");
+      };
+
+      const getBest = (exId, personKey, rangeKey) => {
+        const ex = exercises.find(e => e.id === exId);
+        const b  = ex?.best?.[personKey]?.[rangeKey];
+        if (!b) return null;
+        if (ex.timed) return b.reps;  // already mm:ss
+        return b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`;
+      };
+
+      // ── SAVE SET ──────────────────────────────────────────────────────────
+      const saveSet = async () => {
+        const ex = exercises.find(e => e.id === logExId);
+        const date = todayStr();
+        const newEntries = [];
+        let err = "";
+
+        for (const person of activePeople) {
+          const key   = person.toLowerCase();
+          const input = logInputs[key] || {};
+
+          if (ex.timed) {
+            const rawDur = input.duration?.trim();
+            if (!rawDur) continue; // Skip if empty
+            const normalized = normalizeTimeInput(rawDur);
+            if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person}`; break; }
+            const perPersonNote = input.note?.trim() || "";
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
+
+            newEntries.push({
+              date, person: key, reps: normalized, weight: input.weight || "",
+              range: "r13_plus", note: finalNote, setNum: setCount, timed: true,
+            });
+          } else {
+            const repsVal = input.reps?.trim();
+            if (!repsVal) continue; // Skip if empty
+            const range = getRange(repsVal);
+            if (!range) { err = `${person}'s reps must fit a range`; break; }
+            
+            const perPersonNote = input.note?.trim() || "";
+            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
+
+            newEntries.push({
+              date, person: key, reps: repsVal, weight: input.weight || "",
+              range, note: finalNote, setNum: setCount, timed: false,
+            });
+          }
+        }
+
+        if (err) return setLogError(err);
+        if (newEntries.length === 0) return setLogError("Enter results for at least one person");
+        setLogError("");
+
+        const exName = ex.name;
+        const updated = exercises.map(ex => {
+          if (ex.id !== logExId) return ex;
+          // Clone best for all people
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = { ...(ex.best?.[p.toLowerCase()] || {}) }; });
+          newEntries.forEach(entry => {
+            const current = newBest[entry.person]?.[entry.range];
+            if (!current || isBetter(entry, current, ex.timed))
+              newBest[entry.person][entry.range] = { reps: entry.reps, weight: entry.weight };
+          });
+          return { ...ex, best: newBest, history: [...newEntries, ...(ex.history || [])] };
+        });
+
+        await persist(updated, null, { action: "logSet", exercise: exName, entries: newEntries });
+        setSets([...sets, ...newEntries]);
+        const inputs = {};
+        visiblePeople.forEach(p => { inputs[p.toLowerCase()] = { reps: "", weight: "", duration: "" }; });
+        setLogInputs(inputs);
+        setLogNote("");
+        setSetCount(setCount + 1);
+        showToast(`Set ${setCount} saved!`);
+      };
+
+      const finishLogging = () => { setView("list"); setExpanded(logExId); };
+
+      // ── DELETE HELPERS ─────────────────────────────────────────────────────
+      const deleteLog = async (exId, entry) => {
+        if (!confirm(`Delete entry for ${entry.person?.toUpperCase()}?`)) return;
+        const ex = exercises.find(e => e.id === exId);
+        const updated = exercises.map(ex => {
+          if (ex.id !== exId) return ex;
+          const newHistory = (ex.history || []).filter(h => h !== entry);
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = {}; });
+          newHistory.forEach(h => {
+            const current = newBest[h.person]?.[h.range];
+            if (!current || isBetter(h, current, ex.timed))
+              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
+          });
+          return { ...ex, best: newBest, history: newHistory };
+        });
+        await persist(updated, null, {
+          action: "deleteHistory", exercise: ex.name,
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
+        });
+        showToast("Entry deleted");
+      };
+
+      const deleteHistoryEntry = async (exId, histIdx) => {
+        const ex    = exercises.find(e => e.id === exId);
+        const entry = ex?.history?.[histIdx];
+        const updated = exercises.map(ex => {
+          if (ex.id !== exId) return ex;
+          const newHistory = (ex.history || []).filter((_, i) => i !== histIdx);
+          const newBest = {};
+          people.forEach(p => { newBest[p.toLowerCase()] = {}; });
+          newHistory.forEach(h => {
+            const current = newBest[h.person]?.[h.range];
+            if (!current || isBetter(h, current, ex.timed))
+              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
+          });
+          return { ...ex, best: newBest, history: newHistory };
+        });
+        await persist(updated, null, entry ? {
+          action: "deleteHistory", exercise: ex.name,
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
+        } : null);
+        setConfirmDelete(null);
+        showToast("Entry deleted");
+      };
+
+      const deleteExercise = async (id) => {
+        const ex = exercises.find(e => e.id === id);
+        if (!ex) return;
+        const updated = exercises.filter(e => e.id !== id);
+        await persist(updated, null, { action: "deleteExercise", exercise: ex.name });
+        setConfirmDelete(null);
+        if (expanded === id) setExpanded(null);
+        showToast("Deleted");
+      };
+
+      // ── ADD EXERCISE ───────────────────────────────────────────────────────
+      const addExercise = async () => {
+        if (!newName.trim()) return showToast("Name required", "error");
+        if (exercises.some(e => e.name.toLowerCase() === newName.trim().toLowerCase()))
+          return showToast("Already exists", "error");
+
+        const baseName = newName.trim();
+        const namesToCreate = [baseName];
+        if (createSingle) namesToCreate.push(`${baseName} (Single)`);
+        if (createAlt)    namesToCreate.push(`${baseName} (Alt)`);
+
+        let currentExercises = [...exercises];
+        
+        for (const name of namesToCreate) {
+            const maxId = currentExercises.reduce((m, e) => Math.max(m, e.id), 0);
+            const defBest = {};
+            people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+            const newEx = {
+              id: maxId + 1, name: name, timed: newExTimed,
+              category: newExCategory, location: newExLocation, best: defBest, history: [],
+            };
+            currentExercises = [...currentExercises, newEx];
+            
+            if (scriptConfigured) {
+              try {
+                await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+              } catch {}
+            }
+        }
+
+        const sorted = currentExercises.sort((a, b) => a.name.localeCompare(b.name));
+        await persist(sorted);
+
+        setNewName(""); setNewExTimed(false); setNewExCategory(""); setNewExLocation("Anywhere");
+        setCreateSingle(false); setCreateAlt(false);
+        showToast(namesToCreate.length > 1 ? "Exercises added!" : "Exercise added!");
+        setView("list");
+      };
+
+      // ── PEOPLE MANAGEMENT ──────────────────────────────────────────────────
+      const addPerson = async () => {
+        if (!newPersonName.trim()) return showToast("Name required", "error");
+        const trimmed = newPersonName.trim();
+        if (people.map(p => p.toLowerCase()).includes(trimmed.toLowerCase()))
+          return showToast("Already on the list", "error");
+        const newPeople = [...people, trimmed];
+        // Ensure all exercises have a best slot for this person
+        const updatedEx = exercises.map(ex => {
+          const nb = { ...(ex.best || {}) };
+          nb[trimmed.toLowerCase()] = {};
+          return { ...ex, best: nb };
+        });
+        await persist(updatedEx, newPeople, { action: "savePeople", people: newPeople });
+        setNewPersonName("");
+        showToast(`${trimmed} added!`);
+      };
+
+      const removePerson = async (name) => {
+        if (people.length <= 1) return showToast("Need at least one person", "error");
+        const newPeople = people.filter(p => p !== name);
+        await persist(exercises, newPeople, { action: "savePeople", people: newPeople });
+        if (whoMode === name) setWhoMode("all");
+        setConfirmDelete(null);
+        showToast(`${name} removed from roster`);
+      };
+
+      const togglePersonVisibility = (name) => {
+        const isHidden = hiddenPeople.includes(name);
+        const newHidden = isHidden
+          ? hiddenPeople.filter(h => h !== name)
+          : [...hiddenPeople, name];
+        setHiddenPeople(newHidden);
+        localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(newHidden));
+        if (!isHidden && whoMode === name) setWhoMode("all");
+        showToast(isHidden ? `${name} shown on this device` : `${name} hidden on this device`);
+        window.dispatchEvent(new Event('gym-settings-updated'));
+      };
+
+      // ── LOCATION MANAGEMENT ───────────────────────────────────────────────────
+      const addLocation = async () => {
+        if (!newLocName.trim()) return showToast("Name required", "error");
+        const trimmed = newLocName.trim();
+        if (locations.map(l => l.toLowerCase()).includes(trimmed.toLowerCase()))
+          return showToast("Already on the list", "error");
+        const newLocs = [...locations, trimmed];
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (scriptConfigured) {
+          try { await sheetsPost({ action: "syncMeta", people, locations: newLocs, exercises: [] }); } catch {}
+        }
+        setNewLocName("");
+        showToast(`${trimmed} added!`);
+      };
+
+      const removeLocation = (name) => {
+        if (name === "Anywhere") return showToast("Anywhere cannot be removed", "error");
+        const newLocs = locations.filter(l => l !== name);
+        setLocations(newLocs);
+        localStorage.setItem(LOCATIONS_KEY, JSON.stringify(newLocs));
+        if (locationFilter === name) setLocationFilter("all");
+        setConfirmDelete(null);
+        showToast(`${name} removed`);
+      };
+
+      // ── MANUAL SYNC ────────────────────────────────────────────────────────
+      // Only syncs the people roster. Exercise metadata (location, category, timed)
+      // syncs individually via saveExercise on add/edit to avoid overwriting
+      // data set directly in the sheet or on another device.
+      const manualSync = async () => {
+        if (syncStatus === "syncing") return;
+        setSyncStatus("syncing");
+        try {
+          await sheetsPost({ action: "savePeople", people });
+          setSyncStatus("ok");
+          setLastSyncTime(new Date());
+          showToast("Roster synced to Sheets ✓");
+        } catch (e) {
+          setSyncStatus("error");
+          showToast("Sync failed: " + (e?.message || "unknown error"), "error");
+        }
+      };
+
+
+
+      const filtered = exercises.filter(e => {
+        const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
+        const catMatch  = !categoryFilter || e.category === categoryFilter;
+        const locMatch  = locationFilter === "all"
+          || e.location === locationFilter
+          || !e.location
+          || e.location === "Anywhere";
+        return nameMatch && catMatch && locMatch;
+      });
+
+      const syncDot = scriptConfigured ? (
+        <div
+          title={syncStatus === "error" ? "Sync error — go to Settings to retry" : syncStatus === "syncing" ? "Syncing..." : "Synced"}
+          style={{
+            width: 8, height: 8, borderRadius: "50%", marginLeft: 8,
+            cursor: "default",
+            background: syncStatus === "ok" ? "#22c55e" : syncStatus === "error" ? "#ef4444" : "#f97316",
+            animation: syncStatus === "syncing" ? "spin 1s linear infinite" : "none", flexShrink: 0,
+          }}
+        />
+      ) : null;
+
+      if (loading) return <div style={s.center}><div className="spinner" style={s.spinner} /></div>;
+
+      // ════════════════════════════════════════════════════════════════════════
+      // SETTINGS VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      // React Settings View Removed - Unified in Global Vanilla Modal
+      if (view === "settings") {
+          setView("list");
+          setTimeout(() => { if(window.openSettings) window.openSettings(); }, 10);
+          return null;
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // LOG SET VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      if (view === "log") {
+        const ex = exercises.find(e => e.id === logExId);
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={finishLogging}>← Done</button>
+              <div style={s.headerTitle}>LOG SET {setCount}</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={s.logExName}>{ex?.name}</div>
+                {ex?.timed && <span style={s.timedBadge}>⏱ TIMED</span>}
+              </div>
+
+              <div style={s.whoLabel}>WHO'S WORKING OUT?</div>
+              <div style={s.segmented}>
+                {visiblePeople.length > 1 && (
+                  <button style={{ ...s.segBtn, ...(whoMode === "all" ? s.segActive : {}) }}
+                    onClick={() => setWhoMode("all")}>All</button>
+                )}
+                {visiblePeople.map(p => (
+                  <button key={p}
+                    style={{ ...s.segBtn, ...(whoMode === p ? s.segActive : {}) }}
+                    onClick={() => setWhoMode(p)}>{p}</button>
+                ))}
+              </div>
+
+              {sets.length > 0 && (
+                <div style={s.setsLogged}>
+                  <div style={s.setsLoggedTitle}>LOGGED THIS SESSION</div>
+                  {sets.map((set, i) => {
+                    const displayName = people.find(p => p.toLowerCase() === set.person) || set.person;
+                    const result = set.timed
+                      ? set.reps + (set.weight ? ` · ${set.weight}lbs` : "")
+                      : (set.weight ? `${set.reps}x${set.weight}` : `${set.reps} reps`);
+                    return (
+                      <div key={i} style={s.setRow}>
+                        <span style={s.setNum}>Set {set.setNum}</span>
+                        <span style={s.setPerson}>{displayName}</span>
+                        <span style={s.setRange}>{set.timed ? "⏱" : REP_RANGES.find(r => r.key === set.range)?.label}</span>
+                        <span style={s.setResult}>{result}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {visiblePeople.map(person => {
+                const key      = person.toLowerCase();
+                const input    = logInputs[key] || {};
+                const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
+                const bestVal  = getBest(logExId, key, rangeKey || "r13_plus");
+                return (
+                  <div key={person} style={{ ...s.personBlock, marginBottom: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ ...s.personBlockLabel, marginBottom: 0 }}>{person.toUpperCase()}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {ex?.timed ? (
+                            <div style={s.inlineField}>
+                              <input
+                                id={`duration-${key}`}
+                                style={{ ...s.input, width: 80, textAlign: "center" }}
+                                placeholder="mm:ss"
+                                value={input.duration || ""}
+                                onChange={e => updateLogInput(key, "duration", e.target.value)}
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <input
+                                id={`reps-${key}`}
+                                style={{ ...s.input, width: 60, textAlign: "center" }}
+                                placeholder="Reps"
+                                type="number"
+                                value={input.reps || ""}
+                                onChange={e => updateLogInput(key, "reps", e.target.value)}
+                              />
+                              <span style={{ color: "#333", fontWeight: "bold" }}>X</span>
+                            </div>
+                          )}
+                          <input
+                            id={`weight-${key}`}
+                            style={{ ...s.input, width: 70, textAlign: "center" }}
+                            placeholder={ex?.timed ? "lbs" : "lbs"}
+                            value={input.weight || ""}
+                            onChange={e => updateLogInput(key, "weight", e.target.value)}
+                          />
+                        </div>
+                    </div>
+                    <input 
+                      placeholder={`Note for ${person}...`}
+                      style={{ ...s.input, fontSize: 11, padding: "6px 12px", background: "#050505", border: "1px solid #1a1a1a", color: "#888" }}
+                      value={input.note || ""}
+                      onChange={e => updateLogInput(key, "note", e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                        {rangeKey && <div style={{ ...s.rangeTag, fontSize: 9 }}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
+                        {rangeKey && bestVal && <div style={{ ...s.bestTag, fontSize: 9 }}>Best: {bestVal}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+
+
+              {logError && <div style={s.error}>{logError}</div>}
+              <div style={s.logBtnRow}>
+                <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>
+                {sets.length > 0 && <button style={s.doneBtn} onClick={finishLogging}>Done</button>}
+              </div>
+            </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // ADD EXERCISE VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      if (view === "add") {
+        return (
+          <div style={s.root}>
+            <div style={s.header}>
+              <button style={s.backBtn} onClick={() => setView("list")}>← Back</button>
+              <div style={s.headerTitle}>NEW EXERCISE</div>
+              <div style={{ width: 60 }} />
+            </div>
+            <div style={s.formWrap}>
+              <label style={s.label}>EXERCISE NAME</label>
+              <input
+                style={s.input}
+                placeholder="e.g. Plank"
+                value={newName}
+                autoFocus
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addExercise()}
+              />
+              <div style={s.whoLabel}>TRACKING TYPE</div>
+              <div style={s.segmented}>
+                <button style={{ ...s.segBtn, ...(!newExTimed ? s.segActive : {}) }}
+                  onClick={() => setNewExTimed(false)}>REPS</button>
+                <button style={{ ...s.segBtn, ...(newExTimed ? s.segActive : {}) }}
+                  onClick={() => setNewExTimed(true)}>⏱ TIME</button>
+              </div>
+              {newExTimed && (
+                <div style={s.timedNote}>
+                  Duration logged in mm:ss. Stored in the 13+ bucket. Best = longest hold.
+                  Tip: you can type plain seconds (e.g. 90) and it'll convert to 1:30.
+                </div>
+              )}
+              <div style={s.whoLabel}>CATEGORY (optional)</div>
+              <select
+                style={{ ...s.input, color: newExCategory ? "#ddd" : "#555" }}
+                value={newExCategory}
+                onChange={e => setNewExCategory(e.target.value)}
+              >
+                <option value="">-- None --</option>
+                {EXERCISE_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <div style={s.whoLabel}>LOCATION</div>
+              <select
+                style={{ ...s.input, color: newExLocation !== "Anywhere" ? "#ddd" : "#555" }}
+                value={newExLocation}
+                onChange={e => setNewExLocation(e.target.value)}
+              >
+                {locations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+              
+              <div style={whoLabel}>VARIATIONS</div>
+              <div style={{ display: "flex", gap: 15, padding: "5px 0" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                      <input type="checkbox" checked={createSingle} onChange={e => setCreateSingle(e.target.checked)} />
+                      Single Arm/Leg
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                      <input type="checkbox" checked={createAlt} onChange={e => setCreateAlt(e.target.checked)} />
+                      Alternating
+                  </label>
+              </div>
+
+              <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
+            </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          </div>
+        );
+      }
+
+      // ════════════════════════════════════════════════════════════════════════
+      // MAIN LIST VIEW
+      // ════════════════════════════════════════════════════════════════════════
+      return (
+        <div style={s.root}>
+          <div style={s.header}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <div style={s.title}>LIFT</div>
+                {syncDot}
+              </div>
+              <div style={s.subtitle}>{visiblePeople.join(" & ")} · {exercises.length} exercises</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={s.addIconBtn} onClick={() => { if(window.openSettings) window.openSettings(); }} title="Settings">⚙️</button>
+              <button style={s.addIconBtn} onClick={() => setView("add")}>➕</button>
+            </div>
+          </div>
+
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}>🔍</span>
+            <input
+              style={s.searchInput}
+              placeholder="Search exercises..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <select
+              style={s.categoryFilter}
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {EXERCISE_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            {search && <button style={s.clearBtn} onClick={() => setSearch("")}>✕</button>}
+          </div>
+          <div style={s.locationTabRow}>
+            <button
+              style={{ ...s.locationTab, ...(locationFilter === "all" ? s.locationTabActive : {}) }}
+              onClick={() => setLocationFilter("all")}>ALL</button>
+            {locations.filter(l => l !== "Anywhere").map(loc => (
+              <button key={loc}
+                style={{ ...s.locationTab, ...(locationFilter === loc ? s.locationTabActive : {}) }}
+                onClick={() => setLocationFilter(loc)}>{loc.toUpperCase()}</button>
+            ))}
+          </div>
+
+          {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+
+          {/* Delete confirm modal (exercise or history) */}
+          {confirmDelete && confirmDelete.type !== "person" && (
+            <div style={s.overlay}>
+              <div style={s.modal}>
+                <div style={s.modalTitle}>
+                  {confirmDelete.type === "exercise" ? "Delete exercise?" : "Delete this entry?"}
+                </div>
+                <div style={s.modalSub}>
+                  {confirmDelete.type === "exercise"
+                    ? exercises.find(e => e.id === confirmDelete.exId)?.name
+                    : "This will be removed and best results will update."}
+                </div>
+                <div style={s.modalBtns}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={() =>
+                    confirmDelete.type === "exercise"
+                      ? deleteExercise(confirmDelete.exId)
+                      : deleteHistoryEntry(confirmDelete.exId, confirmDelete.histIdx)
+                  }>Delete</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={s.listWrap}>
+            {(() => {
+                const grouped = {};
+                filtered.forEach(ex => {
+                    const base = getBaseName(ex.name);
+                    if (!grouped[base]) grouped[base] = { baseName: base, variations: {} };
+                    const mode = getMode(ex.name);
+                    grouped[base].variations[mode] = ex;
+                });
+
+                return Object.values(grouped).map(group => {
+                    const activeMode = exerciseModes[group.baseName] || 'std';
+                    const ex = group.variations[activeMode] || Object.values(group.variations)[0];
+                    const isExpanded = expanded === ex.id;
+                    const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
+
+                    return (
+                        <div key={group.baseName} style={s.card}>
+                            {/* SMART CARD HEADER: Variation Toggles */}
+                            <div style={{ background: "#0a0a0a", display: "flex", borderBottom: "1px solid #161616", padding: "4px 12px", alignItems: "center", justifyContent: "space-between" }}>
+                                <div style={{ display: "flex", gap: 4 }}>
+                                    {['std', 'single', 'alt'].map(mode => {
+                                        const exists = group.variations[mode];
+                                        const isActive = activeMode === mode;
+                                        if (!exists) return null;
+                                        return (
+                                            <button 
+                                                key={mode}
+                                                onClick={() => setExerciseModes(prev => ({ ...prev, [group.baseName]: mode }))}
+                                                style={{ 
+                                                    ...s.timedPill, 
+                                                    background: isActive ? "#f97316" : "#1a1100", 
+                                                    color: isActive ? "#000" : "#f97316",
+                                                    borderColor: isActive ? "transparent" : "#f9731630"
+                                                }}
+                                            >
+                                                {mode.toUpperCase()}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div style={{ fontSize: 8, color: "#333", letterSpacing: 1 }}>SMART CARD</div>
+                            </div>
+
+                            <div style={s.cardHeader}>
+                                <div style={{ display: "flex", alignItems: "center", flex: 1 }} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
+                                    <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                                    <div style={s.cardName}>
+                                        <div style={s.categoryLabel}>{ex.category?.toUpperCase()}</div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                            {ex.name}
+                                            {ex.timed && <span style={s.timedPill}>⏱</span>}
+                                        </div>
+                                        <div style={s.cardMax}>
+                                            {visiblePeople.map(p => {
+                                                const m = ex.best?.[p.toLowerCase()]?.['r8_12'];
+                                                if (!m) return null;
+                                                return <span key={p} style={{ marginRight: 8 }}>{p}: {m.reps}x{m.weight}</span>;
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                                    {exerciseStatus[ex.name] && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 8 }}>
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); toggleStatus(ex.name, 'undo'); }}
+                                            style={{ background: 'rgba(249,115,22,0.1)', color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 4, padding: '2px 6px', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700, cursor: 'pointer', letterSpacing: '1px' }}
+                                        >
+                                            UNDO
+                                        </button>
+                                        <span style={{ fontSize: 18, color: exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666', fontWeight: 'bold' }}>
+                                            {exerciseStatus[ex.name] === 'done' ? '✓' : '—'}
+                                        </span>
+                                    </div>
+                                )}
+                                <div style={s.cardActions}>
+                                    <button style={s.historyBtn} onClick={(e) => { e.stopPropagation(); openHistory(ex.id); }}>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: historyExId === ex.id ? "var(--accent)" : "currentColor" }}>
+                                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                    </button>
+                                    <button style={s.logBtn} onClick={() => openLog(ex.id)}>LOG</button>
+                                    <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
+                                </div>
+                            </div>
+
+                            {/* History Drawer */}
+                            {historyExId === ex.id && (
+                                <div style={{ background: "#0e0e0e", borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "12px 16px" }}>
+                                    <div style={{ fontSize: 10, color: "#444", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>RECENT HISTORY</div>
+                                    {(!ex.history || ex.history.length === 0) ? (
+                                        <div style={{ padding: 10, textAlign: "center", color: "#444", fontSize: 12 }}>No history found for this exercise.</div>
+                                    ) : (
+                                        ex.history.slice(-10).reverse().map((h, i) => (
+                                            <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #1a1a1a" }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: 10, color: "#666" }}>{h.date || "Unknown Date"}</div>
+                                                    <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>{h.person?.toUpperCase()}</div>
+                                                    {h.note && <div style={{ fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 }}>{h.note}</div>}
+                                                </div>
+                                                <div style={{ textAlign: "right", display: "flex", alignItems: "center", gap: 8 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 12, fontWeight: 600, color: "#ddd" }}>
+                                                            {ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                                                        </div>
+                                                        <div style={{ fontSize: 9, color: "#444", fontFamily: "var(--mono)" }}>{ex.timed ? "⏱" : h.range?.replace("r", "").replace("_", "-")}</div>
+                                                    </div>
+                                                    <button onClick={() => deleteLog(ex.id, h)} style={{ background: "none", border: "none", color: "#ff4444", cursor: "pointer", padding: 4, opacity: 0.6 }} title="Delete Entry">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Best results grid */}
+                            {hasData && (
+                                <div style={s.rangeGrid}>
+                                  {ex.timed ? (
+                                    /* Timed: single "Best Duration" column */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
+                                        <div style={s.rangeColHeader}>WEIGHT</div>
+                                      </div>
+                                      {visiblePeople.map(person => {
+                                        const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
+                                        return (
+                                          <div key={person} style={s.rangeRow}>
+                                            <div style={s.personCol}>{person}</div>
+                                            <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
+                                              {b ? b.reps : <span style={s.dash}>—</span>}
+                                            </div>
+                                            <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
+                                              {b?.weight || <span style={s.dash}>—</span>}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    /* Reps: full 4-column range grid */
+                                    <div>
+                                      <div style={s.rangeHeaderRow}>
+                                        <div style={s.personCol} />
+                                        {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
+                                      </div>
+                                      {visiblePeople.map(person => (
+                                        <div key={person} style={s.rangeRow}>
+                                          <div style={s.personCol}>{person}</div>
+                                          {REP_RANGES.map(r => {
+                                            const b   = ex.best?.[person.toLowerCase()]?.[r.key];
+                                            const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                                            return (
+                                              <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
+                                                {val || <span style={s.dash}>—</span>}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                            )}
+
+                            {/* History */}
+                            {isExpanded && (
+                                <div style={s.history}>
+                                  {(ex.history || []).length === 0 ? (
+                                    <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
+                                  ) : (
+                                    <>
+                                      <div style={s.historyTitle}>HISTORY</div>
+                                      {(ex.history || []).map((h, i) => {
+                                        const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
+                                        const result = h.timed
+                                          ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
+                                          : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
+                                        return (
+                                          <div key={i} style={s.historyRow}>
+                                            <div style={s.historyLeft}>
+                                              <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
+                                              <div style={s.historyMeta}>
+                                                <span style={s.historyPerson}>{displayName}</span>
+                                                <span style={s.historyRange}>
+                                                  {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
+                                                </span>
+                                                <span style={s.historyResult}>{result}</span>
+                                              </div>
+                                              {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                                            </div>
+                                            <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
+                                              onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
+                                              title="Delete Entry">
+                                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </>
+                                  )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                });
+            })()}
+            {filtered.length === 0 && (
+              <div style={s.noResults}>{search ? `No results for "${search}"` : "No exercises yet"}</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── STYLES ────────────────────────────────────────────────────────────────
+    const s = {
+      root:             { background: "#0c0c0c", height: "100dvh", fontFamily: "'DM Mono','Courier New',monospace", color: "#ddd", display: "flex", flexDirection: "column", overflow: "hidden" },
+      center:           { background: "#0c0c0c", height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" },
+      spinner:          { width: 24, height: 24, border: "2px solid #222", borderTop: "2px solid #f97316", borderRadius: "50%" },
+      header:           { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 12px", borderBottom: "1px solid #1a1a1a", flexShrink: 0 },
+      title:            { fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" },
+      subtitle:         { fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3 },
+      headerTitle:      { fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#f97316", flex: 1, textAlign: "center" },
+      addIconBtn:       { background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontSize: 15 },
+      backBtn:          { background: "transparent", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: 1, width: 60, textAlign: "left" },
+      searchWrap:       { display: "flex", alignItems: "center", margin: "10px 12px 6px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "0 10px", flexShrink: 0 },
+      searchIcon:       { fontSize: 12, marginRight: 6 },
+      searchInput:      { flex: 1, background: "transparent", border: "none", outline: "none", color: "#ddd", fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "10px 0" },
+      clearBtn:         { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 12 },
+      toast:            { position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", padding: "7px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: "#fff", zIndex: 999, letterSpacing: 1 },
+      overlay:          { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+      modal:            { background: "#141414", border: "1px solid #2a2a2a", borderRadius: 12, padding: 24, width: 290 },
+      modalTitle:       { fontSize: 14, fontWeight: 700, color: "#f97316", marginBottom: 8, letterSpacing: 1 },
+      modalSub:         { fontSize: 11, color: "#666", marginBottom: 20, lineHeight: 1.5 },
+      modalBtns:        { display: "flex", gap: 10 },
+      cancelBtn:        { flex: 1, padding: 10, background: "#1e1e1e", border: "none", borderRadius: 8, color: "#aaa", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12 },
+      confirmBtn:       { flex: 1, padding: 10, background: "#ef4444", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 },
+      listWrap:         { flex: 1, overflowY: "auto", padding: "6px 12px 20px", WebkitOverflowScrolling: "touch" },
+      card:             { background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 6, overflow: "hidden" },
+      cardHeader:       { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px" },
+      cardName:         { flex: 1, fontSize: 12, color: "#e0e0e0", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 },
+      categoryLabel:    { fontSize: 8, color: "#555", letterSpacing: 2, paddingLeft: 16 },
+      chevron:          { color: "#444", fontSize: 10, minWidth: 10 },
+      cardActions:      { display: "flex", gap: 6, alignItems: "center" },
+      logBtn:           { background: "#1a1100", border: "1px solid #f97316", borderRadius: 6, color: "#f97316", fontSize: 10, fontWeight: 700, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      delBtn:           { background: "transparent", border: "none", color: "#854444", cursor: "pointer", fontSize: 11, padding: "2px 4px" },
+      timedPill:        { fontSize: 8, color: "#f97316", background: "#1a1100", border: "1px solid #f9731630", padding: "1px 5px", borderRadius: 4, letterSpacing: 1 },
+      rangeGrid:        { borderTop: "1px solid #161616", padding: "8px 12px 10px" },
+      rangeHeaderRow:   { display: "flex", marginBottom: 4 },
+      personCol:        { width: 42, fontSize: 9, color: "#555", letterSpacing: 1, flexShrink: 0 },
+      rangeColHeader:   { flex: 1, fontSize: 9, color: "#555", letterSpacing: 1, textAlign: "center" },
+      rangeRow:         { display: "flex", alignItems: "center", marginBottom: 3 },
+      rangeCell:        { flex: 1, fontSize: 10, color: "#444", textAlign: "center", padding: "3px 2px", borderRadius: 4 },
+      rangeCellFilled:  { color: "#ccc", background: "#161616" },
+      dash:             { color: "#2a2a2a" },
+      history:          { borderTop: "1px solid #161616", padding: "10px 12px" },
+      historyTitle:     { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 8 },
+      historyRow:       { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 8 },
+      historyLeft:      { flex: 1 },
+      historyDate:      { fontSize: 9, color: "#444", marginBottom: 2 },
+      historyMeta:      { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
+      historyPerson:    { fontSize: 10, color: "#f97316" },
+      historyRange:     { fontSize: 10, color: "#555", background: "#161616", padding: "2px 6px", borderRadius: 4 },
+      historyResult:    { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      historyNote:      { fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 },
+      histDelBtn:       { background: "transparent", border: "none", color: "#333", cursor: "pointer", fontSize: 11, padding: "2px 6px", flexShrink: 0 },
+      noHistory:        { fontSize: 11, color: "#333", textAlign: "center", padding: "8px 0" },
+      noResults:        { padding: 32, textAlign: "center", color: "#333", fontSize: 12 },
+      formWrap:         { padding: 16, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" },
+      logExName:        { fontSize: 14, fontWeight: 700, color: "#e0e0e0", letterSpacing: 1 },
+      timedBadge:       { fontSize: 9, color: "#f97316", background: "#1a1100", border: "1px solid #f9731640", padding: "2px 6px", borderRadius: 4, letterSpacing: 1 },
+      whoLabel:         { fontSize: 9, color: "#444", letterSpacing: 2 },
+      segmented:        { display: "flex", border: "1px solid #1e1e1e", borderRadius: 8, overflow: "hidden" },
+      segBtn:           { flex: 1, padding: 10, background: "#111", border: "none", color: "#555", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: 1 },
+      segActive:        { background: "#1a1100", color: "#f97316" },
+      setsLogged:       { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 7, padding: "8px 10px" },
+      setsLoggedTitle:  { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 6 },
+      setRow:           { display: "flex", gap: 8, alignItems: "center", marginBottom: 3 },
+      setNum:           { fontSize: 9, color: "#444", minWidth: 30 },
+      setPerson:        { fontSize: 10, color: "#f97316", minWidth: 36 },
+      setRange:         { fontSize: 10, color: "#555", background: "#1a1a1a", padding: "1px 5px", borderRadius: 4 },
+      setResult:        { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      personBlock:      { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 12px" },
+      personBlockLabel: { fontSize: 10, color: "#f97316", fontWeight: 700, letterSpacing: 2, marginBottom: 8 },
+      inlineRow:        { display: "flex", gap: 10 },
+      inlineField:      { flex: 1, display: "flex", flexDirection: "column", gap: 4 },
+      label:            { fontSize: 9, color: "#444", letterSpacing: 2 },
+      input:            { padding: "9px 10px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 7, color: "#ddd", fontSize: 12, fontFamily: "'DM Mono',monospace", outline: "none", width: "100%" },
+      rangeTag:         { fontSize: 10, color: "#f97316", letterSpacing: 1 },
+      bestTag:          { fontSize: 9, color: "#555", letterSpacing: 1 },
+      error:            { fontSize: 11, color: "#ef4444", letterSpacing: 1 },
+      logBtnRow:        { display: "flex", gap: 10 },
+      saveSetBtn:       { flex: 2, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      doneBtn:          { flex: 1, padding: 12, background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace" },
+      submitBtn:        { marginTop: 6, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      timedNote:        { fontSize: 10, color: "#555", lineHeight: 1.6, background: "#0e0e0e", padding: "8px 10px", borderRadius: 7, border: "1px solid #1a1a1a" },
+      sectionLabel:     { fontSize: 9, color: "#555", letterSpacing: 3 },
+      settingsNote:     { fontSize: 10, color: "#444", lineHeight: 1.6, fontStyle: "italic" },
+      personListRow:    { display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 14px" },
+      personListName:   { fontSize: 13, color: "#e0e0e0", letterSpacing: 1 },
+      personRemoveBtn:  { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 14, padding: "2px 6px" },
+      addPersonRow:     { display: "flex", gap: 8 },
+      addPersonBtn:     { padding: "9px 14px", background: "#f97316", border: "none", borderRadius: 7, color: "#000", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, flexShrink: 0 },
+      deviceToggleBtn:  { fontSize: 8, padding: "3px 8px", borderRadius: 4, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700, border: "1px solid transparent", flexShrink: 0 },
+      deviceToggleOn:   { background: "#0a1a0a", color: "#22c55e", borderColor: "#22c55e40" },
+      deviceToggleOff:  { background: "#111", color: "#444", borderColor: "#33333360" },
+      syncBtn:          { padding: 12, background: "#0a1a0a", border: "1px solid #22c55e", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 2, width: "100%" },
+      syncBtnDisabled:  { opacity: 0.5, cursor: "default" },
+      categoryFilter:   { background: "#111", border: "1px solid #1e1e1e", borderRadius: 6, color: "#555", fontSize: 9, fontFamily: "'DM Mono',monospace", padding: "4px 6px", outline: "none", maxWidth: 130 },
+      locationTabRow:   { display: "flex", gap: 5, padding: "2px 12px 8px", overflowX: "auto", WebkitOverflowScrolling: "touch" },
+      locationTab:      { padding: "3px 10px", background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: 20, color: "#444", fontSize: 8, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'DM Mono',monospace", flexShrink: 0 },
+      locationTabActive:{ background: "#1a1100", border: "1px solid #f97316", color: "#f97316" },
+    };
+
+    ReactDOM.createRoot(document.getElementById("tracker-root")).render(<WorkoutTracker />);
+  </script>
+</body>
+
+</html>

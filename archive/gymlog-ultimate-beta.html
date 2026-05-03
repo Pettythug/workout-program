@@ -11,7 +11,100 @@
   <title>LIFT</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="gym-core.js"></script>
+  <script>
+    /**
+     * GYM LOG CORE ENGINE (v1.0.0) - INLINED FOR BETA STABILITY
+     */
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+    const STORAGE_KEY       = "gym-tracker-v4";
+    const PEOPLE_KEY        = "gym-tracker-people-v1";
+    const LOCATIONS_KEY     = "gym-tracker-locations-v1";
+    const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
+    const ACTIVE_LOCATION_KEY = "gym-active-location-v1";
+    const ACTIVE_TYPE_KEY     = "gym-active-type-v1";
+    const ACTIVE_PEOPLE_KEY   = "gym-active-people-v1";
+    const DEFAULT_PEOPLE    = ["Brian", "Dad"];
+    const DEFAULT_LOCATIONS = ["Anywhere", "Home", "24 Hour Fitness"];
+    const EXERCISE_CATEGORIES = ["Explosive", "Knee Dominant", "Hip Dominant", "Horizontal Push", "Horizontal Pull", "Vertical Push", "Vertical Pull", "Rotational Core", "Plank Core", "Accessory"];
+    const REP_RANGES = [
+        { key: "r1_3",     label: "1-3"  },
+        { key: "r4_7",     label: "4-7"  },
+        { key: "r8_12",    label: "8-12" },
+        { key: "r13_plus", label: "13+"  }
+    ];
+
+    function parseTime(val) {
+        const str = String(val || "").trim();
+        if (!str) return 0;
+        if (str.includes(":")) {
+            const [m, s] = str.split(":");
+            return (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+        }
+        return parseInt(str) || 0;
+    }
+    function formatTime(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+    function normalizeTimeInput(val) {
+        const str = String(val || "").trim();
+        if (!str || /^\d+:\d+$/.test(str)) return str;
+        if (/^\d+$/.test(str)) return formatTime(parseInt(str));
+        return str;
+    }
+    function parseWeight(w) { const n = parseFloat(String(w).replace(/[^0-9.\-]/g, "")); return isNaN(n) ? 0 : n; }
+    function todayStr() { return new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+    function getRange(reps) {
+        const n = parseInt(reps);
+        if (n >= 1  && n <= 3)  return "r1_3";
+        if (n >= 4  && n <= 7)  return "r4_7";
+        if (n >= 8  && n <= 12) return "r8_12";
+        if (n >= 13)            return "r13_plus";
+        return null;
+    }
+    function migrateRanges(exercises) {
+        return exercises.map(ex => {
+            const newBest = {};
+            for (const person of Object.keys(ex.best || {})) {
+                newBest[person] = {};
+                for (const [key, val] of Object.entries(ex.best[person] || {})) {
+                    const nk = key === "r15_20" ? "r13_plus" : key;
+                    if (!newBest[person][nk] || parseWeight(val?.weight) > parseWeight(newBest[person][nk]?.weight)) {
+                        newBest[person][nk] = val;
+                    }
+                }
+            }
+            const newHistory = (ex.history || []).map(h => h.range === "r15_20" ? { ...h, range: "r13_plus" } : h);
+            return { ...ex, best: newBest, history: newHistory };
+        });
+    }
+    async function sheetsGet() {
+        const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        return json.data;
+    }
+    async function sheetsPost(payload) {
+        const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+        const encoded = encodeURIComponent(JSON.stringify(payload));
+        const res = await fetch(url + "?payload=" + encoded);
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        return json.data;
+    }
+    function mergeFromSheets(localExercises, sheetsData, localPeople, localLocations) {
+        const { history, best, people: sPeople, exercises: sEx, locations: sLocs } = sheetsData;
+        const people = (sPeople && sPeople.length > 0) ? sPeople : localPeople;
+        const mergedLocs = [...new Set([...localLocations, ...(sLocs || [])])];
+        const merged = localExercises.map(ex => {
+            const sHist = history.filter(h => h.exercise === ex.name);
+            const sB = best[ex.name];
+            const sInfo = (sEx || []).find(e => e.name === ex.name);
+            const b = {}; people.forEach(p => { b[p.toLowerCase()] = {}; });
+            return { ...ex, timed: sInfo?.timed ?? ex.timed ?? false, category: sInfo?.category ?? ex.category ?? "", location: sInfo?.location ?? ex.location ?? "Anywhere", history: sHist, best: sB || b };
+        });
+        return { exercises: merged, people, locations: mergedLocs };
+    }
+    function notifySettingsUpdated() { window.dispatchEvent(new Event('gym-settings-updated')); }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; background: #0c0c0c; overflow: hidden; }
@@ -751,8 +844,8 @@
 
     <div class="header">
         <div class="header-left">
-            <h1 style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</h1>
-            <p id="headerSub" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading...</p>
+            <h1>PLAN</h1>
+            <p id="headerSub">Loading...</p>
         </div>
         <div class="header-right">
             <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
@@ -877,21 +970,7 @@
     const LOC_KEY = 'builder_location';
     
     let currentWorkout = null;
-    
-        const PLANNER_NOTES_KEY = 'gym-planner-notes';
-        let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
-        
-        async function savePlannerNote(exName, note) {
-            plannerNotes[exName] = note;
-            localStorage.setItem(PLANNER_NOTES_KEY, JSON.stringify(plannerNotes));
-            if (SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE") {
-                try {
-                    await sheetsPost({ action: "saveExerciseNote", exercise: exName, note: note });
-                } catch(e) {}
-            }
-        }
-
-let exerciseStatus = {};
+    let exerciseStatus = {};
     let currentMaxes = {};
     let currentAccessory = null;
     let activePeople = [];
@@ -907,7 +986,7 @@ let exerciseStatus = {};
             });
             window.builderInitialized = true;
         }
-        // loadDataAndWorkout(); // Wait for Master Sync to trigger
+        loadDataAndWorkout();
     }
 
         function openSettings() {
@@ -925,7 +1004,7 @@ let exerciseStatus = {};
 
             peopleContainer.innerHTML = allPeople.map(p => `
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding:6px 10px; background:rgba(255,255,255,0.02); border-radius:6px;">
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text); cursor:pointer; flex:1;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; flex:1;">
                         <input type="checkbox" value="${p}" class="person-cb" ${!hidden.includes(p) ? 'checked' : ''} /> 
                         ${p}
                     </label>
@@ -1043,7 +1122,7 @@ let exerciseStatus = {};
             
             const newLeader = (activePeople.includes(newPrimary) ? newPrimary : (activePeople[0] || 'Brian')).toLowerCase();
             if (oldLeader !== newLeader) {
-                // loadDataAndWorkout(); // Wait for Master Sync to trigger
+                loadDataAndWorkout();
             } else if (currentWorkout) {
                 renderWorkout(currentWorkout, currentWorkout.exercises);
             }
@@ -1160,34 +1239,6 @@ let exerciseStatus = {};
              if (label === "8-12") return "r8_12";
              return "r13_plus";
         }
-        function saveWorkoutState() {
-            if (!currentWorkout) return;
-            const snapshot = {
-                workout: currentWorkout,
-                status: exerciseStatus,
-                counters: exerciseSetCounters,
-                modes: exerciseModes
-            };
-            localStorage.setItem('gym-active-workout-state', JSON.stringify(snapshot));
-        }
-
-        function undoCompletion() {
-            const raw = localStorage.getItem('gym-last-workout-snapshot');
-            if (!raw) return;
-            const snapshot = JSON.parse(raw);
-            
-            currentWorkout = snapshot.workout;
-            exerciseStatus = snapshot.status;
-            exerciseSetCounters = snapshot.counters;
-            exerciseModes = snapshot.modes;
-            
-            // Re-decrement the workout number
-            let num = parseInt(localStorage.getItem(NUM_KEY) || '1') - 1;
-            localStorage.setItem(NUM_KEY, num);
-            
-            localStorage.removeItem('gym-last-workout-snapshot');
-            renderWorkout();
-        }
 
         function generateWorkout() {
              const loc = document.getElementById('locationSelect').value;
@@ -1206,78 +1257,27 @@ let exerciseStatus = {};
              const activeRange = getRepRange(num);
              const rangeKey = getRangeKeyFromLabel(activeRange);
              
-             // ── STATE HYDRATION (Option B: Robust Local Storage) ──
-             const activeStateRaw = localStorage.getItem('gym-active-workout-state');
-             if (activeStateRaw) {
-                 try {
-                     const activeState = JSON.parse(activeStateRaw);
-                     if (activeState.workout && activeState.workout.workoutNum === num && activeState.workout.type === type) {
-                         currentWorkout = activeState.workout;
-                         exerciseStatus = activeState.status || {};
-                         exerciseSetCounters = activeState.counters || {};
-                         exerciseModes = activeState.modes || {};
-                         
-                         currentMaxes = {};
-                         currentWorkout.exercises.forEach(e => {
-                             const stdName = getStandardizedName(e.name);
-                             currentMaxes[stdName] = {};
-                             activePeople.forEach(p => {
-                                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
-                             });
-                         });
-                         
-                         renderWorkout(currentWorkout, currentWorkout.exercises);
-                         return; // Fully hydrated, skip generation!
-                     }
-                 } catch(e) {}
-             }
-             
-             // If not hydrated, clear stale state
-             localStorage.removeItem('gym-active-workout-state');
-             
              const available = (globalData.exercises || []).filter(e => !e.timed && (e.location === 'Anywhere' || e.location === loc || !e.location));
              
              const pick = (categories) => {
                  const subset = available.filter(e => categories.includes(e.category));
                  if(subset.length === 0) return {name: `No ${categories[0]}`, category: categories[0]};
-                 
-                 // Group by base name so variations don't inflate pick chance
-                 const groups = {};
-                 subset.forEach(e => {
-                     const base = getBaseName(e.name);
-                     if (!groups[base]) groups[base] = [];
-                     groups[base].push(e);
-                 });
-                 
-                 const baseNames = Object.keys(groups);
-                 const pickedBase = baseNames[Math.floor(Math.random() * baseNames.length)];
-                 const variations = groups[pickedBase];
-                 
-                 // Default to 'std' if exists, else first available
-                 return variations.find(v => getMode(v.name) === 'std') || variations[0];
+                 return subset[Math.floor(Math.random() * subset.length)];
              };
              
-             const lockKey = `saved_workout_${num}`;
-             const lockedData = localStorage.getItem(lockKey);
-             let genExercises = [];
-
-             if (lockedData) {
-                 try {
-                     const parsed = JSON.parse(lockedData);
-                     if (parsed.type === type) {
-                         genExercises = parsed.exercises;
-                     } else { throw new Error("Type mismatch"); }
-                 } catch(e) { }
-             }
-
-             if (genExercises.length === 0) {
-                 genExercises = type === 'Push' ? [
-                     pick(['Explosive']), pick(['Knee Dominant']), pick(['Vertical Push']), pick(['Horizontal Push']), pick(['Rotational Core', 'Plank Core']),
-                 ] : [
-                     pick(['Explosive']), pick(['Hip Dominant']), pick(['Vertical Pull']), pick(['Horizontal Pull']), pick(['Plank Core', 'Rotational Core']),
-                 ];
-                 localStorage.setItem(lockKey, JSON.stringify({ type, exercises: genExercises }));
-             }
+             const genExercises = type === 'Push' ? [
+                 pick(['Explosive']),
+                 pick(['Knee Dominant']),
+                 pick(['Vertical Push']),
+                 pick(['Horizontal Push']),
+                 pick(['Rotational Core', 'Plank Core']),
+             ] : [
+                 pick(['Explosive']),
+                 pick(['Hip Dominant']),
+                 pick(['Vertical Pull']),
+                 pick(['Horizontal Pull']),
+                 pick(['Plank Core', 'Rotational Core']),
+             ];
              
              currentWorkout = {
                  type: type,
@@ -1288,24 +1288,19 @@ let exerciseStatus = {};
              
              exerciseStatus = {};
              exerciseSetCounters = {};
-             exerciseModes = {};
-
              genExercises.forEach((e, idx) => { 
                  exerciseStatus[e.name] = 'pending'; 
                  exerciseSetCounters[idx] = 1;
-                 exerciseModes[idx] = getMode(e.name);
              });
              
              currentMaxes = {};
              genExercises.forEach(e => {
-                 const stdName = getStandardizedName(e.name);
-                 currentMaxes[stdName] = {};
+                 currentMaxes[e.name] = {};
                  activePeople.forEach(p => {
-                     currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                     currentMaxes[e.name][p] = globalData.best?.[e.name]?.[p.toLowerCase()] || {};
                  });
              });
              
-             saveWorkoutState();
              renderWorkout(currentWorkout, genExercises);
         }
 
@@ -1325,42 +1320,12 @@ let exerciseStatus = {};
             const fullLocOptions = ['Anywhere', ...(globalData.locations || [])].filter((v,i,a)=>a.indexOf(v)===i);
             const customLocDropdownHTML = fullLocOptions.map(l => `<option value="${l}" ${l===activeLoc ? 'selected':''}>${l}</option>`).join('');
 
-            const groupedByBase = {};
-            (globalData.exercises || []).forEach(ex => {
-                const base = getBaseName(ex.name);
-                if (!groupedByBase[base]) groupedByBase[base] = { variations: {} };
-                groupedByBase[base].variations[getMode(ex.name)] = ex;
-            });
-
             exercises.forEach((ex, idx) => {
                 const card = document.createElement('div');
                 card.className = 'exercise-card';
                 card.id = `card-${idx}`;
-                
-                const baseName = getBaseName(ex.name);
-                const group = groupedByBase[baseName] || { variations: { [getMode(ex.name)]: ex } };
-                const activeMode = exerciseModes[idx] || getMode(ex.name);
-
                 if (exerciseStatus[ex.name] === 'done') card.classList.add('done');
                 if (exerciseStatus[ex.name] === 'skipped') card.classList.add('skipped');
-
-                // SMART HEADER
-                let smartHeader = `
-                <div style="background: #0a0a0a; display: flex; border-bottom: 1px solid #161616; padding: 4px 12px; align-items: center; justify-content: space-between">
-                    <div style="display: flex; gap: 4px">
-                        ${['std', 'single', 'alt'].map(mode => {
-                            const exists = group.variations[mode];
-                            if (!exists) return '';
-                            const isActive = activeMode === mode;
-                            const label = mode.toUpperCase();
-                            const bg = isActive ? 'var(--accent)' : '#1a1100';
-                            const textColor = isActive ? '#000' : 'var(--accent)';
-                            const border = isActive ? '1px solid transparent' : '1px solid #f9731630';
-                            return `<button onclick="switchVariation(${idx}, '${mode}')" style="font-family:var(--mono); font-size:8px; color:${textColor}; background:${bg}; border:${border}; border-radius:4px; padding:1px 5px; cursor:pointer; letter-spacing:1px;">${label}</button>`;
-                        }).join('')}
-                    </div>
-                    <div style="font-size: 8px; color: #333; letter-spacing: 1px; font-family:var(--mono); font-weight:700;">SMART CARD</div>
-                </div>`;
 
                 // Filter Swaps by Current Exercise Category
                 const availableSwapProps = (globalData.exercises || []).filter(e => 
@@ -1379,25 +1344,14 @@ let exerciseStatus = {};
                   <div class="exercise-info">
                     <div class="exercise-category">${ex.category}</div>
                     <div class="exercise-name">${ex.name}</div>
-                    <div class="planner-note-wrap" onclick="event.stopPropagation()" style="margin-top: 6px;">
-                        <input 
-                            type="text" 
-                            class="planner-note-input" 
-                            placeholder="Add cue/note..." 
-                            value="${plannerNotes[ex.name] || ''}" 
-                            oninput="savePlannerNote('${ex.name.replace(/'/g, "\\'")}', this.value)"
-                            style="width: 100%; background: #000; border: 1px solid #161616; border-radius: 4px; padding: 4px 8px; font-size: 10px; font-family: var(--mono); color: var(--accent); outline: none;"
-                        />
-                    </div>
-                    <div class="exercise-max" style="font-family:var(--mono); font-size:10px; color:#666; margin-top:4px;">
+                    <div class="exercise-max">
                 `;
                 
                 activePeople.forEach(p => {
-                    const stdName = getStandardizedName(ex.name);
-                    const maxData = currentMaxes[stdName]?.[p] || {};
+                    const maxData = currentMaxes[ex.name]?.[p] || {};
                     const rangeKey = getRangeKeyFromLabel(workout.repRange);
                     const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
-                    headerHTML += `<span style="margin-right:8px;">${p}: <span style="color:var(--accent);" id="maxval-${idx}-${p}">${currentMax}</span></span>`;
+                    headerHTML += `<div style="font-size:10px; color:var(--muted); margin-top:2px;">${p} ${workout.repRange} Max: <span style="color:var(--accent);font-weight:500;" id="maxval-${idx}-${p}">${currentMax}</span></div>`;
                 });
                 
                 headerHTML += `
@@ -1409,14 +1363,7 @@ let exerciseStatus = {};
                       <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                   </div>
-                  <div class="exercise-status" id="status-icon-${idx}" style="display:flex; align-items:center; gap:8px;">
-                    ${(exerciseStatus[ex.name] === 'done' || exerciseStatus[ex.name] === 'skipped') ? 
-                        `<button onclick="event.stopPropagation(); undoStatus(${idx}, '${ex.name.replace(/'/g, "\\'")}')" style="background: rgba(249,115,22,0.1); color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 6px; font-size: 9px; font-family: var(--mono); font-weight: 700; cursor: pointer; letter-spacing:1px; white-space:nowrap;">UNDO</button>` : ''
-                    }
-                    <span style="color: ${exerciseStatus[ex.name] === 'done' ? '#22c55e' : '#666'}; font-weight: bold; font-size: 18px; line-height:1;">
-                        ${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}
-                    </span>
-                  </div>
+                  <div class="exercise-status" id="status-icon-${idx}">${exerciseStatus[ex.name] === 'done' ? '✓' : (exerciseStatus[ex.name] === 'skipped' ? '—' : '')}</div>
                   <div class="expand-icon">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1424,10 +1371,6 @@ let exerciseStatus = {};
                   </div>
                 </div>
                 <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
-                    <div>
-                      <div class="builder-title" style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</div>
-                      <div class="builder-subtitle" id="builder-roster-text" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading roster...</div>
-                    </div>
                     <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
                     <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
                 </div>`;
@@ -1435,20 +1378,19 @@ let exerciseStatus = {};
                 const curSetNum = exerciseSetCounters[idx] || 1;
 
                 let inputsHTML = activePeople.map(p => `
-                    <div class="person-block" style="margin-bottom:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                            <div class="person-label" style="font-weight:800; color:var(--accent); font-family:var(--mono);">${p.toUpperCase()}</div>
+                    <div class="person-block">
+                        <div class="person-label">${p}</div>
+                        <div class="set-row">
                             <div class="set-input-group">
-                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99" style="text-align:center;">
+                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99">
                               <span class="set-separator">×</span>
-                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999" style="text-align:center;">
+                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999">
                             </div>
                         </div>
-                        <input type="text" id="note-${idx}-${p}" placeholder="Note for ${p}..." style="width:100%; background:#050505; border:1px solid #1a1a1a; border-radius:4px; padding:6px 10px; font-size:11px; color:#888; font-family:var(--mono); outline:none;">
                     </div>
                 `).join('');
 
-                card.innerHTML = smartHeader + headerHTML + `
+                card.innerHTML = headerHTML + `
                 <div class="set-logger" id="logger-${idx}">
                   <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
                   
@@ -1469,20 +1411,12 @@ let exerciseStatus = {};
                    <select id="swap-select-${idx}" class="header-select" style="width:100%; margin-bottom:8px; padding:8px; font-size:14px; background:var(--surface);" onchange="checkCustom(${idx})">
                       ${selectOptions}
                    </select>
-                   <div id="swap-custom-block-${idx}" style="display:none; margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px; border:1px solid var(--border);">
+                   <div id="swap-custom-block-${idx}" style="margin-bottom:12px; padding:8px; background:var(--bg); border-radius:8px;">
                        <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="New Machine Name..." style="width:100%; margin-bottom:8px; font-size:14px; padding:8px;">
-                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface); margin-bottom:10px;">
+                       <select id="swap-loc-${idx}" class="header-select" style="width:100%; padding:8px; font-size:14px; background:var(--surface);">
                           ${customLocDropdownHTML}
                        </select>
-                       <div style="display:flex; gap:12px; padding:4px 2px;">
-                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
-                               <input type="checkbox" id="swap-single-${idx}"> + SINGLE
-                           </label>
-                           <label style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--muted); cursor:pointer;">
-                               <input type="checkbox" id="swap-alt-${idx}"> + ALT
-                           </label>
-                       </div>
-                       <p style="font-size:9px; color:var(--muted); margin-top:8px;">Saving as a <span style="color:var(--accent);">${ex.category}</span> exercise.</p>
+                       <p style="font-size:10px; color:var(--muted); margin-top:6px;">Saving as a <span style="font-weight:600;">${ex.category}</span> exercise.</p>
                    </div>
                    <div style="display:flex; gap:8px;">
                      <button class="complete-btn" style="flex:1; padding:8px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm</button>
@@ -1526,31 +1460,32 @@ let exerciseStatus = {};
             if (selectVal === 'custom') {
                 const typed = document.getElementById(`swap-custom-${idx}`).value.trim();
                 let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
-                const createSingle = document.getElementById(`swap-single-${idx}`).checked;
-                const createAlt = document.getElementById(`swap-alt-${idx}`).checked;
-
                 if (!typed) { alert('Please enter a custom machine name.'); return; }
                 
                 newName = typed;
                 btn.textContent = 'Saving...';
                 btn.disabled = true;
                 
-                const namesToCreate = [newName];
-                if (createSingle) namesToCreate.push(`${newName} (Single)`);
-                if (createAlt)    namesToCreate.push(`${newName} (Alt)`);
-
-                for (const name of namesToCreate) {
-                    const req = {
-                       action: "saveExercise",
-                       exercise: name,
-                       category: newCat,
-                       location: selectedLoc,
-                       timed: false
-                    };
-                    try {
-                        await sheetsPost(req);
-                        globalData.exercises.push({ name, category: newCat, location: selectedLoc, timed: false });
-                    } catch(e) { console.error(e); }
+                const req = {
+                   action: "saveExercise",
+                   exercise: newName,
+                   category: newCat,
+                   location: selectedLoc,
+                   timed: false
+                };
+                
+                try {
+                    await sheetsPost(req);
+                    // Add directly to in-memory global data so algorithm recognizes it immediately
+                    globalData.exercises.push({
+                        name: newName,
+                        category: newCat,
+                        location: selectedLoc,
+                        timed: false
+                    });
+                } catch(e) {
+                    console.error(e);
+                    alert("Warning: Could not save the new exercise to the master database. It will still swap for this session.");
                 }
                 
                 btn.textContent = 'Confirm';
@@ -1568,124 +1503,20 @@ let exerciseStatus = {};
             delete exerciseStatus[oldName];
             exerciseStatus[newName] = 'pending';
             exerciseSetCounters[idx] = 1;
-            exerciseModes[idx] = getMode(newName);
 
-            const stdName = getStandardizedName(newName);
-            currentMaxes[stdName] = {};
+            currentMaxes[newName] = {};
             activePeople.forEach(p => {
-                 currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
+                 currentMaxes[newName][p] = globalData.best?.[newName]?.[p.toLowerCase()] || {};
             });
             
-            saveWorkoutState();
             renderWorkout(currentWorkout, currentWorkout.exercises);
             toggleCard(idx);
-        }
-
-        function switchVariation(idx, mode) {
-            const currentEx = currentWorkout.exercises[idx];
-            const base = getBaseName(currentEx.name);
-            let targetName = base;
-            if (mode === 'single') targetName = `${base} (Single)`;
-            if (mode === 'alt')    targetName = `${base} (Alt)`;
-            
-            const found = globalData.exercises.find(e => e.name === targetName);
-            if (!found) return;
-
-            // Update state
-            exerciseModes[idx] = mode;
-            const oldName = currentEx.name;
-            currentWorkout.exercises[idx] = found;
-            
-            if (exerciseStatus[oldName]) {
-                exerciseStatus[found.name] = exerciseStatus[oldName];
-                delete exerciseStatus[oldName];
-            }
-            
-            const stdName = getStandardizedName(found.name);
-            if (!currentMaxes[stdName]) {
-                currentMaxes[stdName] = {};
-                activePeople.forEach(p => {
-                    currentMaxes[stdName][p] = globalData.best?.[stdName]?.[p.toLowerCase()] || {};
-                });
-            }
-
-            saveWorkoutState();
-            renderWorkout(currentWorkout, currentWorkout.exercises);
-            toggleCard(idx);
-        }
-
-        async function addVariation(idx, mode) {
-            const currentEx = currentWorkout.exercises[idx];
-            const base = getBaseName(currentEx.name);
-            const targetName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
-            
-            if (!confirm(`Create "${targetName}" variation?`)) return;
-
-            const req = {
-               action: "saveExercise",
-               exercise: targetName,
-               category: currentEx.category,
-               location: currentEx.location || "Anywhere",
-               timed: false
-            };
-            
-            try {
-                await sheetsPost(req);
-                const newEx = {
-                    name: targetName,
-                    category: currentEx.category,
-                    location: currentEx.location || "Anywhere",
-                    timed: false
-                };
-                globalData.exercises.push(newEx);
-                switchVariation(idx, mode);
-            } catch(e) {
-                alert("Failed to create variation.");
-            }
-        }
-
-        function undoStatus(idx, exName) {
-            delete exerciseStatus[exName];
-            saveWorkoutState();
-            renderWorkout(currentWorkout, currentWorkout.exercises);
         }
 
         function toggleCard(idx) {
             const card = document.getElementById(`card-${idx}`);
             if (card.classList.contains('done') || card.classList.contains('skipped')) return;
             card.classList.toggle('open');
-        }
-
-        function renderHistory(idx, exerciseName) {
-            const content = document.getElementById(`history-content-${idx}`);
-            const ex = currentWorkout.exercises[idx];
-            const history = (globalData.history || []).filter(h => h.exercise === exerciseName);
-            
-            if (history.length === 0) {
-                content.innerHTML = '<div style="padding:10px;text-align:center;color:#444;font-size:12px;">No history found.</div>';
-                return;
-            }
-
-            let html = '';
-            history.slice(-10).reverse().forEach((h, hIdx) => {
-                html += `
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
-                    <div style="flex:1;">
-                        <div style="font-size:10px; color:#666;">${h.date || 'Today'}</div>
-                        <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person?.toUpperCase()}</div>
-                        ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
-                    </div>
-                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
-                        <div>
-                            <div style="font-size:12px; font-weight:600; color:#ddd;">
-                                ${ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
-                            </div>
-                            <div style="font-size:9px; color:#444; font-family:var(--mono);">${ex.timed ? "⏱" : (h.range ? h.range.replace("r", "").replace("_", "-") : "")}</div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            content.innerHTML = html;
         }
 
         function toggleHistory(e, idx, exerciseName) {
@@ -1699,7 +1530,7 @@ let exerciseStatus = {};
             }
             
             drawer.style.display = 'block';
-            renderHistory(idx, getStandardizedName(exerciseName));
+            content.innerHTML = '<div style="padding:10px;text-align:center;">Loading history...</div>';
             
             const history = (globalData.history || []).filter(h => 
                 h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
@@ -1796,7 +1627,7 @@ let exerciseStatus = {};
             logger.style.display = card.classList.contains('open') ? 'block' : 'none';
         }
 
-        async function logSet(cardIdx, exerciseName) { const ex = currentWorkout.exercises[cardIdx];
+        async function logSet(cardIdx, exerciseName) {
             const setNum = exerciseSetCounters[cardIdx] || 1;
             const btn = document.getElementById(`logbtn-${cardIdx}`);
             btn.textContent = 'Saving...'; 
@@ -1810,42 +1641,34 @@ let exerciseStatus = {};
             for (const p of activePeople) {
                 const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
                 const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
-                const noteVal = document.getElementById(`note-${cardIdx}-${p}`)?.value || "";
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                let weightValFixed = weightVal;
-                if (ex.timed) {
-                    weightValFixed = normalizeDuration(weightVal);
-                }
-                const weight = parseFloat(weightValFixed) || 0;
+                const weight = parseFloat(weightVal) || 0;
                 
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
-                
-                const finalNote = noteVal ? `${noteVal} — Set ${setNum} (Workout #${currentWorkout.workoutNum})` : `Set ${setNum} (Workout #${currentWorkout.workoutNum})`;
                 
                 entries.push({
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightValFixed || "",
+                   weight: weightVal || "",
                    range: rangeKey,
-                   note: finalNote,
+                   note: `Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
                 });
                 
-                const stdExName = getStandardizedName(exerciseName);
-                const existing = currentMaxes[stdExName]?.[p]?.[rangeKey];
+                const existing = currentMaxes[exerciseName]?.[p]?.[rangeKey];
                 let isNew = !existing;
                 if (existing) {
                     if (weight > parseFloat(existing.weight)) isNew = true;
                 }
                 if (isNew) {
-                    if(!currentMaxes[stdExName]) currentMaxes[stdExName] = {};
-                    if(!currentMaxes[stdExName][p]) currentMaxes[stdExName][p] = {};
-                    currentMaxes[stdExName][p][rangeKey] = {reps, weight};
+                    if(!currentMaxes[exerciseName]) currentMaxes[exerciseName] = {};
+                    if(!currentMaxes[exerciseName][p]) currentMaxes[exerciseName][p] = {};
+                    currentMaxes[exerciseName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
                     if (rangeKey === getRangeKeyFromLabel(currentWorkout.repRange)) {
@@ -1864,23 +1687,12 @@ let exerciseStatus = {};
 
             const req = {
                action: "logSet",
-               exercise: getStandardizedName(exerciseName),
+               exercise: exerciseName,
                entries: entries
             };
             
             try {
                 await sheetsPost(req);
-                
-                // Update local history for instant feedback
-                const entriesWithEx = entries.map(e => ({ ...e, exercise: getStandardizedName(exerciseName) }));
-                if (!globalData.history) globalData.history = [];
-                globalData.history.push(...entriesWithEx);
-                
-                // If history drawer is open, refresh it
-                const drawer = document.getElementById(`history-drawer-${cardIdx}`);
-                if (drawer && drawer.style.display === 'block') {
-                    renderHistory(cardIdx, getStandardizedName(exerciseName));
-                }
                 
                 if (bannerMsg) {
                     const banner = document.getElementById(`maxbanner-${cardIdx}`);
@@ -1895,8 +1707,6 @@ let exerciseStatus = {};
                 });
                 
                 exerciseSetCounters[cardIdx] = setNum + 1;
-                saveWorkoutState();
-                
                 btn.textContent = `Log Set ${exerciseSetCounters[cardIdx]}`;
                 btn.disabled = false;
                 
@@ -1913,54 +1723,17 @@ let exerciseStatus = {};
             const card = document.getElementById(`card-${idx}`);
             card.classList.remove('open');
             card.classList.add('done');
-            
-            saveWorkoutState();
-            renderWorkout(currentWorkout, currentWorkout.exercises);
+            document.getElementById(`status-icon-${idx}`).textContent = '✓';
             checkAllComplete();
         }
 
-        async function skipExercise(idx, exerciseName) {
-            const reason = document.querySelector(`#card-${idx} .planner-note-input`)?.value || "";
-            const btn = document.querySelector(`#card-${idx} .skip-btn`);
-            
-            if (btn) {
-                btn.textContent = 'Skipping...';
-                btn.disabled = true;
-            }
-
-            const entries = activePeople.map(p => ({
-                date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-                person: p.toLowerCase(),
-                reps: "0",
-                weight: "0",
-                range: "r13_plus",
-                note: `SKIPPED: ${reason || "No reason provided"} — (Workout #${currentWorkout.workoutNum})`,
-                setNum: 1,
-                timed: false
-            }));
-
-            try {
-                await sheetsPost({
-                    action: "logSet",
-                    exercise: getStandardizedName(exerciseName),
-                    entries: entries
-                });
-                
-                exerciseStatus[exerciseName] = 'skipped';
-                const card = document.getElementById(`card-${idx}`);
-                card.classList.remove('open');
-                card.classList.add('skipped');
-                
-                saveWorkoutState();
-                renderWorkout(currentWorkout, currentWorkout.exercises);
-                checkAllComplete();
-            } catch (e) {
-                alert("Failed to sync skip to Sheets. Check connection.");
-                if (btn) {
-                    btn.textContent = 'Skip';
-                    btn.disabled = false;
-                }
-            }
+        function skipExercise(idx, exerciseName) {
+            exerciseStatus[exerciseName] = 'skipped';
+            const card = document.getElementById(`card-${idx}`);
+            card.classList.remove('open');
+            card.classList.add('skipped');
+            document.getElementById(`status-icon-${idx}`).textContent = '—';
+            checkAllComplete();
         }
 
         function checkAllComplete() {
@@ -2082,11 +1855,7 @@ let exerciseStatus = {};
                 if (!repsVal) continue;
                 
                 const reps = parseInt(repsVal);
-                let weightValFixed = weightVal;
-                if (ex.timed) {
-                    weightValFixed = normalizeDuration(weightVal);
-                }
-                const weight = parseFloat(weightValFixed) || 0;
+                const weight = parseFloat(weightVal) || 0;
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
                 
@@ -2094,9 +1863,9 @@ let exerciseStatus = {};
                    date: dateStr,
                    person: p.toLowerCase(),
                    reps: reps.toString(),
-                   weight: weightValFixed || "",
+                   weight: weightVal || "",
                    range: rangeKey,
-                   note: `Accessory Set ${setNum} (Workout #${currentWorkout.workoutNum})`,
+                   note: `Accessory Set ${setNum} (Builder #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
                 });
@@ -2160,7 +1929,7 @@ let exerciseStatus = {};
                 loadDataAndWorkout(window.ultimateSyncData);
             } else {
                 // Fallback if Plan is somehow accessed before Master Sync
-                // loadDataAndWorkout(); // Wait for Master Sync to trigger
+                loadDataAndWorkout();
             }
         }
 
@@ -2191,7 +1960,6 @@ let exerciseStatus = {};
       const [logInputs,     setLogInputs]     = useState({});   // keyed by person.toLowerCase()
       const [logNote,       setLogNote]       = useState("");
       const [logError,      setLogError]      = useState("");
-      const [historyExId,   setHistoryExId]   = useState(null);
       const [setCount,      setSetCount]      = useState(1);
       const [newName,       setNewName]       = useState("");
       const [newExTimed,    setNewExTimed]    = useState(false);
@@ -2204,12 +1972,6 @@ let exerciseStatus = {};
       const [categoryFilter,setCategoryFilter]= useState("");
       const [newLocName,    setNewLocName]    = useState("");
       const [hiddenPeople,  setHiddenPeople]  = useState([]);
-      
-      // Variation Tracking
-      const [exerciseModes, setExerciseModes] = useState({}); // { baseName: 'std'|'single'|'alt' }
-      const [createSingle,  setCreateSingle]  = useState(false);
-      const [createAlt,     setCreateAlt]     = useState(false);
-      const [exerciseStatus, setExerciseStatus] = useState({}); // { exName: 'done'|'skipped' }
 
       const scriptConfigured = SCRIPT_URL !== "PASTE_YOUR_DEPLOYMENT_URL_HERE";
 
@@ -2233,63 +1995,6 @@ let exerciseStatus = {};
           delete window.refreshLiftData;
         };
       }, []);
-
-      const addVariation = async (group, mode) => {
-          const parent = group.variations['std'] || Object.values(group.variations)[0];
-          const base = group.baseName;
-          const newName = mode === 'single' ? `${base} (Single)` : `${base} (Alt)`;
-          
-          if (exercises.some(e => e.name.toLowerCase() === newName.toLowerCase())) {
-              setExerciseModes(prev => ({ ...prev, [base]: mode }));
-              return;
-          }
-
-          setSyncStatus("syncing");
-          const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
-          const defBest = {};
-          people.forEach(p => { defBest[p.toLowerCase()] = {}; });
-          
-          const newEx = {
-            id: maxId + 1,
-            name: newName,
-            timed: parent.timed,
-            category: parent.category,
-            location: parent.location,
-            best: defBest,
-            history: [],
-          };
-
-          const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
-          setExercises(updated);
-          setExerciseModes(prev => ({ ...prev, [base]: mode }));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-
-          if (scriptConfigured) {
-            try {
-              await sheetsPost({ 
-                  action: "saveExercise", 
-                  exercise: newEx.name, 
-                  timed: newEx.timed, 
-                  category: newEx.category, 
-                  location: newEx.location 
-              });
-              setSyncStatus("ok");
-            } catch (e) {
-              setSyncStatus("error");
-            }
-          } else {
-              setSyncStatus("ok");
-          }
-      };
-
-      const toggleStatus = (exName, status) => {
-        setExerciseStatus(prev => {
-            const next = { ...prev };
-            if (status === 'undo') delete next[exName];
-            else next[exName] = status;
-            return next;
-        });
-      };
 
       const showToast = (msg, type = "success") => {
         setToast({ msg, type });
@@ -2344,6 +2049,9 @@ let exerciseStatus = {};
         if (scriptConfigured) {
           setSyncStatus("syncing");
           try {
+            // Give the browser 1s to settle on first load
+            if (!isRetry) await new Promise(r => setTimeout(r, 1000));
+            
             const sheetsData = await sheetsGet();
             const hasData = (sheetsData.history || []).length > 0 || Object.keys(sheetsData.best || {}).length > 0 || (sheetsData.exercises || []).length > 0;
             if (hasData) {
@@ -2430,10 +2138,6 @@ let exerciseStatus = {};
       const activePeople = whoMode === "all" ? visiblePeople : [people.find(p => p === whoMode)].filter(Boolean);
 
       // ── LOG SCREEN HELPERS ─────────────────────────────────────────────────
-      const openHistory = (id) => {
-        setHistoryExId(historyExId === id ? null : id);
-      };
-
       const openLog = (id) => {
         setLogExId(id);
         setSets([]);
@@ -2475,25 +2179,18 @@ let exerciseStatus = {};
             if (!rawDur) continue; // Skip if empty
             const normalized = normalizeTimeInput(rawDur);
             if (parseTime(normalized) <= 0) { err = `Invalid duration for ${person}`; break; }
-            const perPersonNote = input.note?.trim() || "";
-            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
-
             newEntries.push({
               date, person: key, reps: normalized, weight: input.weight || "",
-              range: "r13_plus", note: finalNote, setNum: setCount, timed: true,
+              range: "r13_plus", note: logNote, setNum: setCount, timed: true,
             });
           } else {
             const repsVal = input.reps?.trim();
             if (!repsVal) continue; // Skip if empty
             const range = getRange(repsVal);
             if (!range) { err = `${person}'s reps must fit a range`; break; }
-            
-            const perPersonNote = input.note?.trim() || "";
-            const finalNote = perPersonNote ? `${perPersonNote} — Set ${setCount} (Workout #${settings.builder_workout_num || "?"})` : `Set ${setCount} (Workout #${settings.builder_workout_num || "?"})`;
-
             newEntries.push({
               date, person: key, reps: repsVal, weight: input.weight || "",
-              range, note: finalNote, setNum: setCount, timed: false,
+              range, note: logNote, setNum: setCount, timed: false,
             });
           }
         }
@@ -2529,28 +2226,6 @@ let exerciseStatus = {};
       const finishLogging = () => { setView("list"); setExpanded(logExId); };
 
       // ── DELETE HELPERS ─────────────────────────────────────────────────────
-      const deleteLog = async (exId, entry) => {
-        if (!confirm(`Delete entry for ${entry.person?.toUpperCase()}?`)) return;
-        const ex = exercises.find(e => e.id === exId);
-        const updated = exercises.map(ex => {
-          if (ex.id !== exId) return ex;
-          const newHistory = (ex.history || []).filter(h => h !== entry);
-          const newBest = {};
-          people.forEach(p => { newBest[p.toLowerCase()] = {}; });
-          newHistory.forEach(h => {
-            const current = newBest[h.person]?.[h.range];
-            if (!current || isBetter(h, current, ex.timed))
-              newBest[h.person][h.range] = { reps: h.reps, weight: h.weight };
-          });
-          return { ...ex, best: newBest, history: newHistory };
-        });
-        await persist(updated, null, {
-          action: "deleteHistory", exercise: ex.name,
-          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
-        });
-        showToast("Entry deleted");
-      };
-
       const deleteHistoryEntry = async (exId, histIdx) => {
         const ex    = exercises.find(e => e.id === exId);
         const entry = ex?.history?.[histIdx];
@@ -2587,39 +2262,22 @@ let exerciseStatus = {};
       // ── ADD EXERCISE ───────────────────────────────────────────────────────
       const addExercise = async () => {
         if (!newName.trim()) return showToast("Name required", "error");
-        if (exercises.some(e => e.name.toLowerCase() === newName.trim().toLowerCase()))
-          return showToast("Already exists", "error");
-
-        const baseName = newName.trim();
-        const namesToCreate = [baseName];
-        if (createSingle) namesToCreate.push(`${baseName} (Single)`);
-        if (createAlt)    namesToCreate.push(`${baseName} (Alt)`);
-
-        let currentExercises = [...exercises];
-        
-        for (const name of namesToCreate) {
-            const maxId = currentExercises.reduce((m, e) => Math.max(m, e.id), 0);
-            const defBest = {};
-            people.forEach(p => { defBest[p.toLowerCase()] = {}; });
-            const newEx = {
-              id: maxId + 1, name: name, timed: newExTimed,
-              category: newExCategory, location: newExLocation, best: defBest, history: [],
-            };
-            currentExercises = [...currentExercises, newEx];
-            
-            if (scriptConfigured) {
-              try {
-                await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
-              } catch {}
-            }
+        const maxId = exercises.reduce((m, e) => Math.max(m, e.id), 0);
+        const defBest = {};
+        people.forEach(p => { defBest[p.toLowerCase()] = {}; });
+        const newEx = {
+          id: maxId + 1, name: newName.trim(), timed: newExTimed,
+          category: newExCategory, location: newExLocation, best: defBest, history: [],
+        };
+        const updated = [...exercises, newEx].sort((a, b) => a.name.localeCompare(b.name));
+        await persist(updated);
+        if (scriptConfigured) {
+          try {
+            await sheetsPost({ action: "saveExercise", exercise: newEx.name, timed: newEx.timed, category: newEx.category, location: newEx.location });
+          } catch {}
         }
-
-        const sorted = currentExercises.sort((a, b) => a.name.localeCompare(b.name));
-        await persist(sorted);
-
         setNewName(""); setNewExTimed(false); setNewExCategory(""); setNewExLocation("Anywhere");
-        setCreateSingle(false); setCreateAlt(false);
-        showToast(namesToCreate.length > 1 ? "Exercises added!" : "Exercise added!");
+        showToast("Exercise added!");
         setView("list");
       };
 
@@ -2711,10 +2369,10 @@ let exerciseStatus = {};
       const filtered = exercises.filter(e => {
         const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
         const catMatch  = !categoryFilter || e.category === categoryFilter;
-        // Strict filtering for the LIFT database view
-        const locMatch  = locationFilter === "all" 
-          || e.location === locationFilter 
-          || (!e.location && locationFilter === "all");
+        const locMatch  = locationFilter === "all"
+          || e.location === locationFilter
+          || !e.location
+          || e.location === "Anywhere";
         return nameMatch && catMatch && locMatch;
       });
 
@@ -2799,57 +2457,67 @@ let exerciseStatus = {};
                 const rangeKey = ex?.timed ? "r13_plus" : getRange(input.reps);
                 const bestVal  = getBest(logExId, key, rangeKey || "r13_plus");
                 return (
-                  <div key={person} style={{ ...s.personBlock, marginBottom: 16 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                        <div style={{ ...s.personBlockLabel, marginBottom: 0 }}>{person.toUpperCase()}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          {ex?.timed ? (
-                            <div style={s.inlineField}>
-                              <input
-                                id={`duration-${key}`}
-                                style={{ ...s.input, width: 80, textAlign: "center" }}
-                                placeholder="mm:ss"
-                                value={input.duration || ""}
-                                onChange={e => updateLogInput(key, "duration", e.target.value)}
-                              />
-                            </div>
-                          ) : (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <input
-                                id={`reps-${key}`}
-                                style={{ ...s.input, width: 60, textAlign: "center" }}
-                                placeholder="Reps"
-                                type="number"
-                                value={input.reps || ""}
-                                onChange={e => updateLogInput(key, "reps", e.target.value)}
-                              />
-                              <span style={{ color: "#333", fontWeight: "bold" }}>X</span>
-                            </div>
-                          )}
+                  <div key={person} style={s.personBlock}>
+                    <div style={s.personBlockLabel}>{person.toUpperCase()}</div>
+                    <div style={s.inlineRow}>
+                      {ex?.timed ? (
+                        <div style={s.inlineField}>
+                          <label style={s.label}>DURATION (mm:ss)</label>
                           <input
-                            id={`weight-${key}`}
-                            style={{ ...s.input, width: 70, textAlign: "center" }}
-                            placeholder={ex?.timed ? "lbs" : "lbs"}
-                            value={input.weight || ""}
-                            onChange={e => updateLogInput(key, "weight", e.target.value)}
+                            id={`duration-${key}`}
+                            name={`duration-${key}`}
+                            style={s.input}
+                            placeholder="e.g. 1:30 or 90"
+                            value={input.duration || ""}
+                            onChange={e => updateLogInput(key, "duration", e.target.value)}
                           />
+                          {input.duration && (
+                            <div style={s.rangeTag}>⏱ {normalizeTimeInput(input.duration)}</div>
+                          )}
                         </div>
-                    </div>
-                    <input 
-                      placeholder={`Note for ${person}...`}
-                      style={{ ...s.input, fontSize: 11, padding: "6px 12px", background: "#050505", border: "1px solid #1a1a1a", color: "#888" }}
-                      value={input.note || ""}
-                      onChange={e => updateLogInput(key, "note", e.target.value)}
-                    />
-                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                        {rangeKey && <div style={{ ...s.rangeTag, fontSize: 9 }}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
-                        {rangeKey && bestVal && <div style={{ ...s.bestTag, fontSize: 9 }}>Best: {bestVal}</div>}
+                      ) : (
+                        <div style={s.inlineField}>
+                          <label style={s.label}>REPS</label>
+                          <input
+                            id={`reps-${key}`}
+                            name={`reps-${key}`}
+                            style={s.input}
+                            placeholder="e.g. 8"
+                            type="number"
+                            value={input.reps || ""}
+                            onChange={e => updateLogInput(key, "reps", e.target.value)}
+                          />
+                          {rangeKey && <div style={s.rangeTag}>{REP_RANGES.find(r => r.key === rangeKey)?.label}</div>}
+                        </div>
+                      )}
+                      <div style={s.inlineField}>
+                        <label style={s.label}>WEIGHT</label>
+                        <input
+                          id={`weight-${key}`}
+                          name={`weight-${key}`}
+                          style={s.input}
+                          placeholder={ex?.timed ? "lbs (optional)" : "e.g. 135"}
+                          value={input.weight || ""}
+                          onChange={e => updateLogInput(key, "weight", e.target.value)}
+                        />
+                        {rangeKey && bestVal && <div style={s.bestTag}>Best: {bestVal}</div>}
+                      </div>
                     </div>
                   </div>
                 );
               })}
 
-
+              <div style={s.inlineField}>
+                <label style={s.label}>NOTE (optional)</label>
+                <input
+                  id="note-input"
+                  name="note"
+                  style={s.input}
+                  placeholder="e.g. felt strong, pin #7"
+                  value={logNote}
+                  onChange={e => setLogNote(e.target.value)}
+                />
+              </div>
               {logError && <div style={s.error}>{logError}</div>}
               <div style={s.logBtnRow}>
                 <button style={s.saveSetBtn} onClick={saveSet}>Save Set {setCount}</button>
@@ -2889,37 +2557,36 @@ let exerciseStatus = {};
                 <button style={{ ...s.segBtn, ...(newExTimed ? s.segActive : {}) }}
                   onClick={() => setNewExTimed(true)}>⏱ TIME</button>
               </div>
-
-              <label style={s.label}>CATEGORY (OPTIONAL)</label>
-              <input
-                style={s.input}
-                placeholder="e.g. Knee Dominant"
+              {newExTimed && (
+                <div style={s.timedNote}>
+                  Duration logged in mm:ss. Stored in the 13+ bucket. Best = longest hold.
+                  Tip: you can type plain seconds (e.g. 90) and it'll convert to 1:30.
+                </div>
+              )}
+              <div style={s.whoLabel}>CATEGORY (optional)</div>
+              <select
+                style={{ ...s.input, color: newExCategory ? "#ddd" : "#555" }}
                 value={newExCategory}
                 onChange={e => setNewExCategory(e.target.value)}
-              />
-
-              <label style={s.label}>LOCATION (OPTIONAL)</label>
-              <select 
-                style={s.input}
+              >
+                <option value="">-- None --</option>
+                {EXERCISE_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <div style={s.whoLabel}>LOCATION</div>
+              <select
+                style={{ ...s.input, color: newExLocation !== "Anywhere" ? "#ddd" : "#555" }}
                 value={newExLocation}
                 onChange={e => setNewExLocation(e.target.value)}
               >
-                {locations.map(l => <option key={l} value={l}>{l}</option>)}
+                {locations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
               </select>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                    <input type="checkbox" checked={createSingle} onChange={e => setCreateSingle(e.target.checked)} />
-                    <span style={{ fontSize: 13, color: "#999" }}>+ Create "(Single)" Variation</span>
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                    <input type="checkbox" checked={createAlt} onChange={e => setCreateAlt(e.target.checked)} />
-                    <span style={{ fontSize: 13, color: "#999" }}>+ Create "(Alt)" Variation</span>
-                </label>
-              </div>
-
-              <button style={{ ...s.saveSetBtn, marginTop: 32 }} onClick={addExercise}>Save Exercise</button>
+              <button style={s.submitBtn} onClick={addExercise}>Add Exercise</button>
             </div>
+            {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
           </div>
         );
       }
@@ -2927,285 +2594,302 @@ let exerciseStatus = {};
       // ════════════════════════════════════════════════════════════════════════
       // MAIN LIST VIEW
       // ════════════════════════════════════════════════════════════════════════
-      // Group exercises by base name
-      const grouped = {};
-      filtered.forEach(ex => {
-          const base = getBaseName(ex.name);
-          if (!grouped[base]) grouped[base] = { baseName: base, variations: {} };
-          grouped[base].variations[getMode(ex.name)] = ex;
-      });
-      const groups = Object.values(grouped);
-
       return (
         <div style={s.root}>
           <div style={s.header}>
-            <div style={s.headerLeft}>
-              <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" }}>LIFT</h1>
+            <div>
               <div style={{ display: "flex", alignItems: "center" }}>
-                <p style={s.headerSub}>STABILIZATION V4.0</p>
+                <div style={s.title}>LIFT</div>
                 {syncDot}
               </div>
+              <div style={s.subtitle}>{visiblePeople.join(" & ")} · {exercises.length} exercises</div>
             </div>
-            <div style={s.headerRight}>
-              <button style={s.iconBtn} onClick={() => setView("settings")}>⚙️</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={s.addIconBtn} onClick={() => { if(window.openSettings) window.openSettings(); }} title="Settings">⚙️</button>
+              <button style={s.addIconBtn} onClick={() => setView("add")}>➕</button>
             </div>
           </div>
 
-          <div style={s.searchBar}>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}>🔍</span>
             <input
               style={s.searchInput}
-              placeholder="Search machines..."
+              placeholder="Search exercises..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-          </div>
-
-          <div style={s.filterRow}>
-            <select style={s.filterSelect} value={locationFilter} onChange={e => setLocationFilter(e.target.value)}>
-                <option value="all">ANYWHERE / ALL LOCATIONS</option>
-                {locations.filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+            <select
+              style={s.categoryFilter}
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {EXERCISE_CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
-            <select style={s.filterSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-                <option value="">ALL CATEGORIES</option>
-                {[...new Set(exercises.map(e => e.category).filter(Boolean))].sort().map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-            </select>
+            {search && <button style={s.clearBtn} onClick={() => setSearch("")}>✕</button>}
+          </div>
+          <div style={s.locationTabRow}>
+            <button
+              style={{ ...s.locationTab, ...(locationFilter === "all" ? s.locationTabActive : {}) }}
+              onClick={() => setLocationFilter("all")}>ALL</button>
+            {locations.filter(l => l !== "Anywhere").map(loc => (
+              <button key={loc}
+                style={{ ...s.locationTab, ...(locationFilter === loc ? s.locationTabActive : {}) }}
+                onClick={() => setLocationFilter(loc)}>{loc.toUpperCase()}</button>
+            ))}
           </div>
 
-          <div style={s.list}>
-            {groups.length === 0 ? (
-              <div style={s.empty}>No matches</div>
-            ) : (
-              groups.map(group => {
-                const mode = exerciseModes[group.baseName] || (group.variations['std'] ? 'std' : Object.keys(group.variations)[0]);
-                const ex = group.variations[mode] || Object.values(group.variations)[0];
-                const isOpen = expanded === ex.id;
-                const isDone = exerciseStatus[ex.name] === 'done';
-                const isSkipped = exerciseStatus[ex.name] === 'skipped';
+          {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
 
-                return (
-                  <div key={group.baseName} style={{ ...s.card, ...(isDone ? s.cardDone : {}), ...(isSkipped ? s.cardSkipped : {}) }}>
-                    {/* SMART HEADER */}
-                    <div style={s.smartHeader}>
-                        <div style={{ display: "flex", gap: 4 }}>
-                            {['std', 'single', 'alt'].map(m => {
-                                const exists = group.variations[m];
-                                const isActive = mode === m;
-                                const label = m.toUpperCase();
-                                return (
-                                    <button 
-                                        key={m}
-                                        onClick={() => exists ? setExerciseModes(prev => ({ ...prev, [group.baseName]: m })) : addVariation(group, m)}
-                                        style={{ 
-                                            ...s.modeBtn, 
-                                            ...(isActive ? s.modeActive : {}),
-                                            ...(!exists ? s.modeMissing : {})
-                                        }}
-                                    >
-                                        {exists ? label : `+ ${label}`}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div style={s.smartTag}>SMART CARD</div>
-                    </div>
-
-                    <div style={s.cardInner} onClick={() => setExpanded(isOpen ? null : ex.id)}>
-                      <div style={s.cardLeft}>
-                        <div style={s.cat}>{ex.category}</div>
-                        <div style={s.name}>{ex.name}</div>
-                        <div style={s.maxRow}>
-                          {visiblePeople.slice(0, 3).map(p => {
-                            const rangeKey = "r8_12"; // Default visual range
-                            const b = getBest(ex.id, p.toLowerCase(), rangeKey);
-                            return <span key={p} style={s.maxItem}>{p}: <span style={s.maxVal}>{b || "—"}</span></span>;
-                          })}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        {isDone && <span style={{ color: "#22c55e", fontWeight: "bold" }}>✓</span>}
-                        {isSkipped && <span style={{ color: "#666", fontWeight: "bold" }}>—</span>}
-                        <div style={{ ...s.chevron, transform: isOpen ? "rotate(180deg)" : "none" }}>▼</div>
-                      </div>
-                    </div>
-
-                    {isOpen && (
-                      <div style={s.cardActions}>
-                        <div style={s.actionRow}>
-                          <button style={s.logBtn} onClick={() => openLog(ex.id)}>LOG SETS</button>
-                          <button style={s.histBtn} onClick={() => openHistory(ex.id)}>HISTORY</button>
-                        </div>
-                        
-                        <div style={{ ...s.actionRow, marginTop: 8 }}>
-                           {!isDone && !isSkipped ? (
-                             <>
-                               <button style={s.doneActionBtn} onClick={() => toggleStatus(ex.name, 'done')}>✓ DONE</button>
-                               <button style={s.skipActionBtn} onClick={() => toggleStatus(ex.name, 'skipped')}>SKIP</button>
-                             </>
-                           ) : (
-                             <button style={s.undoActionBtn} onClick={() => toggleStatus(ex.name, 'undo')}>UNDO STATUS</button>
-                           )}
-                           <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", id: ex.id })}>DELETE</button>
-                        </div>
-
-                        {historyExId === ex.id && (
-                          <div style={s.historyDrawer}>
-                            <div style={s.historyTitle}>RECENT HISTORY</div>
-                            {(ex.history || []).length === 0 ? (
-                              <div style={s.emptySmall}>No entries yet</div>
-                            ) : (
-                              ex.history.slice(0, 10).map((h, i) => {
-                                const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
-                                const result = ex.timed
-                                  ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
-                                  : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
-                                return (
-                                  <div key={i} style={s.histRow}>
-                                    <div style={{ flex: 1 }}>
-                                      <div style={s.histDate}>{h.date}</div>
-                                      <div style={s.histName}>{displayName.toUpperCase()}</div>
-                                      {h.note && <div style={s.histNote}>{h.note}</div>}
-                                    </div>
-                                    <div style={s.histRight}>
-                                      <div style={s.histResult}>{result}</div>
-                                      <div style={s.histRange}>{ex.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}</div>
-                                      <button style={s.histDel} onClick={() => deleteLog(ex.id, h)}>✕</button>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          <button style={s.fab} onClick={() => setView("add")}>+</button>
-
-          {confirmDelete && (
-            <div style={s.overlay} onClick={() => setConfirmDelete(null)}>
-              <div style={s.modal} onClick={e => e.stopPropagation()}>
-                <h3 style={{ marginBottom: 12 }}>Confirm Delete</h3>
-                <p style={{ color: "#666", fontSize: 14, marginBottom: 24 }}>Are you sure you want to delete this?</p>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <button style={s.modalCancel} onClick={() => setConfirmDelete(null)}>Cancel</button>
-                  <button style={s.modalDelete} onClick={() => {
-                    if (confirmDelete.type === "exercise") deleteExercise(confirmDelete.id);
-                    if (confirmDelete.type === "person") removePerson(confirmDelete.name);
-                    if (confirmDelete.type === "location") removeLocation(confirmDelete.name);
-                  }}>Delete</button>
+          {/* Delete confirm modal (exercise or history) */}
+          {confirmDelete && confirmDelete.type !== "person" && (
+            <div style={s.overlay}>
+              <div style={s.modal}>
+                <div style={s.modalTitle}>
+                  {confirmDelete.type === "exercise" ? "Delete exercise?" : "Delete this entry?"}
+                </div>
+                <div style={s.modalSub}>
+                  {confirmDelete.type === "exercise"
+                    ? exercises.find(e => e.id === confirmDelete.exId)?.name
+                    : "This will be removed and best results will update."}
+                </div>
+                <div style={s.modalBtns}>
+                  <button style={s.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                  <button style={s.confirmBtn} onClick={() =>
+                    confirmDelete.type === "exercise"
+                      ? deleteExercise(confirmDelete.exId)
+                      : deleteHistoryEntry(confirmDelete.exId, confirmDelete.histIdx)
+                  }>Delete</button>
                 </div>
               </div>
             </div>
           )}
 
-          {toast && <div style={{ ...s.toast, background: toast.type === "error" ? "#ef4444" : "#22c55e" }}>{toast.msg}</div>}
+          <div style={s.listWrap}>
+            {filtered.map(ex => {
+              const isExpanded = expanded === ex.id;
+              const hasData = visiblePeople.some(p => Object.keys(ex.best?.[p.toLowerCase()] || {}).length > 0);
+              return (
+                <div key={ex.id} style={s.card}>
+                  <div style={s.cardHeader}>
+                    <div style={s.cardName} onClick={() => setExpanded(isExpanded ? null : ex.id)}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={s.chevron}>{isExpanded ? "▾" : "▸"}</span>
+                        {ex.name}
+                        {ex.timed && <span style={s.timedPill}>⏱</span>}
+                      </div>
+                      {ex.category && <div style={s.categoryLabel}>{ex.category.toUpperCase()}</div>}
+                    </div>
+                    <div style={s.cardActions}>
+                      <button style={s.logBtn} onClick={() => openLog(ex.id)}>+ LOG</button>
+                      <button style={s.delBtn} onClick={() => setConfirmDelete({ type: "exercise", exId: ex.id })}>✕</button>
+                    </div>
+                  </div>
+
+                  {/* Best results grid */}
+                  {hasData && (
+                    <div style={s.rangeGrid}>
+                      {ex.timed ? (
+                        /* Timed: single "Best Duration" column */
+                        <div>
+                          <div style={s.rangeHeaderRow}>
+                            <div style={s.personCol} />
+                            <div style={{ ...s.rangeColHeader, flex: 2, textAlign: "left" }}>BEST DURATION</div>
+                            <div style={s.rangeColHeader}>WEIGHT</div>
+                          </div>
+                          {visiblePeople.map(person => {
+                            const b = ex.best?.[person.toLowerCase()]?.["r13_plus"];
+                            return (
+                              <div key={person} style={s.rangeRow}>
+                                <div style={s.personCol}>{person}</div>
+                                <div style={{ ...s.rangeCell, flex: 2, ...(b ? s.rangeCellFilled : {}), textAlign: "left" }}>
+                                  {b ? b.reps : <span style={s.dash}>—</span>}
+                                </div>
+                                <div style={{ ...s.rangeCell, ...(b?.weight ? s.rangeCellFilled : {}) }}>
+                                  {b?.weight || <span style={s.dash}>—</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Reps: full 4-column range grid */
+                        <div>
+                          <div style={s.rangeHeaderRow}>
+                            <div style={s.personCol} />
+                            {REP_RANGES.map(r => <div key={r.key} style={s.rangeColHeader}>{r.label}</div>)}
+                          </div>
+                          {visiblePeople.map(person => (
+                            <div key={person} style={s.rangeRow}>
+                              <div style={s.personCol}>{person}</div>
+                              {REP_RANGES.map(r => {
+                                const b   = ex.best?.[person.toLowerCase()]?.[r.key];
+                                const val = b ? (b.weight ? `${b.reps}x${b.weight}` : `${b.reps} reps`) : null;
+                                return (
+                                  <div key={r.key} style={{ ...s.rangeCell, ...(val ? s.rangeCellFilled : {}) }}>
+                                    {val || <span style={s.dash}>—</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* History */}
+                  {isExpanded && (
+                    <div style={s.history}>
+                      {(ex.history || []).length === 0 ? (
+                        <div style={s.noHistory}>No history yet. Tap + LOG to add a result.</div>
+                      ) : (
+                        <>
+                          <div style={s.historyTitle}>HISTORY</div>
+                          {(ex.history || []).map((h, i) => {
+                            const displayName = people.find(p => p.toLowerCase() === h.person) || h.person;
+                            const result = h.timed
+                              ? h.reps + (h.weight ? ` · ${h.weight}lbs` : "")
+                              : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`);
+                            return (
+                              <div key={i} style={s.historyRow}>
+                                <div style={s.historyLeft}>
+                                  <div style={s.historyDate}>{h.date}{h.setNum ? ` · Set ${h.setNum}` : ""}</div>
+                                  <div style={s.historyMeta}>
+                                    <span style={s.historyPerson}>{displayName}</span>
+                                    <span style={s.historyRange}>
+                                      {h.timed ? "⏱" : REP_RANGES.find(r => r.key === h.range)?.label}
+                                    </span>
+                                    <span style={s.historyResult}>{result}</span>
+                                  </div>
+                                  {h.note ? <div style={s.historyNote}>{h.note}</div> : null}
+                                </div>
+                                <button style={{ ...s.histDelBtn, color: "#ff4444", opacity: 0.6 }}
+                                  onClick={() => setConfirmDelete({ type: "history", exId: ex.id, histIdx: i })}
+                                  title="Delete Entry">
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div style={s.noResults}>{search ? `No results for "${search}"` : "No exercises yet"}</div>
+            )}
+          </div>
         </div>
       );
     }
 
-    // ── STYLES ─────────────────────────────────────────────────────────────
+    // ── STYLES ────────────────────────────────────────────────────────────────
     const s = {
-      root: { maxWidth: 480, margin: "0 auto", paddingBottom: 80 },
-      header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 20px 10px", position: "sticky", top: 0, background: "#0c0c0c", zIndex: 100 },
-      headerLeft: { flex: 1 },
-      headerSub: { fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3, fontFamily: "'DM Mono', monospace" },
-      headerRight: { display: "flex", gap: 8 },
-      iconBtn: { background: "none", border: "1px solid #1a1a1a", borderRadius: 8, padding: "6px 10px", fontSize: 16, cursor: "pointer" },
-      
-      smartHeader: { background: "#0a0a0a", display: "flex", borderBottom: "1px solid #161616", padding: "4px 12px", alignItems: "center", justifyContent: "space-between" },
-      modeBtn: { fontFamily: "'DM Mono', monospace", fontSize: 8, color: "#f97316", background: "#1a1100", border: "1px solid #f9731630", borderRadius: 4, padding: "1px 5px", cursor: "pointer", letterSpacing: 1 },
-      modeActive: { background: "#f97316", color: "#000", borderColor: "transparent" },
-      modeMissing: { color: "#333", borderStyle: "dashed" },
-      smartTag: { fontSize: 8, color: "#333", letterSpacing: 1, fontFamily: "'DM Mono', monospace", fontWeight: 700 },
-
-      searchBar: { padding: "10px 16px" },
-      searchInput: { width: "100%", background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, padding: "12px 16px", color: "#e0e0e0", fontSize: 14, outline: "none" },
-      filterRow: { display: "flex", gap: 8, padding: "0 16px 10px" },
-      filterSelect: { flex: 1, background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, padding: "8px", color: "#555", fontSize: 10, fontFamily: "'DM Mono', monospace", outline: "none" },
-      
-      list: { padding: "0 16px" },
-      card: { background: "#111", border: "1px solid #f97316", borderRadius: 12, marginBottom: 10, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" },
-      cardDone: { opacity: 0.6, borderColor: "#22c55e" },
-      cardSkipped: { opacity: 0.5, borderColor: "#444" },
-      cardInner: { padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" },
-      cat: { fontSize: 10, fontFamily: "'DM Mono', monospace", color: "#555", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 },
-      name: { fontSize: 15, fontWeight: 500, letterSpacing: -0.2 },
-      maxRow: { display: "flex", gap: 12, marginTop: 4 },
-      maxItem: { fontSize: 10, color: "#555", fontFamily: "'DM Mono', monospace" },
-      maxVal: { color: "#f97316" },
-      chevron: { color: "#333", fontSize: 10 },
-
-      cardActions: { padding: "0 16px 16px", borderTop: "1px solid #1a1a1a", paddingTop: 16 },
-      actionRow: { display: "flex", gap: 8 },
-      logBtn: { flex: 2, background: "#f97316", color: "white", border: "none", borderRadius: 8, padding: 10, fontWeight: 700, fontSize: 13, cursor: "pointer" },
-      histBtn: { flex: 1, background: "transparent", color: "#f97316", border: "1px solid #f97316", borderRadius: 8, padding: 10, fontWeight: 600, fontSize: 11, cursor: "pointer" },
-      doneActionBtn: { flex: 1, background: "#22c55e", color: "white", border: "none", borderRadius: 8, padding: 8, fontSize: 11, fontWeight: 700 },
-      skipActionBtn: { flex: 1, background: "#444", color: "#999", border: "none", borderRadius: 8, padding: 8, fontSize: 11, fontWeight: 700 },
-      undoActionBtn: { flex: 2, background: "transparent", color: "#666", border: "1px solid #333", borderRadius: 8, padding: 8, fontSize: 11, fontWeight: 700 },
-      delBtn: { background: "transparent", color: "#333", border: "none", fontSize: 10, cursor: "pointer" },
-
-      historyDrawer: { marginTop: 16, background: "#0c0c0c", borderRadius: 8, padding: 12, border: "1px solid #1a1a1a" },
-      historyTitle: { fontSize: 10, color: "#444", letterSpacing: 1, fontWeight: 700, marginBottom: 12 },
-      histRow: { display: "flex", justifyContent: "space-between", marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #1a1a1a" },
-      histDate: { fontSize: 9, color: "#444" },
-      histName: { fontSize: 11, color: "#f97316", fontWeight: 700 },
-      histNote: { fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 },
-      histRight: { textAlign: "right", display: "flex", alignItems: "center", gap: 8 },
-      histResult: { fontSize: 12, fontWeight: 700, color: "#ddd" },
-      histRange: { fontSize: 9, color: "#333", fontFamily: "'DM Mono', monospace" },
-      histDel: { background: "none", border: "none", color: "#333", fontSize: 12, cursor: "pointer" },
-
-      fab: { position: "fixed", bottom: 85, right: 20, width: 56, height: 56, borderRadius: "50%", background: "#f97316", color: "white", border: "none", fontSize: 28, boxShadow: "0 4px 16px rgba(249,115,22,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 },
-      
-      formWrap: { padding: 20 },
-      label: { display: "block", fontSize: 11, fontFamily: "'DM Mono', monospace", color: "#444", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
-      input: { width: "100%", background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, padding: 14, color: "#e0e0e0", fontSize: 16, outline: "none", marginBottom: 20 },
-      backBtn: { background: "none", border: "none", color: "#555", fontSize: 14, cursor: "pointer", width: 60, textAlign: "left" },
-      headerTitle: { flex: 1, textAlign: "center", fontSize: 12, fontWeight: 700, letterSpacing: 2, color: "#f97316" },
-
-      whoLabel: { fontSize: 11, fontWeight: 700, color: "#333", marginBottom: 12, letterSpacing: 1 },
-      segmented: { display: "flex", background: "#111", borderRadius: 12, padding: 4, marginBottom: 24 },
-      segBtn: { flex: 1, background: "none", border: "none", padding: "10px", borderRadius: 8, color: "#555", fontSize: 12, fontWeight: 600, cursor: "pointer" },
-      segActive: { background: "#1a1a1a", color: "#f97316" },
-
-      personBlock: { background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, padding: 16 },
-      personBlockLabel: { fontSize: 12, fontWeight: 700, color: "#f97316", marginBottom: 16, fontFamily: "'DM Mono', monospace" },
-      rangeTag: { background: "#1a1100", color: "#f97316", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontFamily: "'DM Mono', monospace" },
-      bestTag: { background: "#0a0a0a", color: "#444", padding: "2px 6px", borderRadius: 4, fontSize: 10 },
-      
-      saveSetBtn: { width: "100%", background: "#f97316", color: "white", border: "none", borderRadius: 12, padding: 16, fontWeight: 700, fontSize: 15, cursor: "pointer" },
-      doneBtn: { width: "100%", background: "transparent", color: "#555", border: "1px solid #1a1a1a", borderRadius: 12, padding: 16, fontWeight: 600, fontSize: 15, marginTop: 12 },
-      
-      toast: { position: "fixed", bottom: 100, left: "50%", transform: "translateX(-50%)", padding: "12px 24px", borderRadius: 30, color: "white", fontSize: 14, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", zIndex: 1000 },
-      overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 1000 },
-      modal: { background: "#111", borderRadius: 20, padding: 24, width: "100%", maxWidth: 320, border: "1px solid #1a1a1a" },
-      modalCancel: { flex: 1, background: "none", border: "1px solid #1a1a1a", color: "#555", padding: 12, borderRadius: 8, cursor: "pointer" },
-      modalDelete: { flex: 1, background: "#ef4444", color: "white", border: "none", padding: 12, borderRadius: 8, fontWeight: 700, cursor: "pointer" },
-
-      spinner: { width: 30, height: 30, border: "3px solid #1a1a1a", borderTopColor: "#f97316", borderRadius: "50%" },
-      center: { height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" },
-      error: { color: "#ef4444", fontSize: 12, marginBottom: 12, textAlign: "center" },
-      empty: { textAlign: "center", padding: 60, color: "#333", fontSize: 14 },
-      emptySmall: { textAlign: "center", padding: 20, color: "#333", fontSize: 11 },
-      timedBadge: { background: "#1a1100", color: "#f97316", fontSize: 9, padding: "2px 6px", borderRadius: 4, fontWeight: 700 },
-      
-      setsLogged: { marginBottom: 24, background: "#0a0a0a", borderRadius: 12, padding: 16, border: "1px solid #161616" },
-      setsLoggedTitle: { fontSize: 10, color: "#333", letterSpacing: 1, fontWeight: 700, marginBottom: 12 },
-      setRow: { display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 12, fontFamily: "'DM Mono', monospace" },
-      setNum: { color: "#333" },
-      setPerson: { color: "#f97316", fontWeight: 700 },
-      setResult: { color: "#ddd" },
-      setRange: { color: "#444" },
+      root:             { background: "#0c0c0c", height: "100dvh", fontFamily: "'DM Mono','Courier New',monospace", color: "#ddd", display: "flex", flexDirection: "column", overflow: "hidden" },
+      center:           { background: "#0c0c0c", height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center" },
+      spinner:          { width: 24, height: 24, border: "2px solid #222", borderTop: "2px solid #f97316", borderRadius: "50%" },
+      header:           { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 12px", borderBottom: "1px solid #1a1a1a", flexShrink: 0 },
+      title:            { fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" },
+      subtitle:         { fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3 },
+      headerTitle:      { fontSize: 13, fontWeight: 700, letterSpacing: 3, color: "#f97316", flex: 1, textAlign: "center" },
+      addIconBtn:       { background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "8px 12px", cursor: "pointer", fontSize: 15 },
+      backBtn:          { background: "transparent", border: "none", color: "#f97316", cursor: "pointer", fontSize: 12, fontFamily: "'DM Mono',monospace", letterSpacing: 1, width: 60, textAlign: "left" },
+      searchWrap:       { display: "flex", alignItems: "center", margin: "10px 12px 6px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 8, padding: "0 10px", flexShrink: 0 },
+      searchIcon:       { fontSize: 12, marginRight: 6 },
+      searchInput:      { flex: 1, background: "transparent", border: "none", outline: "none", color: "#ddd", fontFamily: "'DM Mono',monospace", fontSize: 12, padding: "10px 0" },
+      clearBtn:         { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 12 },
+      toast:            { position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", padding: "7px 18px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: "#fff", zIndex: 999, letterSpacing: 1 },
+      overlay:          { position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+      modal:            { background: "#141414", border: "1px solid #2a2a2a", borderRadius: 12, padding: 24, width: 290 },
+      modalTitle:       { fontSize: 14, fontWeight: 700, color: "#f97316", marginBottom: 8, letterSpacing: 1 },
+      modalSub:         { fontSize: 11, color: "#666", marginBottom: 20, lineHeight: 1.5 },
+      modalBtns:        { display: "flex", gap: 10 },
+      cancelBtn:        { flex: 1, padding: 10, background: "#1e1e1e", border: "none", borderRadius: 8, color: "#aaa", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12 },
+      confirmBtn:       { flex: 1, padding: 10, background: "#ef4444", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 },
+      listWrap:         { flex: 1, overflowY: "auto", padding: "6px 12px 20px", WebkitOverflowScrolling: "touch" },
+      card:             { background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 6, overflow: "hidden" },
+      cardHeader:       { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px" },
+      cardName:         { flex: 1, fontSize: 12, color: "#e0e0e0", cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 },
+      categoryLabel:    { fontSize: 8, color: "#555", letterSpacing: 2, paddingLeft: 16 },
+      chevron:          { color: "#444", fontSize: 10, minWidth: 10 },
+      cardActions:      { display: "flex", gap: 6, alignItems: "center" },
+      logBtn:           { background: "#1a1100", border: "1px solid #f97316", borderRadius: 6, color: "#f97316", fontSize: 10, fontWeight: 700, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      delBtn:           { background: "transparent", border: "none", color: "#854444", cursor: "pointer", fontSize: 11, padding: "2px 4px" },
+      timedPill:        { fontSize: 8, color: "#f97316", background: "#1a1100", border: "1px solid #f9731630", padding: "1px 5px", borderRadius: 4, letterSpacing: 1 },
+      rangeGrid:        { borderTop: "1px solid #161616", padding: "8px 12px 10px" },
+      rangeHeaderRow:   { display: "flex", marginBottom: 4 },
+      personCol:        { width: 42, fontSize: 9, color: "#555", letterSpacing: 1, flexShrink: 0 },
+      rangeColHeader:   { flex: 1, fontSize: 9, color: "#555", letterSpacing: 1, textAlign: "center" },
+      rangeRow:         { display: "flex", alignItems: "center", marginBottom: 3 },
+      rangeCell:        { flex: 1, fontSize: 10, color: "#444", textAlign: "center", padding: "3px 2px", borderRadius: 4 },
+      rangeCellFilled:  { color: "#ccc", background: "#161616" },
+      dash:             { color: "#2a2a2a" },
+      history:          { borderTop: "1px solid #161616", padding: "10px 12px" },
+      historyTitle:     { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 8 },
+      historyRow:       { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8, gap: 8 },
+      historyLeft:      { flex: 1 },
+      historyDate:      { fontSize: 9, color: "#444", marginBottom: 2 },
+      historyMeta:      { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
+      historyPerson:    { fontSize: 10, color: "#f97316" },
+      historyRange:     { fontSize: 10, color: "#555", background: "#161616", padding: "2px 6px", borderRadius: 4 },
+      historyResult:    { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      historyNote:      { fontSize: 10, color: "#555", fontStyle: "italic", marginTop: 2 },
+      histDelBtn:       { background: "transparent", border: "none", color: "#333", cursor: "pointer", fontSize: 11, padding: "2px 6px", flexShrink: 0 },
+      noHistory:        { fontSize: 11, color: "#333", textAlign: "center", padding: "8px 0" },
+      noResults:        { padding: 32, textAlign: "center", color: "#333", fontSize: 12 },
+      formWrap:         { padding: 16, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", flex: 1, WebkitOverflowScrolling: "touch" },
+      logExName:        { fontSize: 14, fontWeight: 700, color: "#e0e0e0", letterSpacing: 1 },
+      timedBadge:       { fontSize: 9, color: "#f97316", background: "#1a1100", border: "1px solid #f9731640", padding: "2px 6px", borderRadius: 4, letterSpacing: 1 },
+      whoLabel:         { fontSize: 9, color: "#444", letterSpacing: 2 },
+      segmented:        { display: "flex", border: "1px solid #1e1e1e", borderRadius: 8, overflow: "hidden" },
+      segBtn:           { flex: 1, padding: 10, background: "#111", border: "none", color: "#555", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12, letterSpacing: 1 },
+      segActive:        { background: "#1a1100", color: "#f97316" },
+      setsLogged:       { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 7, padding: "8px 10px" },
+      setsLoggedTitle:  { fontSize: 9, color: "#444", letterSpacing: 2, marginBottom: 6 },
+      setRow:           { display: "flex", gap: 8, alignItems: "center", marginBottom: 3 },
+      setNum:           { fontSize: 9, color: "#444", minWidth: 30 },
+      setPerson:        { fontSize: 10, color: "#f97316", minWidth: 36 },
+      setRange:         { fontSize: 10, color: "#555", background: "#1a1a1a", padding: "1px 5px", borderRadius: 4 },
+      setResult:        { fontSize: 11, color: "#ccc", fontWeight: 700 },
+      personBlock:      { background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 12px" },
+      personBlockLabel: { fontSize: 10, color: "#f97316", fontWeight: 700, letterSpacing: 2, marginBottom: 8 },
+      inlineRow:        { display: "flex", gap: 10 },
+      inlineField:      { flex: 1, display: "flex", flexDirection: "column", gap: 4 },
+      label:            { fontSize: 9, color: "#444", letterSpacing: 2 },
+      input:            { padding: "9px 10px", background: "#111", border: "1px solid #1e1e1e", borderRadius: 7, color: "#ddd", fontSize: 12, fontFamily: "'DM Mono',monospace", outline: "none", width: "100%" },
+      rangeTag:         { fontSize: 10, color: "#f97316", letterSpacing: 1 },
+      bestTag:          { fontSize: 9, color: "#555", letterSpacing: 1 },
+      error:            { fontSize: 11, color: "#ef4444", letterSpacing: 1 },
+      logBtnRow:        { display: "flex", gap: 10 },
+      saveSetBtn:       { flex: 2, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      doneBtn:          { flex: 1, padding: 12, background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, color: "#aaa", fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace" },
+      submitBtn:        { marginTop: 6, padding: 12, background: "#f97316", border: "none", borderRadius: 8, color: "#000", fontWeight: 700, fontSize: 12, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1 },
+      timedNote:        { fontSize: 10, color: "#555", lineHeight: 1.6, background: "#0e0e0e", padding: "8px 10px", borderRadius: 7, border: "1px solid #1a1a1a" },
+      sectionLabel:     { fontSize: 9, color: "#555", letterSpacing: 3 },
+      settingsNote:     { fontSize: 10, color: "#444", lineHeight: 1.6, fontStyle: "italic" },
+      personListRow:    { display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0e0e0e", border: "1px solid #1a1a1a", borderRadius: 8, padding: "10px 14px" },
+      personListName:   { fontSize: 13, color: "#e0e0e0", letterSpacing: 1 },
+      personRemoveBtn:  { background: "transparent", border: "none", color: "#444", cursor: "pointer", fontSize: 14, padding: "2px 6px" },
+      addPersonRow:     { display: "flex", gap: 8 },
+      addPersonBtn:     { padding: "9px 14px", background: "#f97316", border: "none", borderRadius: 7, color: "#000", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, flexShrink: 0 },
+      deviceToggleBtn:  { fontSize: 8, padding: "3px 8px", borderRadius: 4, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 1, fontWeight: 700, border: "1px solid transparent", flexShrink: 0 },
+      deviceToggleOn:   { background: "#0a1a0a", color: "#22c55e", borderColor: "#22c55e40" },
+      deviceToggleOff:  { background: "#111", color: "#444", borderColor: "#33333360" },
+      syncBtn:          { padding: 12, background: "#0a1a0a", border: "1px solid #22c55e", borderRadius: 8, color: "#22c55e", fontWeight: 700, fontSize: 11, cursor: "pointer", fontFamily: "'DM Mono',monospace", letterSpacing: 2, width: "100%" },
+      syncBtnDisabled:  { opacity: 0.5, cursor: "default" },
+      categoryFilter:   { background: "#111", border: "1px solid #1e1e1e", borderRadius: 6, color: "#555", fontSize: 9, fontFamily: "'DM Mono',monospace", padding: "4px 6px", outline: "none", maxWidth: 130 },
+      locationTabRow:   { display: "flex", gap: 5, padding: "2px 12px 8px", overflowX: "auto", WebkitOverflowScrolling: "touch" },
+      locationTab:      { padding: "3px 10px", background: "#0e0e0e", border: "1px solid #1e1e1e", borderRadius: 20, color: "#444", fontSize: 8, letterSpacing: 1, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'DM Mono',monospace", flexShrink: 0 },
+      locationTabActive:{ background: "#1a1100", border: "1px solid #f97316", color: "#f97316" },
     };
 
-    const container = document.getElementById('tracker-root');
-    const root = ReactDOM.createRoot(container);
-    root.render(<WorkoutTracker />);
+    ReactDOM.createRoot(document.getElementById("tracker-root")).render(<WorkoutTracker />);
   </script>
 </body>
 
