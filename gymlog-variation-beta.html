@@ -119,6 +119,86 @@
             font-size: 16px;
             cursor: pointer;
             color: var(--muted);
+            transition: all 0.2s;
+        }
+        .settings-btn:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            transform: scale(1.05);
+        }
+        .settings-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ── HELP DRAWER (GLASSMORPHISM) ────────────────────────────── */
+        .help-drawer {
+            position: fixed;
+            right: -400px; top: 0; bottom: 0;
+            width: 380px; max-width: 90vw;
+            background: rgba(10, 10, 10, 0.96);
+            backdrop-filter: blur(8px);
+            border-left: 1px solid var(--accent);
+            padding: 20px; z-index: 1000;
+            overflow-y: auto;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        .help-drawer.open {
+            right: 0;
+        }
+        .help-drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+        .help-drawer-header h3 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 14px;
+            letter-spacing: 1.5px;
+            font-family: var(--mono);
+        }
+        .help-drawer-close {
+            background: none;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: var(--muted);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.2s;
+        }
+        .help-drawer-close:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+        .help-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .help-card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        .help-card h4 {
+            margin: 0 0 8px;
+            color: #eee;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .help-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
         }
 
         .header-select {
@@ -413,8 +493,6 @@
             flex-wrap: wrap;
         }
 
-        /* ── UNIFIED BUTTON SYSTEM ──────────────────────────────────── */
-        /* All buttons share base traits. Apply a modifier class for intent. */
         .btn-base,
         .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-ghost, .btn-accent {
             display: inline-flex;
@@ -427,8 +505,13 @@
             font-family: var(--sans);
             cursor: pointer;
             white-space: nowrap;
-            transition: opacity 0.15s, background 0.15s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid transparent;
+        }
+        .btn-primary:hover, .btn-secondary:hover, .btn-success:hover, .btn-danger:hover, .btn-ghost:hover, .btn-accent:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            filter: brightness(1.1);
         }
         .btn-primary {
             background: var(--success);
@@ -440,7 +523,6 @@
             color: #000;
             border-color: var(--accent);
         }
-        .btn-accent:active { opacity: 0.75; }
         .btn-secondary {
             background: rgba(249,115,22,0.07);
             color: var(--accent);
@@ -461,8 +543,10 @@
             color: var(--muted);
             border-color: #2a2a2a;
         }
-        .btn-primary:active, .btn-secondary:active,
-        .btn-success:active, .btn-danger:active, .btn-ghost:active { opacity: 0.75; }
+        .btn-primary:active, .btn-secondary:active, .btn-success:active, .btn-danger:active, .btn-ghost:active, .btn-accent:active {
+            transform: translateY(0.5px) scale(0.97);
+            opacity: 0.85;
+        }
         .btn-primary:disabled, .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
         /* ── END UNIFIED BUTTON SYSTEM ──────────────────────────────── */
 
@@ -858,7 +942,30 @@
         <div class="header-right">
             <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
             <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" title="Tap to switch between Push and Pull day" style="cursor: pointer;"></button>
+            <button class="settings-btn" onclick="toggleHelpDrawer()" title="Help Guide" style="margin-right: 4px;">ℹ️</button>
             <button class="settings-btn" onclick="openSettings()">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Help Drawer Overlay -->
+    <div id="helpDrawer" class="help-drawer">
+        <div class="help-drawer-header">
+            <h3>GUIDE & TUTORIALS</h3>
+            <button onclick="toggleHelpDrawer()" class="help-drawer-close">✕</button>
+        </div>
+        <div class="help-drawer-content">
+            <div class="help-card">
+                <h4>🔄 How to Swap Exercises</h4>
+                <p>On the <strong>PLAN</strong> screen, each exercise card has a variation selector (e.g., Standard, Single Arm, Alternating). Use this to swap variations dynamically. To swap with a custom or different exercise, click the dropdown inside the card header, select the new exercise, and click the swap icon to save it in your plan.</p>
+            </div>
+            <div class="help-card">
+                <h4>💪 How to Log Sets</h4>
+                <p>Tap the clock icon on any exercise card to slide open its history drawer and review your last 10 log entries. Click <strong>+ LOG</strong> to navigate to the logging screen, enter your reps/weight, and hit <strong>Save Set</strong>. Your best sets are automatically calculated and updated instantly.</p>
+            </div>
+            <div class="help-card">
+                <h4>👥 Managing Your Roster</h4>
+                <p>Click the ⚙️ settings gear in the top right header to open Settings. Here you can add new teammates to your roster, check or uncheck names to toggle their visibility, and assign a primary Device Owner to manage the session.</p>
+            </div>
         </div>
     </div>
 
@@ -1168,6 +1275,13 @@
 
         function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
         function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
+
+        function toggleHelpDrawer() {
+            const drawer = document.getElementById('helpDrawer');
+            if (drawer) {
+                drawer.classList.toggle('open');
+            }
+        }
 
         async function loadDataAndWorkout(preFetchedData = null) {
             showLoading();

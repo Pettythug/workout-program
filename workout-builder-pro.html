@@ -110,7 +110,7 @@
         .modal-input:focus { border-color: var(--accent); }
         .modal-save-btn {
             width: 100%;
-            background: var(--accent);
+            background: var(--success);
             color: black;
             border: none;
             border-radius: 8px;
@@ -436,6 +436,19 @@
 
         
 
+        .skip-btn, .complete-btn, .got-more-btn, .more-time-btn, .mark-done-btn, .set-log-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .skip-btn:hover, .complete-btn:hover, .got-more-btn:hover, .more-time-btn:hover, .mark-done-btn:hover, .set-log-btn:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            filter: brightness(1.1);
+        }
+        .skip-btn:active, .complete-btn:active, .got-more-btn:active, .more-time-btn:active, .mark-done-btn:active, .set-log-btn:active {
+            transform: translateY(0.5px) scale(0.97);
+            opacity: 0.85;
+        }
+
         .skip-btn {
             background: rgba(239, 68, 68, 0.1);
             color: #ef4444;
@@ -446,9 +459,14 @@
             cursor: pointer;
         }
 
-        .mark-done-btn:active,
-        .skip-btn:active {
-            opacity: 0.7;
+        .mark-done-btn {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: 500;
+            cursor: pointer;
         }
 
         .complete-btn {
@@ -463,10 +481,6 @@
             margin-top: 16px;
             letter-spacing: 1px;
             text-transform: uppercase;
-        }
-
-        .complete-btn:active {
-            opacity: 0.85;
         }
 
         .complete-btn:disabled {
@@ -570,7 +584,117 @@
             color: var(--muted);
             font-size: 14px;
         }
+
+        .success-state button {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 24px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .success-state button:hover {
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        /* ── HELP DRAWER (GLASSMORPHISM) ────────────────────────────── */
+        .help-drawer {
+            position: fixed;
+            right: -400px; top: 0; bottom: 0;
+            width: 380px; max-width: 90vw;
+            background: rgba(10, 10, 10, 0.96);
+            backdrop-filter: blur(8px);
+            border-left: 1px solid var(--accent);
+            padding: 20px; z-index: 1000;
+            overflow-y: auto;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        .help-drawer.open {
+            right: 0;
+        }
+        .help-drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+        .help-drawer-header h3 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 14px;
+            letter-spacing: 1.5px;
+            font-family: var(--mono);
+        }
+        .help-drawer-close {
+            background: none;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: var(--muted);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.2s;
+        }
+        .help-drawer-close:hover {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+        .help-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+            transition: border-color 0.2s;
+        }
+        .help-card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+        }
+        .help-card h4 {
+            margin: 0 0 8px;
+            color: #eee;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .help-card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
     </style>
+
+    <!-- Help Drawer Overlay -->
+    <div id="helpDrawer" class="help-drawer">
+        <div class="help-drawer-header">
+            <h3>GUIDE & TUTORIALS</h3>
+            <button onclick="toggleHelpDrawer()" class="help-drawer-close">✕</button>
+        </div>
+        <div class="help-drawer-content">
+            <div class="help-card">
+                <h4>🔄 How to Swap Exercises</h4>
+                <p>On the <strong>PLAN</strong> screen, each exercise card has a variation selector (e.g., Standard, Single Arm, Alternating). Use this to swap variations dynamically. To swap with a custom or different exercise, click the dropdown inside the card header, select the new exercise, and click the swap icon to save it in your plan.</p>
+            </div>
+            <div class="help-card">
+                <h4>💪 How to Log Sets</h4>
+                <p>Tap the clock icon on any exercise card to slide open its history drawer and review your last 10 log entries. Click <strong>+ LOG</strong> to navigate to the logging screen, enter your reps/weight, and hit <strong>Save Set</strong>. Your best sets are automatically calculated and updated instantly.</p>
+            </div>
+            <div class="help-card">
+                <h4>👥 Managing Your Roster</h4>
+                <p>Click the ⚙️ settings gear in the top right header to open Settings. Here you can add new teammates to your roster, check or uncheck names to toggle their visibility, and assign a primary Device Owner to manage the session.</p>
+            </div>
+        </div>
+    </div>
 
     <!-- UNIFIED SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="closeSettings(event)">
@@ -588,14 +712,14 @@
             
             <div style="display:flex; gap:8px; margin-bottom:20px;">
                 <input type="text" id="newPersonInput" placeholder="Add person..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
-                <button onclick="addNewPerson()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+                <button onclick="addNewPerson()" style="background:var(--success); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
             </div>
 
             <div class="modal-label">LOCATIONS</div>
             <div id="locationsList" style="margin-bottom:12px;"></div>
             <div style="display:flex; gap:8px; margin-bottom:20px;">
                 <input type="text" id="newLocationInput" placeholder="Add location..." style="flex:1; padding:8px; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; font-size:12px;" />
-                <button onclick="addNewLocation()" style="background:var(--accent); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
+                <button onclick="addNewLocation()" style="background:var(--success); color:black; border:none; padding:0 12px; border-radius:6px; font-weight:700; font-size:11px;">ADD</button>
             </div>
 
             <div id="deviceOwnerContainer" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);"></div>
@@ -618,6 +742,7 @@
                 
                 <select id="locationSelect" class="header-select" onchange="changeLocation()" style="display:none;"></select>
                 <button id="workoutBadge" class="workout-badge" onclick="togglePushPull()" style="cursor: pointer; border: none;"></button>
+                <button class="settings-btn" onclick="toggleHelpDrawer()" title="Help Guide" style="margin-right: 4px;">ℹ️</button>
                 <button class="settings-btn" onclick="openSettings()">⚙️</button>
             </div>
         </div>
@@ -632,9 +757,10 @@
             <div id="errorState" class="error-state" style="display:none;"></div>
 
             <div id="successState" class="success-state" style="display:none;">
-                <div class="check">✓</div>
+                <div class="check" style="color: var(--success);">✓</div>
                 <h2>Workout Complete!</h2>
                 <p>Great work. Come back for your next session.</p>
+                <button onclick="undoWorkoutComplete()">↺ Undo & Return to Workout</button>
             </div>
 
             <div id="workoutContent" style="display:none;">
@@ -700,13 +826,8 @@
     </div>
 
     <script>
-        const TYPE_KEY = 'builder_last_workout_type';
-        const NUM_KEY = 'builder_workout_num';
-        const LOC_KEY = 'builder_location';
-        
         let currentWorkout = null;
         let exerciseStatus = {};
-        const PLANNER_NOTES_KEY = 'gym-planner-notes';
         let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
         
         async function savePlannerNote(exName, note) {
@@ -724,31 +845,6 @@
         let accessorySetCounter = 1;
         
         let globalData = null;
-
-        const getBaseName = (name) => {
-            if (!name) return "";
-            return name
-                .replace(/^(One Arm |One Leg |Single-leg |Single Leg |Single )/i, '')
-                .replace(/ \(Single\)$/i, '')
-                .replace(/ \(Alt\)$/i, '')
-                .replace(/ \(Alternating\)$/i, '')
-                .trim();
-        };
-
-        const getMode = (name) => {
-            if (!name) return "std";
-            if (/single|one arm|one leg/i.test(name)) return 'single';
-            if (/alt/i.test(name)) return 'alt';
-            return 'std';
-        };
-
-        const getStandardizedName = (name) => {
-            const base = getBaseName(name);
-            const mode = getMode(name);
-            if (mode === 'single') return `${base} (Single)`;
-            if (mode === 'alt')    return `${base} (Alt)`;
-            return base;
-        };
 
         let exerciseModes = {}; // tracks selected variation per card index
 
@@ -804,6 +900,11 @@
 
         function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
         function closeSettings(e) { if (e.target === document.getElementById('settingsModal')) closeSettingsModal(); }
+
+        function toggleHelpDrawer() {
+            const drawer = document.getElementById('helpDrawer');
+            if (drawer) drawer.classList.toggle('open');
+        }
 
         function addNewPerson() {
             const input = document.getElementById('newPersonInput');
@@ -1006,8 +1107,11 @@
         function togglePushPull() {
             const lastType = localStorage.getItem(TYPE_KEY) || 'Pull';
             const newType = lastType === 'Push' ? 'Pull' : 'Push';
-            localStorage.setItem(TYPE_KEY, newType);
-            generateWorkout();
+            
+            if (confirm(`You are currently viewing a ${lastType} workout.\n\nDo you want to switch to a ${newType} workout instead?`)) {
+                localStorage.setItem(TYPE_KEY, newType);
+                generateWorkout();
+            }
         }
 
         function undoCompletion() {
@@ -1019,7 +1123,8 @@
             exerciseSetCounters = snapshot.counters;
             exerciseModes = snapshot.modes;
             let num = parseInt(localStorage.getItem(NUM_KEY) || '1') - 1;
-            localStorage.setItem(NUM_KEY, num);\n            localStorage.removeItem(`saved_workout_${currentWorkout.workoutNum}`);
+            localStorage.setItem(NUM_KEY, num);
+            localStorage.removeItem(`saved_workout_${currentWorkout.workoutNum}`);
             localStorage.removeItem('gym-last-workout-snapshot');
             renderWorkout();
         }
@@ -1560,6 +1665,7 @@ if (!exists) return "";
             let bannerMsg = "";
 
             const stdExName = getStandardizedName(exerciseName);
+            const ex = currentWorkout.exercises[cardIdx] || {};
 
             for (const p of activePeople) {
                 const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
@@ -1578,7 +1684,7 @@ if (!exists) return "";
                    reps: reps.toString(),
                    weight: weightValFixed || "",
                    range: rangeKey,
-                   note: (noteVal || "") + ` Set ${setNum} (Workout #${currentWorkout.workoutNum})`,
+                   note: `Set ${setNum} (Workout #${currentWorkout.workoutNum})`,
                    setNum: setNum,
                    timed: false
                 });
@@ -1712,10 +1818,12 @@ if (!exists) return "";
         }
 
         async function completeWorkout() {
+            if (!confirm("Are you sure you are finished and want to complete this workout?")) return;
             const num = currentWorkout.workoutNum.toString();
             const type = currentWorkout.type;
             localStorage.setItem(TYPE_KEY, type);
-            localStorage.setItem(NUM_KEY, num);\n            localStorage.removeItem(`saved_workout_${currentWorkout.workoutNum}`);
+            localStorage.setItem(NUM_KEY, num);
+            localStorage.removeItem(`saved_workout_${currentWorkout.workoutNum}`);
 
             // SYNC TO SPREADSHEET (Smart Finish for all active people)
             try {
@@ -1741,6 +1849,47 @@ if (!exists) return "";
             document.getElementById('workoutContent').style.display = 'none';
             document.getElementById('successState').style.display = 'block';
             markAccessoryDone();
+        }
+
+        async function undoWorkoutComplete() {
+            document.getElementById('successState').style.display = 'none';
+            document.getElementById('workoutContent').style.display = 'block';
+            
+            // Revert localStorage keys
+            let num = parseInt(localStorage.getItem(NUM_KEY) || '1');
+            let revertedNum = num > 0 ? num - 1 : 0;
+            if (num > 0) {
+                localStorage.setItem(NUM_KEY, revertedNum.toString());
+            }
+            
+            let currentType = localStorage.getItem(TYPE_KEY);
+            let revertedType = currentType;
+            if (currentType) {
+                revertedType = currentType === 'Push' ? 'Pull' : 'Push';
+                localStorage.setItem(TYPE_KEY, revertedType);
+            }
+            
+            // Sync reverted state back to cloud
+            try {
+                const settings = {};
+                activePeople.forEach(p => {
+                    const name = p.toLowerCase();
+                    settings[`builder_workout_num_${name}`] = revertedNum.toString();
+                    settings[`builder_workout_type_${name}`] = revertedType;
+                });
+                settings["builder_workout_num"] = revertedNum.toString();
+                settings["builder_workout_type"] = revertedType;
+
+                sheetsPost({
+                    action: "saveSettings",
+                    settings: settings
+                }).catch(e => console.warn("Background undo sync failed:", e));
+            } catch(e) {
+                console.warn("Failed to revert workout settings in cloud:", e);
+            }
+            
+            // Reload workout to restore view
+            loadDataAndWorkout();
         }
 
         function markAccessoryDone() {
@@ -1807,6 +1956,7 @@ if (!exists) return "";
             const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
             
             let bannerMsg = "";
+            const ex = (globalData.exercises || []).find(e => e.name === currentAccessory) || {};
 
             for (const p of activePeople) {
                 const repsVal = document.getElementById(`acc-reps-${p}`).value;
