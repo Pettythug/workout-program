@@ -10,13 +10,21 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
 
 // ── SHARED STORAGE KEYS ───────────────────────────────────────────────────
-const STORAGE_KEY       = "gym-tracker-v4";
-const PEOPLE_KEY        = "gym-tracker-people-v1";
-const LOCATIONS_KEY     = "gym-tracker-locations-v1";
-const HIDDEN_PEOPLE_KEY = "gym-tracker-hidden-people-v1";
-const ACTIVE_PEOPLE_KEY = "gym-active-people-v1";
+const STORAGE_KEY         = "gym-tracker-v4";
+const PEOPLE_KEY          = "gym-tracker-people-v1";
+const LOCATIONS_KEY       = "gym-tracker-locations-v1";
+const HIDDEN_PEOPLE_KEY   = "gym-tracker-hidden-people-v1";
+const ACTIVE_PEOPLE_KEY   = "gym-active-people-v1";
 const ACTIVE_LOCATION_KEY = "gym-active-location-v1";
 const ACTIVE_TYPE_KEY     = "gym-active-type-v1";
+
+// ── APP-SPECIFIC KEYS (Unified) ───────────────────────────────────────────
+const NUM_KEY             = "builder_workout_num";
+const TYPE_KEY            = "builder_last_workout_type";
+const LOC_KEY             = "builder_location";
+const PRIMARY_USER_KEY    = "builder_primary_user";
+const PLANNER_NOTES_KEY   = "gym-planner-notes";
+const API_URL_KEY         = "gym_api_url";
 
 // ── DEFAULT DATA ──────────────────────────────────────────────────────────
 const DEFAULT_PEOPLE    = ["Brian", "Dad"];
@@ -164,12 +172,13 @@ async function sheetsPost(payload) {
             method: "POST",
             body: payloadStr,
             // Using text/plain avoids CORS preflight OPTIONS request
-            headers: { "Content-Type": "text/plain;charset=utf-8" }
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            keepalive: true
         });
     } else {
         // Fallback to GET tunneling for standard small ops
         const encoded = encodeURIComponent(payloadStr);
-        res = await fetch(url + "?payload=" + encoded);
+        res = await fetch(url + "?payload=" + encoded, { keepalive: true });
     }
     
     const json = await res.json();

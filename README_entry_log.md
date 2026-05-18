@@ -50,3 +50,13 @@ This is a quick reference for the current status of the Workout Tracker project 
 | [2026-05-03 04:13 PM] | .\archive\gymlog-variation-beta_20260503_1613.html | Pre-edit backup: Implementing Person Filter in Log Set view (Beta). |
 | [2026-05-03 04:23 PM] | .\archive\gymlog-variation-beta_20260503_1623.html | Pre-edit backup: Fixing mobile layout for PLAN header (Push/Pull and Settings icon). |
 | [2026-05-03 04:25 PM] | .\archive\gymlog-ultimate_20260503_1625.html | Pre-migration backup: Saving production before applying mobile header fix and person filter updates. |
+| [2026-05-17 04:44 PM] | .\archive\gymlog-variation-beta_20260517_1644.html | Pre-N1 backup: About to execute Button Label and Affordance Cleanup across all views. |
+| [2026-05-17 04:54 PM] | .\archive\gymlog-variation-beta_20260517_1654.html | Pre-edit: Fixing swap dropdown label, input placeholder, and select border visibility. |
+| [2026-05-17 05:02 PM] | .\archive\gymlog-variation-beta_20260517_1702.html | Pre-edit: Restructuring swap UI — placeholder dropdown, location label, category inherited note. |
+| [2026-05-17 05:13 PM] | .\archive\gymlog-variation-beta_20260517_1713.html | Pre-UX-unification backup: About to apply full button/label/style consistency pass across all views. |
+| [2026-05-17 05:23 PM] | .\archive\gymlog-ultimate_20260517_1723.html | Pre-production migration backup: Preparing to migrate approved UX/UI button classes to Production. |
+| [2026-05-17 05:32 PM] | .\archive\gymlog-variation-beta_20260517_1732.html | Pre-edit: Updating button color semantics (Green=Go, Orange=Cancel). |
+| [2026-05-18 07:55 AM] | .\archive\gymlog-ultimate_20260518_0755.html | Pre-edit: Migrating Item 1 (Interactive Hints & Cleanups) from Beta. |
+| [2026-05-18 08:24 AM] | .\archive\gymlog-ultimate_20260518_0824.html | Pre-edit: Migrating Item 1 (Interactive Hints & Cleanups) after user approval. |
+| [2026-05-18 08:36 AM] | .\archive\gymlog-ultimate_20260518_0836.html | Pre-edit: Full migration of all Beta changes to Production. |
+| [2026-05-18 08:58 AM] | .\archive\gymlog-ultimate_20260518_0858.html | Pre-edit: Migrating Item 7 (Complete Workout Confirmation) after user approval. |

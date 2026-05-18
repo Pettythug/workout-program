@@ -2087,10 +2087,6 @@ let exerciseStatus = {};
         }
 
         async function completeWorkout() {
-            if (!confirm("Are you sure you are finished and want to complete this workout?")) {
-                return;
-            }
-
             const num = currentWorkout.workoutNum.toString();
             const type = currentWorkout.type;
             localStorage.setItem(TYPE_KEY, type);
