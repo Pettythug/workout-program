@@ -1053,6 +1053,7 @@
   </div>
 
   <script>
+      let exerciseModes = {};
       window.requireAdminPin = () => {
         const pin = prompt("Enter Admin PIN to continue:");
         return pin ? pin.trim() : null;
@@ -1443,7 +1444,7 @@
             localStorage.setItem(NUM_KEY, num);
             
             localStorage.removeItem('gym-last-workout-snapshot');
-            renderWorkout();
+            renderWorkout(AppState.workout, AppState.workout.exercises);
         }
 
         function generateWorkout() {
@@ -2026,7 +2027,64 @@
             logger.style.display = card.classList.contains('open') ? 'block' : 'none';
         }
 
-        async function logSet(cardIdx, exerciseName) { const ex = AppState.workout.exercises[cardIdx];
+        async function logAccessorySet() {
+            const ex = AppState.globalData.exercises.find(e => e.name === AppState.accessory) || { name: AppState.accessory, timed: false };
+            const btn = document.getElementById(`acc-logbtn`);
+            const setNum = AppState.accessorySetCounter;
+            btn.textContent = 'Saving...'; btn.disabled = true;
+
+            const entries = [];
+            const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            
+            let bannerMsg = "";
+
+            for (const p of AppState.people) {
+                const repsVal = document.getElementById(`acc-reps-${p}`).value;
+                const weightVal = document.getElementById(`acc-weight-${p}`).value;
+                if (!repsVal) continue;
+                
+                const reps = parseInt(repsVal);
+                let weightValFixed = weightVal;
+                if (ex.timed) {
+                    weightValFixed = normalizeDuration(weightVal);
+                }
+                const weightNum = parseFloat(weightValFixed) || 0;
+                const rangeKey = getRange(reps);
+                const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
+                
+                entries.push({
+                   date: dateStr,
+                   person: p.toLowerCase(),
+                   reps: reps.toString(),
+                   weight: weightValFixed || "",
+                   range: rangeKey,
+                   note: `Accessory Set ${setNum} (Workout #${AppState.workout.workoutNum})`,
+                   setNum: setNum,
+                   timed: ex.timed
+                });
+                
+                const accMaxObj = AppState.globalData.best?.[AppState.accessory]?.[p.toLowerCase()] || {};
+                const existing = accMaxObj[rangeKey];
+                let isNew = !existing;
+                if (existing && !ex.timed) {
+                    if (weightNum > parseFloat(existing.weight)) isNew = true;
+                } else if (existing && ex.timed) {
+                    isNew = false;
+                }
+                
+                if (isNew) {
+                    const newMaxStr = ex.timed ? `${reps} x ${weightValFixed}` : `${reps}x${weightNum}`;
+                    bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
+                }
+            }
+
+            // ... (rest of logAccessorySet implementation)
+            btn.disabled = false;
+            btn.textContent = 'Log Set';
+        }
+
+        async function logSet(cardIdx, exerciseName) {
+            const ex = AppState.workout.exercises[cardIdx];
             const setNum = AppState.setCounters[cardIdx] || 1;
             const btn = document.getElementById(`logbtn-${cardIdx}`);
             btn.textContent = 'Saving...'; 
@@ -2048,7 +2106,7 @@
                 if (ex.timed) {
                     weightValFixed = normalizeDuration(weightVal);
                 }
-                const weight = parseFloat(weightValFixed) || 0;
+                const weightNum = parseFloat(weightValFixed) || 0;
                 
                 const rangeKey = getRange(reps);
                 const repRange = REP_RANGES.find(r => r.key === rangeKey)?.label || '—';
@@ -2063,20 +2121,22 @@
                    range: rangeKey,
                    note: finalNote,
                    setNum: setNum,
-                   timed: false
+                   timed: ex.timed
                 });
                 
                 const stdExName = getStandardizedName(exerciseName);
                 const existing = AppState.maxes[stdExName]?.[p]?.[rangeKey];
                 let isNew = !existing;
-                if (existing) {
-                    if (weight > parseFloat(existing.weight)) isNew = true;
+                if (existing && !ex.timed) {
+                    if (weightNum > parseFloat(existing.weight)) isNew = true;
+                } else if (existing && ex.timed) {
+                    isNew = false;
                 }
                 if (isNew) {
                     if(!AppState.maxes[stdExName]) AppState.maxes[stdExName] = {};
                     if(!AppState.maxes[stdExName][p]) AppState.maxes[stdExName][p] = {};
-                    AppState.maxes[stdExName][p][rangeKey] = {reps, weight};
-                    const newMaxStr = `${reps}x${weight}`;
+                    AppState.maxes[stdExName][p][rangeKey] = {reps, weight: weightValFixed};
+                    const newMaxStr = ex.timed ? `${reps} x ${weightValFixed}` : `${reps}x${weightNum}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
                     const activeRange = getActiveRangeForExercise(ex, AppState.workout);
                     if (rangeKey === getRangeKeyFromLabel(activeRange)) {

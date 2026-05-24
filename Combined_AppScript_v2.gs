@@ -603,25 +603,37 @@ function gymlog_handleSaveSettings(payload) {
 function gymlog_handleDeleteExercise(payload) {
   verifyAdminPin(payload);
   const { exercise } = payload;
-  const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+  const exSheet   = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
   const bestSheet = getOrCreateSheet(BEST_TAB,    BEST_HEADERS);
+  const targetName = String(exercise).trim().toLowerCase();
 
-  // Remove all history rows for this exercise
-  if (histSheet.getLastRow() > 1) {
-    const data = histSheet.getRange(2, 3, histSheet.getLastRow() - 1, 1).getValues();
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (data[i][0] === exercise) histSheet.deleteRow(i + 2);
+  // Remove exercise metadata in bulk
+  if (exSheet.getLastRow() > 1) {
+    const range = exSheet.getRange(2, 1, exSheet.getLastRow() - 1, exSheet.getLastColumn());
+    const data = range.getValues();
+    const newData = data.filter(r => String(r[0]).trim().toLowerCase() !== targetName);
+    if (newData.length !== data.length) {
+      clearDataRows(exSheet);
+      if (newData.length > 0) {
+        exSheet.getRange(2, 1, newData.length, exSheet.getLastColumn()).setValues(newData);
+      }
     }
   }
 
-  // Remove all best rows for this exercise
+  // Remove all best rows for this exercise in bulk
   if (bestSheet.getLastRow() > 1) {
-    const data = bestSheet.getRange(2, 1, bestSheet.getLastRow() - 1, 1).getValues();
-    for (let i = data.length - 1; i >= 0; i--) {
-      if (data[i][0] === exercise) bestSheet.deleteRow(i + 2);
+    const range = bestSheet.getRange(2, 1, bestSheet.getLastRow() - 1, bestSheet.getLastColumn());
+    const data = range.getValues();
+    const newData = data.filter(r => String(r[0]).trim().toLowerCase() !== targetName);
+    if (newData.length !== data.length) {
+      clearDataRows(bestSheet);
+      if (newData.length > 0) {
+        bestSheet.getRange(2, 1, newData.length, bestSheet.getLastColumn()).setValues(newData);
+      }
     }
   }
 
+  // NOTE: History is intentionally left intact for data integrity.
   return ok({ deletedExercise: exercise });
 }
 
