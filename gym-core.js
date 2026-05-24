@@ -148,7 +148,9 @@ async function sheetsGet(forceRefresh = false) {
     }
 
     const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
-    globalDataPromise = fetch(url).then(async res => {
+    const fetchUrl = url + (url.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+    
+    globalDataPromise = fetch(fetchUrl, { cache: "no-store" }).then(async res => {
         const json = await res.json();
         if (json.status !== "ok") throw new Error(json.message);
         window.gymGlobalData = json.data;
