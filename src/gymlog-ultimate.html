@@ -201,6 +201,7 @@
             line-height: 1.5;
         }
 
+
         .header-select {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -218,17 +219,15 @@
         @media (max-width: 480px) {
             .header {
                 padding: 12px 12px;
-            }
-            .header.wrap-mobile {
                 flex-wrap: wrap;
                 gap: 12px;
             }
-            .header.wrap-mobile .header-left {
+            .header-left {
                 flex: 1 1 100%;
                 border-bottom: 1px solid #1a1a1a;
                 padding-bottom: 8px;
             }
-            .header.wrap-mobile .header-right {
+            .header-right {
                 flex: 1 1 100%;
                 justify-content: space-between;
                 gap: 4px;
@@ -495,6 +494,7 @@
             flex-wrap: wrap;
         }
 
+        /* ── UNIFIED BUTTON SYSTEM ──────────────────────────────────── */
         .btn-base,
         .btn-primary, .btn-secondary, .btn-success, .btn-danger, .btn-ghost, .btn-accent {
             display: inline-flex;
@@ -926,8 +926,8 @@
             <div id="deviceOwnerContainer" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);"></div>
 
             <div style="margin-top:24px; display:flex; flex-direction:column; gap:8px;">
-                <button class="modal-save-btn" onclick="saveSettings()" style="width:100%; margin:0;">SAVE & SYNC EVERYTHING</button>
-                <button onclick="manualSyncFromSettings()" style="background:none; border:1px solid var(--success); color:var(--success); padding:10px; border-radius:8px; font-size:11px; font-family:var(--mono); cursor:pointer;">↑ SYNC ROSTER TO SHEETS</button>
+                <button class="modal-save-btn" onclick="saveSettings()" style="width:100%; margin:0;">Save & Sync Everything</button>
+                <button onclick="manualSyncFromSettings()" style="background:none; border:1px solid var(--success); color:var(--success); padding:10px; border-radius:8px; font-size:11px; font-family:var(--mono); cursor:pointer;">↑ Sync Roster to Sheets</button>
             </div>
         </div>
     </div>
@@ -936,7 +936,7 @@
   
   <div id="builder-root">
 
-    <div class="header wrap-mobile">
+    <div class="header">
         <div class="header-left">
             <h1 style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</h1>
             <p id="headerSub" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading...</p>
@@ -984,7 +984,7 @@
             <div class="check" style="font-size: 48px; color: var(--success); margin-bottom: 16px;">✓</div>
             <h2 style="color: var(--text); font-family: var(--sans); margin-bottom: 8px;">Workout Complete!</h2>
             <p style="color: var(--muted); font-size: 14px; margin-bottom: 24px;">Great work. Come back for your next session.</p>
-            <button class="btn-accent" onclick="undoWorkoutComplete()" style="padding: 10px 24px; font-size: 14px;">↺ UNDO & RETURN TO WORKOUT</button>
+            <button class="btn-accent" onclick="undoWorkoutComplete()" style="padding: 10px 24px; font-size: 14px;">↺ Undo & Return to Workout</button>
         </div>
 
         <div id="workoutContent" style="display:none;">
@@ -1007,11 +1007,11 @@
             <div id="exerciseList"></div>
 
             <button class="complete-btn" id="completeBtn" onclick="completeWorkout()">
-                COMPLETE WORKOUT
+                Complete Workout
             </button>
 
             <button class="got-more-btn" id="gotMoreBtn" onclick="getAccessory()" style="display:none;">
-                + GOT MORE TIME? SUGGEST AN ACCESSORY
+                + Got more time? Suggest an accessory
             </button>
 
             <div id="accessorySection" style="display:none; margin-top: 16px;">
@@ -1033,15 +1033,14 @@
                     <div class="set-logger" id="accessoryLogger" style="display:none;">
                         <div class="rep-range-hint">Target: <strong id="accessoryRepRange">—</strong> reps</div>
                         <div class="sets-list" id="accSetsList"></div>
-                        <button class="btn-primary" style="width:100%; margin-top:8px; margin-bottom:12px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
+                        <button class="complete-btn" style="padding:12px; margin-top:8px; margin-bottom:12px; font-size:14px;" id="acc-logbtn" onclick="logAccessorySet()">Log Set 1</button>
                         <div class="new-max-banner" id="acc-maxbanner"></div>
                         <div class="exercise-actions">
-                            <button class="btn-success" onclick="markAccessoryDone()">✓ DONE</button>
+                            <button class="mark-done-btn" onclick="markAccessoryDone()">✓ Mark Done</button>
                         </div>
                     </div>
                 </div>
-                <button class="btn-secondary" id="suggestDiffBtn" onclick="getAccessory()" style="width:100%; margin-top:8px;">↺ SUGGEST DIFFERENT</button>
-            </div>
+                <button class="more-time-btn" id="suggestDiffBtn" onclick="getAccessory()">↺ Suggest Different Exercise</button>
             </div>
         </div>
     </div>
@@ -1053,10 +1052,6 @@
   </div>
 
   <script>
-      window.requireAdminPin = () => {
-        const pin = prompt("Enter Admin PIN to continue:");
-        return pin ? pin.trim() : null;
-      };
     function switchView(view) {
        document.getElementById('tracker-root').style.display = view === 'tracker' ? 'block' : 'none';
        document.getElementById('builder-root').style.display = view === 'builder' ? 'block' : 'none';
@@ -1404,19 +1399,10 @@
 
         function getRangeKeyFromLabel(label) {
              if (label === "1-3") return "r1_3";
-             if (label === "1-5") return "r4_7";
              if (label === "4-7") return "r4_7";
              if (label === "8-12") return "r8_12";
              return "r13_plus";
         }
-
-        function getActiveRangeForExercise(ex, workout) {
-             if (ex && ex.category === 'Explosive') {
-                 return workout.workoutNum % 2 !== 0 ? "1-3" : "1-5";
-             }
-             return workout.repRange;
-        }
-
         function saveWorkoutState() {
             if (!AppState.workout) return;
             const snapshot = {
@@ -1653,8 +1639,7 @@
                 AppState.people.forEach(p => {
                     const stdName = getStandardizedName(ex.name);
                     const maxData = AppState.maxes[stdName]?.[p] || {};
-                    const activeRange = getActiveRangeForExercise(ex, workout);
-                    const rangeKey = getRangeKeyFromLabel(activeRange);
+                    const rangeKey = getRangeKeyFromLabel(workout.repRange);
                     const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
                     headerHTML += `<span style="margin-right:8px;">${p}: <span style="color:var(--accent);" id="maxval-${idx}-${p}">${currentMax}</span></span>`;
                 });
@@ -1685,7 +1670,11 @@
                   </div>
                 </div>
                 <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
-                    <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px; font-weight:700; font-family:var(--mono);">RECENT HISTORY</div>
+                    <div>
+                      <div class="builder-title" style="font-size:20px; font-weight:700; letter-spacing:5px; color:#f97316;">PLAN</div>
+                      <div class="builder-subtitle" id="builder-roster-text" style="font-size:10px; color:#444; letter-spacing:2px; margin-top:3px;">Loading roster...</div>
+                    </div>
+                    <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px;">RECENT HISTORY</div>
                     <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
                 </div>`;
                 
@@ -1707,17 +1696,17 @@
 
                 card.innerHTML = smartHeader + headerHTML + `
                 <div class="set-logger" id="logger-${idx}">
-                  <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${getActiveRangeForExercise(ex, workout)} reps</strong></div>
+                  <div class="rep-range-hint" style="margin-bottom:12px;">Target: <strong>${workout.repRange} reps</strong></div>
                   
                   <div class="sets-list">
                     ${inputsHTML}
-                    <button class="btn-primary" style="width:100%; margin-top:8px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
+                    <button class="complete-btn" style="padding:12px; margin-top:8px; font-size:14px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
                   </div>
                   <div class="new-max-banner" id="maxbanner-${idx}"></div>
                   <div class="exercise-actions" style="margin-top:16px;">
-                    <button class="btn-success" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ DONE</button>
-                    <button class="btn-danger skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">— SKIP</button>
-                    <button class="btn-secondary" onclick="showSwap(${idx})">↺ SWAP EXERCISE</button>
+                    <button class="mark-done-btn" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ Mark Done</button>
+                    <button class="skip-btn" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Skip</button>
+                    <button class="more-time-btn" onclick="showSwap(${idx})">↺ Swap Exercise</button>
                   </div>
                 </div>
                 
@@ -1743,8 +1732,8 @@
                        <p style="font-size:10px; color:#555; margin-top:8px; font-family:var(--mono);">Category: <span style="color:var(--accent);">${ex.category}</span> &mdash; inherited from this card</p>
                    </div>
                    <div style="display:flex; gap:8px;">
-                     <button class="btn-primary" style="flex:1; padding:12px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">CONFIRM SWAP</button>
-                     <button class="btn-accent" style="flex:1; padding:12px; font-size:14px;" onclick="hideSwap(${idx})">CANCEL</button>
+                     <button class="btn-primary" style="flex:1; padding:12px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">Confirm Swap</button>
+                     <button class="btn-accent" style="flex:1; padding:12px; font-size:14px;" onclick="hideSwap(${idx})">Cancel</button>
                    </div>
                 </div>
                 `;
@@ -1914,9 +1903,51 @@
             card.classList.toggle('open');
         }
 
-        function renderHistory(idx, exerciseName, showDeleteBtn = false) {
+        function renderHistory(idx, exerciseName) {
             const content = document.getElementById(`history-content-${idx}`);
             const ex = AppState.workout.exercises[idx];
+            const history = (AppState.globalData.history || []).filter(h => h.exercise === exerciseName);
+            
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:#444;font-size:12px;">No history found.</div>';
+                return;
+            }
+
+            let html = '';
+            history.slice(-10).reverse().forEach((h, hIdx) => {
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
+                    <div style="flex:1;">
+                        <div style="font-size:10px; color:#666;">${h.date || 'Today'}</div>
+                        <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person?.toUpperCase()}</div>
+                        ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                    </div>
+                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                        <div>
+                            <div style="font-size:12px; font-weight:600; color:#ddd;">
+                                ${ex.timed ? `${h.reps}${h.weight ? ` · ${h.weight}lbs` : ""}` : (h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`)}
+                            </div>
+                            <div style="font-size:9px; color:#444; font-family:var(--mono);">${ex.timed ? "⏱" : (h.range ? h.range.replace("r", "").replace("_", "-") : "")}</div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        }
+
+        function toggleHistory(e, idx, exerciseName) {
+            e.stopPropagation();
+            const drawer = document.getElementById(`history-drawer-${idx}`);
+            const content = document.getElementById(`history-content-${idx}`);
+            
+            if (drawer.style.display === 'block') {
+                drawer.style.display = 'none';
+                return;
+            }
+            
+            drawer.style.display = 'block';
+            renderHistory(idx, getStandardizedName(exerciseName));
+            
             const history = (AppState.globalData.history || []).filter(h => 
                 h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() && 
                 h.person &&
@@ -1924,15 +1955,15 @@
             );
             
             if (history.length === 0) {
-                content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);font-size:11px;">No history found for active people.</div>';
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);">No history found for active people.</div>';
                 return;
             }
-
+            
             let html = '';
             // Get last 10 entries, reversed
             const recent = history.slice(-10).reverse();
             recent.forEach(h => {
-                const exData = AppState.globalData.exercises.find(exItem => exItem.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
+                const exData = AppState.globalData.exercises.find(ex => ex.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
                 const isTimed = exData.timed;
                 let resultText = '';
                 if (isTimed) {
@@ -1944,43 +1975,30 @@
                 const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
                 
                 html += `
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #1a1a1a; align-items:center;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #1a1a1a;">
                    <div style="flex:1;">
-                      <div style="font-size:9px; color:#444;">${h.date || 'Unknown Date'}</div>
-                      <div style="font-size:11px; color:var(--accent); font-weight:700;">${h.person.toUpperCase()}</div>
-                      ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                      <div style="font-size:10px; color:var(--muted);">${h.date || 'Unknown Date'}</div>
+                      <div style="font-size:11px; color:var(--accent); font-weight:600;">${h.person.toUpperCase()}</div>
+                      ${h.note ? `<div style="font-size:10px; color:var(--muted); font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
                    </div>
                    <div style="text-align:right; display:flex; align-items:center; gap:8px;">
                       <div>
-                          <div style="font-size:12px; font-weight:700; color:#ddd;">${resultText}</div>
-                          <div style="font-size:9px; color:#333; font-family:var(--mono);">${rangeLabel}</div>
+                          <div style="font-size:12px; font-weight:600; color:var(--text);">${resultText}</div>
+                          <div style="font-size:9px; color:var(--muted); font-family:var(--mono);">${rangeLabel}</div>
                       </div>
-                      ${showDeleteBtn ? `
                        <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', '${h.range}', ${idx})" 
-                               style="background:none; border:none; color:#333; cursor:pointer; padding:4px; font-size:10px;" title="Delete Entry">✕</button>
-                      ` : ''}
+                               style="background:none; border:none; color:#ff4444; cursor:pointer; padding:4px; opacity:0.6;" title="Delete Entry">
+                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                       </button>
                    </div>
                 </div>`;
             });
             content.innerHTML = html;
         }
 
-        function toggleHistory(e, idx, exerciseName) {
-            e.stopPropagation();
-            const drawer = document.getElementById(`history-drawer-${idx}`);
-            if (drawer.style.display === 'block') {
-                drawer.style.display = 'none';
-                return;
-            }
-            drawer.style.display = 'block';
-            renderHistory(idx, getStandardizedName(exerciseName), true);
-        }
-
         async function deletePlanHistory(event, date, person, exercise, reps, weight, range, idx) {
             event.stopPropagation();
             if(!confirm(`Delete this entry for ${person.toUpperCase()}?`)) return;
-            const pin = window.requireAdminPin();
-            if (!pin) return;
             
             const btn = event.currentTarget;
             btn.style.opacity = '0.3';
@@ -1992,8 +2010,7 @@
                 person: person,
                 reps: reps.toString(),
                 weight: weight.toString(),
-                range: range,
-                pin: pin
+                range: range
             };
             
             try {
@@ -2007,7 +2024,7 @@
                               h.range === range)
                         );
                     }
-                    renderHistory(idx, getStandardizedName(exercise), true);
+                    toggleHistory({ stopPropagation: () => {} }, idx, exercise);
                     
                     // Signal Lift tab to refresh if open
                     if (window.refreshLiftData) window.refreshLiftData();
@@ -2078,8 +2095,7 @@
                     AppState.maxes[stdExName][p][rangeKey] = {reps, weight};
                     const newMaxStr = `${reps}x${weight}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
-                    const activeRange = getActiveRangeForExercise(ex, AppState.workout);
-                    if (rangeKey === getRangeKeyFromLabel(activeRange)) {
+                    if (rangeKey === getRangeKeyFromLabel(AppState.workout.repRange)) {
                         const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
                         if(valId) valId.textContent = newMaxStr;
                     }
@@ -2110,7 +2126,7 @@
                 // If history drawer is open, refresh it
                 const drawer = document.getElementById(`history-drawer-${cardIdx}`);
                 if (drawer && drawer.style.display === 'block') {
-                    renderHistory(cardIdx, getStandardizedName(exerciseName), true);
+                    renderHistory(cardIdx, getStandardizedName(exerciseName));
                 }
                 
                 if (bannerMsg) {
@@ -2717,23 +2733,29 @@
         setEditExId(null);
       };
 
-            const saveInlineMetadata = async (exId, newCat, newLoc) => {
+      const saveInlineMetadata = async (exId, newCat, newLoc) => {
         const ex = exercises.find(e => e.id === exId);
         if (!ex) return;
-        const pin = window.requireAdminPin();
-        if (!pin) return;
         
-        const updated = exercises.map(e => e.id === exId ? { ...e, category: newCat, location: newLoc } : e);
-        await persist(updated, null, { 
-            action: "saveExercise", 
-            exercise: ex.name, 
-            timed: ex.timed, 
-            category: newCat, 
-            location: newLoc,
-            pin: pin 
-        });
-        setEditExId(null);
-        showToast("Metadata Saved ?");
+        setSyncStatus("syncing");
+        try {
+            await sheetsPost({ 
+                action: "saveExercise", 
+                exercise: ex.name, 
+                timed: ex.timed, 
+                category: newCat, 
+                location: newLoc 
+            });
+            const updated = exercises.map(e => e.id === exId ? { ...e, category: newCat, location: newLoc } : e);
+            setExercises(updated);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+            setEditExId(null);
+            showToast("Metadata Saved ✓");
+            setSyncStatus("ok");
+        } catch(err) {
+            showToast("Failed to save metadata", "error");
+            setSyncStatus("error");
+        }
       };
 
       const openLog = (id) => {
@@ -2851,14 +2873,12 @@
         });
         await persist(updated, null, {
           action: "deleteHistory", exercise: ex.name,
-          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range, pin: pin
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
         });
         showToast("Entry deleted");
       };
 
       const deleteHistoryEntry = async (exId, histIdx) => {
-        const pin = window.requireAdminPin();
-        if (!pin) return;
         const ex    = exercises.find(e => e.id === exId);
         const entry = ex?.history?.[histIdx];
         const updated = exercises.map(ex => {
@@ -2875,19 +2895,17 @@
         });
         await persist(updated, null, entry ? {
           action: "deleteHistory", exercise: ex.name,
-          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range, pin: pin
+          person: entry.person, reps: entry.reps, weight: entry.weight, range: entry.range,
         } : null);
         setConfirmDelete(null);
         showToast("Entry deleted");
       };
 
       const deleteExercise = async (id) => {
-        const pin = window.requireAdminPin();
-        if (!pin) return;
         const ex = exercises.find(e => e.id === id);
         if (!ex) return;
         const updated = exercises.filter(e => e.id !== id);
-        await persist(updated, null, { action: "deleteExercise", exercise: ex.name, pin: pin });
+        await persist(updated, null, { action: "deleteExercise", exercise: ex.name });
         setConfirmDelete(null);
         if (expanded === id) setExpanded(null);
         showToast("Deleted");
@@ -3059,7 +3077,7 @@
         const ex = exercises.find(e => e.id === logExId);
         return (
           <div style={s.root}>
-            <div className="header" style={{ position: "sticky", top: 0, zIndex: 100 }}>
+            <div style={s.header}>
               <button style={s.backBtn} onClick={finishLogging}>← Done</button>
               <div style={s.headerTitle}>LOG SET {setCount}</div>
               <div style={{ width: 60 }} />
@@ -3194,7 +3212,7 @@
       if (view === "add") {
         return (
           <div style={s.root}>
-            <div className="header" style={{ position: "sticky", top: 0, zIndex: 100 }}>
+            <div style={s.header}>
               <button style={s.backBtn} onClick={() => setView("list")}>← Back</button>
               <div style={s.headerTitle}>NEW EXERCISE</div>
               <div style={{ width: 60 }} />
@@ -3265,16 +3283,16 @@
 
       return (
         <div style={s.root}>
-          <div className="header" style={{ position: "sticky", top: 0, zIndex: 100 }}>
-            <div className="header-left">
+          <div style={s.header}>
+            <div style={s.headerLeft}>
               <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: "#f97316" }}>LIFT</h1>
               <div style={{ display: "flex", alignItems: "center" }}>
-                <p style={{ fontSize: 10, color: "#444", letterSpacing: 2, marginTop: 3, fontFamily: "var(--mono)" }}>STABILIZATION V4.0</p>
+                <p style={s.headerSub}>STABILIZATION V4.0</p>
                 {syncDot}
               </div>
             </div>
-            <div className="header-right">
-              <button className="settings-btn" onClick={() => setView("settings")}>⚙️</button>
+            <div style={s.headerRight}>
+              <button style={s.iconBtn} onClick={() => setView("settings")}>⚙️</button>
             </div>
           </div>
 

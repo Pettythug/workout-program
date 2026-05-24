@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0c0c0c" />
+  <title>Workout Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0c0c0c;
+      color: #fff;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Ambient background glow */
+    body::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      left: -10%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(0,0,0,0) 70%);
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      right: -10%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, rgba(0,0,0,0) 70%);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 400px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #f97316;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    p.subtitle {
+      font-size: 13px;
+      color: #888;
+      letter-spacing: 2px;
+    }
+
+    .card-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .app-card {
+      display: flex;
+      flex-direction: column;
+      padding: 32px 24px;
+      text-decoration: none;
+      background: rgba(25, 25, 25, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: #888;
+      opacity: 0.5;
+      transition: opacity 0.3s ease;
+    }
+
+    .app-card:nth-of-type(1)::before { background: #f97316; } /* Ultimate */
+    .app-card:nth-of-type(2)::before { background: #3b82f6; } /* Pro */
+    .app-card:nth-of-type(3)::before { background: #22c55e; } /* Builder Pro */
+    .app-card:nth-of-type(4)::before { background: #a855f7; } /* Beta Tracker */
+    .app-card:nth-of-type(5)::before { background: #ec4899; } /* Beta Builder V3 */
+    .app-card:nth-of-type(6)::before { background: #ec4899; } /* Beta Builder V2 */
+    .app-card:nth-of-type(7)::before { background: #888888; } /* Classic Tracker */
+    .app-card:nth-of-type(8)::before { background: #888888; } /* Classic Builder */
+
+    .app-card:hover, .app-card:focus {
+      outline: none;
+      transform: translateY(-4px);
+      background: rgba(35, 35, 35, 0.8);
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    
+    .app-card:hover::before, .app-card:focus::before {
+      opacity: 1;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+
+    .app-card:nth-of-type(1) .card-title { color: #f97316; }
+    .app-card:nth-of-type(2) .card-title { color: #3b82f6; }
+    .app-card:nth-of-type(3) .card-title { color: #22c55e; }
+    .app-card:nth-of-type(4) .card-title { color: #a855f7; }
+    .app-card:nth-of-type(5) .card-title { color: #ec4899; }
+    .app-card:nth-of-type(6) .card-title { color: #ec4899; }
+    .app-card:nth-of-type(7) .card-title { color: #888888; }
+    .app-card:nth-of-type(8) .card-title { color: #888888; }
+
+    .new-badge {
+      display: inline-block;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #000;
+      background: #22c55e;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #999;
+      line-height: 1.5;
+    }
+
+    .card-icon {
+      position: absolute;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 24px;
+      opacity: 0.2;
+      transition: all 0.3s ease;
+    }
+
+    .app-card:hover .card-icon {
+      opacity: 0.8;
+      transform: translateY(-50%) translateX(4px);
+    }
+
+    @media (max-width: 380px) {
+      .container { padding: 16px; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Tracking Hub</h1>
+      <p class="subtitle">CHOOSE YOUR MODULE</p>
+    </header>
+
+    <div class="card-container">
+      <!-- PRODUCTION / ULTIMATE -->
+      <a href="gymlog-ultimate.html" class="app-card">
+        <div class="card-title">GYMLOG ULTIMATE <span class="new-badge" style="background:#f97316;color:#000">NEW</span></div>
+        <div class="card-desc">The unified single-page application combining LIFT (Tracker) and PLAN (Builder).</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="gym-log-pro.html" class="app-card">
+        <div class="card-title">GYM LOG PRO <span class="new-badge" style="background:#3b82f6;color:#fff">V3</span></div>
+        <div class="card-desc">Standalone high-performance Tracker with timed exercises, 13+ rep range, and unified roster sync.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="workout-builder-pro.html" class="app-card">
+        <div class="card-title">BUILDER PRO</div>
+        <div class="card-desc">Standalone approved working version of the Neon Builder. Fully connected to Sheets.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <!-- BETA / DEVELOPMENT -->
+      <a href="gymlog-variation-beta.html" class="app-card">
+        <div class="card-title">ULTIMATE BETA <span class="new-badge" style="background:#f97316;color:#000">TEST</span></div>
+        <div class="card-desc">Testing fixes for hidden people and roster syncing in the Ultimate app.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="personal-gym-log.html" class="app-card">
+        <div class="card-title">GYM LOG ARCHIVE <span class="new-badge" style="background:#888;color:#fff">V1</span></div>
+        <div class="card-desc">The previous standalone Pro version (personal-gym-log.html).</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="workout-builder-v3.html" class="app-card">
+        <div class="card-title">BUILDER V3 BETA <span class="new-badge" style="background:#a855f7;color:#fff">DEV</span></div>
+        <div class="card-desc">Active development version testing new Builder features.</div>
+        <div class="card-icon">▸</div>
+      </a>
+      
+      <a href="workout-builder-v2.html" class="app-card">
+        <div class="card-title">BUILDER V2 BETA <span class="new-badge" style="background:#a855f7;color:#fff">DEV</span></div>
+        <div class="card-desc">Early access to new features and experimental UI for the builder.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <!-- DEPRECATED / CLASSIC -->
+      <a href="gym-log.html" class="app-card">
+        <div class="card-title">ORIGINAL GYM LOG</div>
+        <div class="card-desc">Original gym log for Brian &amp; Dad. Legacy version.</div>
+        <div class="card-icon">▸</div>
+      </a>
+
+      <a href="workout-builder.html" class="app-card">
+        <div class="card-title">BUILDER CLASSIC</div>
+        <div class="card-desc">The original light-themed builder for legacy sessions.</div>
+        <div class="card-icon">▸</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

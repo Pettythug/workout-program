@@ -26,6 +26,7 @@
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
+const ADMIN_PIN   = "5050";
 const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
@@ -438,6 +439,7 @@ function gymlog_handleSyncAll(payload) {
 // =============================================================================
 
 function gymlog_handleSaveExercise(payload) {
+  verifyAdminPin(payload);
   const { exercise, timed, category, location } = payload;
   if (!exercise) return err("No exercise name provided");
 
@@ -515,7 +517,13 @@ function gymlog_handleSavePeople(payload) {
 // GYMLOG — DELETE HISTORY ENTRY
 // =============================================================================
 
+function verifyAdminPin(payload) {
+  if (payload.pin !== ADMIN_PIN) {
+    throw new Error("Unauthorized: Invalid Admin PIN");
+  }
+}
 function gymlog_handleDeleteHistory(payload) {
+  verifyAdminPin(payload);
   const { exercise, person, reps, weight, range } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
 
@@ -593,6 +601,7 @@ function gymlog_handleSaveSettings(payload) {
 // =============================================================================
 
 function gymlog_handleDeleteExercise(payload) {
+  verifyAdminPin(payload);
   const { exercise } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
   const bestSheet = getOrCreateSheet(BEST_TAB,    BEST_HEADERS);
