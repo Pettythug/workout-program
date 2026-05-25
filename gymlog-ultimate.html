@@ -1175,6 +1175,13 @@
     </div>
 
     <script>
+        /*******************************************************************************
+         * ARCHITECTURE ZONE 1: VANILLA JAVASCRIPT (PLAN TAB)
+         * 
+         * This section handles the state, rendering, and logic for the daily "PLAN" tab.
+         * It relies on direct DOM manipulation (document.getElementById, innerHTML) to
+         * render the active workout and the per-person exercise cards.
+         *******************************************************************************/
         let exerciseModes = {};
         window.requireAdminPin = () => {
             const pin = prompt("Enter Admin PIN to continue:");
@@ -1235,8 +1242,38 @@
             setCounters: {},
             accessorySetCounter: 1,
             globalData: null,
-            exerciseStatus: {}
+            exerciseStatus: {},
+            openPersonBox: {},
+            tempInputs: {}
         };
+
+        function saveTempInputs() {
+            AppState.tempInputs = {};
+            const inputs = document.querySelectorAll('#exerciseList input, #exerciseList select');
+            inputs.forEach(input => {
+                if (input.id) {
+                    AppState.tempInputs[input.id] = {
+                        value: input.value,
+                        checked: input.type === 'checkbox' ? input.checked : undefined
+                    };
+                }
+            });
+        }
+
+        function restoreTempInputs() {
+            if (!AppState.tempInputs) return;
+            Object.keys(AppState.tempInputs).forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    const data = AppState.tempInputs[id];
+                    if (data.checked !== undefined) {
+                        input.checked = data.checked;
+                    } else {
+                        input.value = data.value;
+                    }
+                }
+            });
+        }
 
 
         let plannerNotes = JSON.parse(localStorage.getItem(PLANNER_NOTES_KEY) || '{}');
@@ -1572,6 +1609,7 @@
         }
 
         function generateWorkout() {
+            try {
             const loc = document.getElementById('locationSelect').value;
 
             // Check global type first
@@ -1689,9 +1727,44 @@
 
             saveWorkoutState();
             renderWorkout(AppState.workout, genExercises);
+            } catch (e) {
+                alert("Error in generateWorkout: " + e.message + "\n" + e.stack);
+                hideLoading();
+            }
         }
 
         function renderWorkout(workout, exercises) {
+            try {
+            saveTempInputs();
+
+            if (!document.getElementById('global-datalists')) {
+                const dlContainer = document.createElement('div');
+                dlContainer.id = 'global-datalists';
+                dlContainer.style.display = 'none';
+                
+                const formatMeta = (val) => {
+                    if (!val) return val;
+                    const str = String(val);
+                    if (str === 'true') return 'True';
+                    if (str === 'false') return 'False';
+                    return str;
+                };
+                
+                const gExs = AppState.globalData.exercises || [];
+                const uniqueCategories = [...new Set(gExs.map(e => e.category || "General"))].sort();
+                const allManufacturers = [...new Set(gExs.map(e => formatMeta(e.manufacturer)).filter(Boolean))].sort();
+                const allMuscles = [...new Set(gExs.map(e => formatMeta(e.muscleGroups || e.muscle)).filter(Boolean))].sort();
+                const allBaseExercises = [...new Set(gExs.map(e => formatMeta(e.baseExercise)).filter(Boolean))].sort();
+                
+                dlContainer.innerHTML = `
+                    <datalist id="global-cat-list">${uniqueCategories.map(c => `<option value="${c}"></option>`).join('')}</datalist>
+                    <datalist id="global-mfg-list">${allManufacturers.map(m => `<option value="${m}"></option>`).join('')}</datalist>
+                    <datalist id="global-base-list">${allBaseExercises.map(b => `<option value="${b}"></option>`).join('')}</datalist>
+                    <datalist id="global-muscle-list">${allMuscles.map(m => `<option value="${m}"></option>`).join('')}</datalist>
+                `;
+                document.body.appendChild(dlContainer);
+            }
+
             document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
             const badge = document.getElementById('workoutBadge');
             badge.textContent = workout.type;
@@ -1776,28 +1849,9 @@
                             style="width: 100%; background: #000; border: 1px solid #161616; border-radius: 4px; padding: 4px 8px; font-size: 10px; font-family: var(--mono); color: var(--accent); outline: none;"
                         />
                     </div>
-                    <div class="exercise-max" style="font-family:var(--mono); font-size:10px; color:#666; margin-top:4px;">
                 `;
 
-                AppState.people.forEach(p => {
-                    const stdName = getStandardizedName(ex.name);
-                    const maxData = AppState.maxes[stdName]?.[p] || {};
-                    const activeRange = getActiveRangeForExercise(ex, workout);
-                    const rangeKey = getRangeKeyFromLabel(activeRange);
-                    const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
-                    headerHTML += `<span style="margin-right:8px;">${p}: <span style="color:var(--accent);" id="maxval-${idx}-${p}">${currentMax}</span></span>`;
-                });
-
                 headerHTML += `
-                    </div>
-                  </div>
-                  <div class="history-icon" onclick="toggleHistory(event, ${idx}, '${ex.name.replace(/'/g, "\\'")}')"
-                    title="View recent history"
-                    style="margin-right: 8px; color: var(--muted); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 8px; padding: 5px; background: var(--surface); cursor: pointer;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
                   </div>
                   <div class="exercise-status" id="status-icon-${idx}" style="display:flex; align-items:center; gap:8px;">
                     ${(AppState.exerciseStatus[ex.name] === 'done' || AppState.exerciseStatus[ex.name] === 'skipped') ?
@@ -1812,27 +1866,65 @@
                       <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                   </div>
-                </div>
-                <div id="history-drawer-${idx}" style="display:none; padding:12px 16px; background:#0e0e0e; border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a;">
-                    <div style="font-size:10px; color:var(--muted); letter-spacing:2px; margin-bottom:8px; font-weight:700; font-family:var(--mono);">RECENT HISTORY</div>
-                    <div id="history-content-${idx}" style="font-size:12px; color:var(--text);">Loading...</div>
                 </div>`;
 
                 const curSetNum = AppState.setCounters[idx] || 1;
 
-                let inputsHTML = AppState.people.map(p => `
-                    <div class="person-block" style="margin-bottom:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                            <div class="person-label" style="font-weight:800; color:var(--accent); font-family:var(--mono);">${p.toUpperCase()}</div>
-                            <div class="set-input-group">
-                              <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="reps" min="1" max="99" style="text-align:center;">
-                              <span class="set-separator">×</span>
-                              <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="lbs" min="0" max="9999" style="text-align:center;">
+                const inputsHTML = AppState.people.map(p => {
+                    const key = `${idx}-${p}`;
+                    const isOpen = !!AppState.openPersonBox[key];
+                    const stdName = getStandardizedName(ex.name);
+                    const maxData = AppState.maxes[stdName]?.[p] || {};
+                    const activeRange = getActiveRangeForExercise(ex, workout);
+                    const rangeKey = getRangeKeyFromLabel(activeRange);
+                    const currentMax = maxData[rangeKey] ? `${maxData[rangeKey].reps}x${maxData[rangeKey].weight}` : '—';
+                    
+                    const m1 = maxData['r1_3'] ? `${maxData['r1_3'].reps}x${maxData['r1_3'].weight}` : '—';
+                    const m4 = maxData['r4_7'] ? `${maxData['r4_7'].reps}x${maxData['r4_7'].weight}` : '—';
+                    const m8 = maxData['r8_12'] ? `${maxData['r8_12'].reps}x${maxData['r8_12'].weight}` : '—';
+                    const m13 = maxData['r13_plus'] ? `${maxData['r13_plus'].reps}x${maxData['r13_plus'].weight}` : '—';
+                    
+                    const fullMaxString = `1-3 (<span id="m1-${idx}-${p}" style="${rangeKey==='r1_3'?'color:var(--accent);font-weight:bold;':''}">${m1}</span>) ➔ 4-7 (<span id="m4-${idx}-${p}" style="${rangeKey==='r4_7'?'color:var(--accent);font-weight:bold;':''}">${m4}</span>) ➔ 8-12 (<span id="m8-${idx}-${p}" style="${rangeKey==='r8_12'?'color:var(--accent);font-weight:bold;':''}">${m8}</span>) ➔ 13+ (<span id="m13-${idx}-${p}" style="${rangeKey==='r13_plus'?'color:var(--accent);font-weight:bold;':''}">${m13}</span>)`;
+                    
+                    return `
+                    <div class="person-block" id="person-block-${idx}-${p}" style="margin-bottom:8px; border:1px solid ${isOpen ? 'var(--accent)' : '#1a1a1a'}; transition: all 0.2s ease;">
+                        <div id="person-header-${idx}-${p}" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; cursor:pointer; background:${isOpen ? '#1a1100' : 'transparent'};" onclick="togglePersonRow(event, ${idx}, '${p}')">
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <div id="person-label-${idx}-${p}" class="person-label" style="font-weight:800; color:${isOpen ? 'var(--accent)' : '#888'}; font-family:var(--mono); transition: color 0.2s ease;">${p.toUpperCase()}</div>
+                                <div id="person-max-preview-${idx}-${p}" style="font-size:9px; color:#555; font-family:var(--mono); letter-spacing:0.5px; display:block;">
+                                   MAX: ${fullMaxString}
+                                </div>
+                            </div>
+                            <div id="person-chevron-${idx}-${p}" style="color:${isOpen ? 'var(--accent)' : '#444'}; transform: rotate(${isOpen ? '180deg' : '0deg'}); transition: all 0.2s ease;">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </div>
                         </div>
-                        <input type="text" id="note-${idx}-${p}" placeholder="Note for ${p}..." style="width:100%; background:#050505; border:1px solid #1a1a1a; border-radius:4px; padding:6px 10px; font-size:11px; color:#888; font-family:var(--mono); outline:none;">
+                        
+                        <div id="person-content-${idx}-${p}" style="display:${isOpen ? 'block' : 'none'}; padding:0 16px 16px 16px;">
+                            <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:12px; margin-top:8px;">
+                                <div class="history-icon" onclick="togglePersonHistory(event, ${idx}, '${ex.name.replace(/'/g, "\\'")}', '${p}')" title="History for ${p}" style="color:var(--muted); display:flex; align-items:center; justify-content:center; border:1px solid #333; border-radius:4px; padding:4px; background:#0a0a0a; cursor:pointer;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                </div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <div class="set-input-group" style="flex:1;">
+                                      <input type="number" class="set-input" id="reps-${idx}-${p}" placeholder="REPS" min="1" max="99" style="text-align:center; font-size:16px; font-weight:700;">
+                                      <span class="set-separator">×</span>
+                                      <input type="number" class="set-input" id="weight-${idx}-${p}" placeholder="LBS" min="0" max="9999" style="text-align:center; font-size:16px; font-weight:700;">
+                                    </div>
+                                    <button class="btn-primary" style="padding:12px; flex:0 0 100px; font-size:12px;" id="logbtn-${idx}-${p}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}', '${p}')">LOG SET ${curSetNum}</button>
+                                </div>
+                                <input type="text" id="note-${idx}-${p}" placeholder="Add a note for ${p}..." style="width:100%; background:#050505; border:1px solid #1a1a1a; border-radius:4px; padding:8px 12px; font-size:12px; color:#888; font-family:var(--mono); outline:none;">
+                            </div>
+                            <div id="history-drawer-${idx}-${p}" style="display:none; margin-top:12px; padding:12px; background:#050505; border:1px solid #1a1a1a; border-radius:4px;">
+                                <div style="font-size:10px; color:#555; letter-spacing:1px; margin-bottom:8px; font-weight:700; font-family:var(--mono);">RECENT HISTORY</div>
+                                <div id="history-content-${idx}-${p}" style="font-size:11px; color:#888;">Loading...</div>
+                            </div>
+                        </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
 
                 card.innerHTML = smartHeader + headerHTML + `
                 <div class="set-logger" id="logger-${idx}">
@@ -1840,7 +1932,6 @@
                   
                   <div class="sets-list">
                     ${inputsHTML}
-                    <button class="btn-primary" style="width:100%; margin-top:8px;" id="logbtn-${idx}" onclick="logSet(${idx}, '${ex.name.replace(/'/g, "\\'")}')">Log Set ${curSetNum}</button>
                   </div>
                   <div class="new-max-banner" id="maxbanner-${idx}"></div>
                   <div class="exercise-actions" style="margin-top:16px;">
@@ -1856,7 +1947,13 @@
                       ${selectOptions}
                    </select>
                    <div id="swap-custom-block-${idx}" style="display:none; margin-bottom:12px; padding:12px; background:var(--bg); border-radius:8px; border:1px solid var(--border);">
-                       <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="Enter a custom machine name..." style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                       <input type="text" id="swap-custom-${idx}" class="set-input" placeholder="Exercise Name..." style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                       
+                       <input type="text" id="swap-cat-${idx}" list="global-cat-list" class="set-input" placeholder="Category (e.g. Back)" value="${ex.category}" style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                       <input type="text" id="swap-base-${idx}" list="global-base-list" class="set-input" placeholder="Base Exercise (e.g. Lat Pulldown)" style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                       <input type="text" id="swap-mfg-${idx}" list="global-mfg-list" class="set-input" placeholder="Manufacturer (e.g. Prime)" style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+                       <input type="text" id="swap-muscle-${idx}" list="global-muscle-list" class="set-input" placeholder="Muscle Groups (e.g. Lats, Biceps)" style="width:100%; margin-bottom:12px; font-size:14px; padding:8px;">
+
                        <div style="font-size:10px; color:#555; font-family:var(--mono); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Location</div>
                        <select id="swap-loc-${idx}" class="header-select" style="width:100%; max-width:100%; padding:10px; font-size:14px; background:var(--surface); border:1px solid #444; border-radius:8px; color:var(--text); margin-bottom:10px;">
                           ${customLocDropdownHTML}
@@ -1869,7 +1966,6 @@
                                <input type="checkbox" id="swap-alt-${idx}"> + ALT
                            </label>
                        </div>
-                       <p style="font-size:10px; color:#555; margin-top:8px; font-family:var(--mono);">Category: <span style="color:var(--accent);">${ex.category}</span> &mdash; inherited from this card</p>
                    </div>
                    <div style="display:flex; gap:8px;">
                      <button class="btn-primary" style="flex:1; padding:12px; font-size:14px;" id="confirm-swap-btn-${idx}" onclick="confirmSwap(${idx})">CONFIRM SWAP</button>
@@ -1881,8 +1977,13 @@
                 list.appendChild(card);
             });
 
+            restoreTempInputs();
             hideLoading();
             document.getElementById('workoutContent').style.display = 'block';
+            } catch(e) {
+                alert("Error in renderWorkout: " + e.message + "\n" + e.stack);
+                hideLoading();
+            }
         }
 
         function showSwap(idx) {
@@ -1915,10 +2016,16 @@
                 let selectedLoc = document.getElementById(`swap-loc-${idx}`).value;
                 const createSingle = document.getElementById(`swap-single-${idx}`).checked;
                 const createAlt = document.getElementById(`swap-alt-${idx}`).checked;
+                
+                const customCat = document.getElementById(`swap-cat-${idx}`).value.trim() || newCat;
+                const customBase = document.getElementById(`swap-base-${idx}`).value.trim();
+                const customMfg = document.getElementById(`swap-mfg-${idx}`).value.trim();
+                const customMuscle = document.getElementById(`swap-muscle-${idx}`).value.trim();
 
                 if (!typed) { alert('Please enter a custom machine name.'); return; }
 
                 newName = typed;
+                newCat = customCat; // Use custom cat for the local session updates
                 btn.textContent = 'Saving...';
                 btn.disabled = true;
 
@@ -1930,8 +2037,11 @@
                     const req = {
                         action: "saveExercise",
                         exercise: name,
-                        category: newCat,
+                        category: customCat,
                         location: selectedLoc,
+                        baseExercise: customBase,
+                        manufacturer: customMfg,
+                        muscleGroups: customMuscle,
                         timed: false
                     };
                     try {
@@ -2136,7 +2246,11 @@
                                 h.range === range)
                         );
                     }
-                    renderHistory(idx, getStandardizedName(exercise), true);
+                    if (typeof renderPersonHistory !== 'undefined') {
+                        renderPersonHistory(idx, getStandardizedName(exercise), person, true);
+                    } else {
+                        renderHistory(idx, getStandardizedName(exercise), true);
+                    }
 
                     // Signal Lift tab to refresh if open
                     if (window.refreshLiftData) window.refreshLiftData();
@@ -2211,19 +2325,107 @@
             btn.textContent = 'Log Set';
         }
 
-        async function logSet(cardIdx, exerciseName) {
+        function togglePersonRow(e, idx, person) {
+            if (e) e.stopPropagation();
+            const key = `${idx}-${person}`;
+            const isOpen = !AppState.openPersonBox[key];
+            AppState.openPersonBox[key] = isOpen;
+            saveWorkoutState();
+            
+            // Direct DOM manipulation to avoid re-rendering entire workout and losing open card state
+            const content = document.getElementById(`person-content-${idx}-${person}`);
+            const block = document.getElementById(`person-block-${idx}-${person}`);
+            const header = document.getElementById(`person-header-${idx}-${person}`);
+            const label = document.getElementById(`person-label-${idx}-${person}`);
+            const preview = document.getElementById(`person-max-preview-${idx}-${person}`);
+            const chevron = document.getElementById(`person-chevron-${idx}-${person}`);
+            
+            if (content) content.style.display = isOpen ? 'block' : 'none';
+            if (block) block.style.border = `1px solid ${isOpen ? 'var(--accent)' : '#1a1a1a'}`;
+            if (header) header.style.background = isOpen ? '#1a1100' : 'transparent';
+            if (label) label.style.color = isOpen ? 'var(--accent)' : '#888';
+            if (chevron) {
+                chevron.style.color = isOpen ? 'var(--accent)' : '#444';
+                chevron.style.transform = `rotate(${isOpen ? '180deg' : '0deg'})`;
+            }
+        }
+
+        function togglePersonHistory(e, idx, exerciseName, person) {
+            e.stopPropagation();
+            const drawer = document.getElementById(`history-drawer-${idx}-${person}`);
+            if (drawer.style.display === 'block') {
+                drawer.style.display = 'none';
+                return;
+            }
+            drawer.style.display = 'block';
+            renderPersonHistory(idx, getStandardizedName(exerciseName), person, true);
+        }
+
+        function renderPersonHistory(idx, exerciseName, person, showDeleteBtn = false) {
+            const content = document.getElementById(`history-content-${idx}-${person}`);
+            const ex = AppState.workout.exercises[idx];
+            const history = (AppState.globalData.history || []).filter(h =>
+                h.exercise && h.exercise.trim().toLowerCase() === exerciseName.trim().toLowerCase() &&
+                h.person && h.person.toLowerCase().trim() === person.toLowerCase().trim()
+            );
+
+            if (history.length === 0) {
+                content.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);font-size:11px;">No history found.</div>';
+                return;
+            }
+
+            let html = '';
+            const recent = history.slice(-10).reverse();
+            recent.forEach(h => {
+                const exData = AppState.globalData.exercises.find(exItem => exItem.name.trim().toLowerCase() === exerciseName.trim().toLowerCase()) || {};
+                const isTimed = exData.timed;
+                let resultText = '';
+                if (isTimed) {
+                    resultText = h.reps + (h.weight ? ` · ${h.weight}lbs` : '');
+                } else {
+                    resultText = h.weight ? `${h.reps}x${h.weight}` : `${h.reps} reps`;
+                }
+
+                const rangeLabel = isTimed ? '⏱' : (h.range ? h.range.replace('r', '').replace('_', '-') : '');
+
+                html += `
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid #1a1a1a; align-items:center;">
+                   <div style="flex:1;">
+                      <div style="font-size:9px; color:#444;">${h.date || 'Unknown Date'}</div>
+                      ${h.note ? `<div style="font-size:10px; color:#555; font-style:italic; margin-top:2px;">${h.note}</div>` : ''}
+                   </div>
+                   <div style="text-align:right; display:flex; align-items:center; gap:8px;">
+                      <div>
+                          <div style="font-size:12px; font-weight:700; color:#ddd;">${resultText}</div>
+                          <div style="font-size:9px; color:#333; font-family:var(--mono);">${rangeLabel}</div>
+                      </div>
+                      ${showDeleteBtn ? `
+                       <button onclick="deletePlanHistory(event, '${h.date}', '${h.person.toLowerCase()}', '${exerciseName.replace(/'/g, "\\'")}', '${h.reps}', '${h.weight}', '${h.range}', ${idx})" 
+                               style="background:none; border:none; color:#333; cursor:pointer; padding:4px; font-size:10px;" title="Delete Entry">✕</button>
+                      ` : ''}
+                   </div>
+                </div>`;
+            });
+            content.innerHTML = html;
+        }
+
+        async function logSet(cardIdx, exerciseName, targetPerson) {
             const ex = AppState.workout.exercises[cardIdx];
             const setNum = AppState.setCounters[cardIdx] || 1;
-            const btn = document.getElementById(`logbtn-${cardIdx}`);
-            btn.textContent = 'Saving...';
-            btn.disabled = true;
+            const btnId = targetPerson ? `logbtn-${cardIdx}-${targetPerson}` : `logbtn-${cardIdx}`;
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.textContent = 'Saving...';
+                btn.disabled = true;
+            }
 
             const entries = [];
             const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
             let bannerMsg = "";
+            const peopleToLog = targetPerson ? [targetPerson] : AppState.people;
 
-            for (const p of AppState.people) {
+            for (const p of peopleToLog) {
                 const repsVal = document.getElementById(`reps-${cardIdx}-${p}`).value;
                 const weightVal = document.getElementById(`weight-${cardIdx}-${p}`).value;
                 const noteVal = document.getElementById(`note-${cardIdx}-${p}`)?.value || "";
@@ -2267,16 +2469,25 @@
                     const newMaxStr = ex.timed ? `${reps} x ${weightValFixed}` : `${reps}x${weightNum}`;
                     bannerMsg += `🏆 ${p} New ${repRange} max: ${newMaxStr}<br>`;
                     const activeRange = getActiveRangeForExercise(ex, AppState.workout);
-                    if (rangeKey === getRangeKeyFromLabel(activeRange)) {
-                        const valId = document.getElementById(`maxval-${cardIdx}-${p}`);
+                    let rangeId = '';
+                    if (rangeKey === 'r1_3') rangeId = 'm1';
+                    if (rangeKey === 'r4_7') rangeId = 'm4';
+                    if (rangeKey === 'r8_12') rangeId = 'm8';
+                    if (rangeKey === 'r13_plus') rangeId = 'm13';
+                    if (rangeId) {
+                        const valId = document.getElementById(`${rangeId}-${cardIdx}-${p}`);
                         if (valId) valId.textContent = newMaxStr;
+                    }
+                    if (rangeKey === getRangeKeyFromLabel(activeRange)) {
+                        const previewId = document.getElementById(`person-max-preview-${cardIdx}-${p}`);
+                        if (previewId) previewId.innerHTML = `MAX: ${newMaxStr}`;
                     }
                 }
             }
 
             if (entries.length === 0) {
                 alert('Please enter reps for at least one person.');
-                btn.textContent = `Log Set ${setNum}`;
+                btn.textContent = `LOG SET ${setNum}`;
                 btn.disabled = false;
                 return;
             }
@@ -2296,17 +2507,19 @@
                 AppState.globalData.history.push(...entriesWithEx);
 
                 // If history drawer is open, refresh it
-                const drawer = document.getElementById(`history-drawer-${cardIdx}`);
-                if (drawer && drawer.style.display === 'block') {
-                    renderHistory(cardIdx, getStandardizedName(exerciseName), true);
-                }
+                peopleToLog.forEach(p => {
+                    const drawer = document.getElementById(`history-drawer-${cardIdx}-${p}`);
+                    if (drawer && drawer.style.display === 'block') {
+                        renderPersonHistory(cardIdx, getStandardizedName(exerciseName), p, true);
+                    }
+                });
 
                 if (bannerMsg) {
                     const banner = document.getElementById(`maxbanner-${cardIdx}`);
                     if (banner) { banner.style.display = 'block'; banner.innerHTML = bannerMsg; }
                 }
 
-                AppState.people.forEach(p => {
+                peopleToLog.forEach(p => {
                     const rEl = document.getElementById(`reps-${cardIdx}-${p}`);
                     const wEl = document.getElementById(`weight-${cardIdx}-${p}`);
                     if (rEl) rEl.value = '';
@@ -2316,14 +2529,21 @@
                 AppState.setCounters[cardIdx] = setNum + 1;
                 saveWorkoutState();
 
-                btn.textContent = `Log Set ${AppState.setCounters[cardIdx]}`;
-                btn.disabled = false;
+                AppState.people.forEach(person => {
+                    const b = document.getElementById(`logbtn-${cardIdx}-${person}`);
+                    if (b) {
+                        b.textContent = `LOG SET ${AppState.setCounters[cardIdx]}`;
+                        if (b === btn) b.disabled = false;
+                    }
+                });
 
             } catch (e) {
                 console.error(e);
                 alert('Failed to log set. Check console.');
-                btn.textContent = `Log Set ${setNum}`;
-                btn.disabled = false;
+                if (btn) {
+                    btn.textContent = `LOG SET ${setNum}`;
+                    btn.disabled = false;
+                }
             }
         }
 
@@ -2637,6 +2857,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <!--
+      ********************************************************************************
+      * ARCHITECTURE ZONE 2: REACT + BABEL (LIFT TAB)
+      * 
+      * This section handles the "LIFT" tab (exercise database viewer). It is built 
+      * using a completely separate React rendering pipeline and relies on local React 
+      * state (useState, useEffect) for data presentation and filtering.
+      ********************************************************************************
+    -->
     <script type="text/babel">
         const { useState, useEffect } = React;
 
@@ -3534,11 +3763,19 @@
                                             <div style={{ flex: 1 }}>
                                                 <div className="exercise-category">{ex.category}</div>
                                                 <div className="exercise-name">{ex.name}</div>
-                                                <div style={s.maxRow}>
-                                                    {visiblePeople.slice(0, 3).map(p => {
-                                                        const rangeKey = "r8_12"; // Default visual range
-                                                        const b = getBest(ex.id, p.toLowerCase(), rangeKey);
-                                                        return <span key={p} style={s.maxItem}>{p}: <span style={s.maxVal}>{b || "—"}</span></span>;
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                                                    {visiblePeople.map(p => {
+                                                        const m1 = getBest(ex.id, p.toLowerCase(), "r1_3") || '—';
+                                                        const m4 = getBest(ex.id, p.toLowerCase(), "r4_7") || '—';
+                                                        const m8 = getBest(ex.id, p.toLowerCase(), "r8_12") || '—';
+                                                        const m13 = getBest(ex.id, p.toLowerCase(), "r13_plus") || '—';
+                                                        
+                                                        return (
+                                                            <div key={p} style={{ fontSize: '9px', color: '#555', fontFamily: 'var(--mono)', letterSpacing: '0.5px' }}>
+                                                                <span style={{ fontWeight: '800', color: '#888', marginRight: '8px' }}>{p.toUpperCase()}</span>
+                                                                MAX: 1-3 ({m1}) ➔ 4-7 ({m4}) ➔ 8-12 ({m8}) ➔ 13+ ({m13})
+                                                            </div>
+                                                        );
                                                     })}
                                                 </div>
                                             </div>
