@@ -35,7 +35,7 @@ const EXERCISES_TAB = "GymLog_Exercises"; // exercise metadata: timed flag + cat
 const HISTORY_HEADERS   = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep Range", "Note", "Set #"];
 const BEST_HEADERS      = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS    = ["Name"];
-const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note"];
+const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note", "Manufacturer", "Model Series", "Base Exercise", "Muscle Groups", "File Reference"];
 const SETTINGS_TAB      = "GymLog_Settings";
 const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
@@ -138,6 +138,9 @@ function getOrCreateSheet(name, headers) {
       .setFontWeight("bold")
       .setBackground("#f3f3f3");
     sheet.setFrozenRows(1);
+  }
+  if (headers && headers.length > sheet.getMaxColumns()) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
   }
   return sheet;
 }
@@ -242,11 +245,16 @@ function gymlog_doGet() {
       ? exSheet.getRange(2, 1, exSheet.getLastRow() - 1, EXERCISES_HEADERS.length).getValues()
       : [];
     const exercisesMeta = exRaw.map(r => ({
-      name:     String(r[0]).trim(),
-      timed:    r[1] === true || String(r[1]).toLowerCase() === "true",
-      category: String(r[2] || "").trim(),
-      location: String(r[3] || "Anywhere").trim() || "Anywhere",
-      note:     String(r[4] || "").trim(),
+      name:         String(r[0]).trim(),
+      timed:        r[1] === true || String(r[1]).toLowerCase() === "true",
+      category:     String(r[2] || "").trim(),
+      location:     String(r[3] || "Anywhere").trim() || "Anywhere",
+      note:         String(r[4] || "").trim(),
+      manufacturer: String(r[5] || "").trim(),
+      modelSeries:  String(r[6] || "").trim(),
+      baseExercise: String(r[7] || "").trim(),
+      muscleGroups: String(r[8] || "").trim(),
+      fileReference:String(r[9] || "").trim(),
     })).filter(e => e.name);
 
     // Derive unique non-default locations from exercises for the frontend location picker
@@ -473,7 +481,18 @@ function gymlog_handleSaveExercise(payload) {
     }
   }
 
-  const row = [exercise, timed ? true : false, category || "", location || "Anywhere", payload.note || ""];
+  const row = [
+    exercise, 
+    timed ? true : false, 
+    category || "", 
+    location || "Anywhere", 
+    payload.note || "", 
+    payload.manufacturer || "", 
+    payload.modelSeries || "", 
+    payload.baseExercise || "", 
+    payload.muscleGroups || "", 
+    payload.fileReference || ""
+  ];
   if (rowIndex > 0) {
     exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).setValues([row]);
   } else {
@@ -506,7 +525,7 @@ function gymlog_handleSaveExerciseNote(payload) {
     return ok({ savedNote: exercise });
   } else {
     // If exercise doesn't exist in metadata, create it with just the note
-    exSheet.appendRow([exercise, false, "", "Anywhere", note || ""]);
+    exSheet.appendRow([exercise, false, "", "Anywhere", note || "", "", "", "", "", ""]);
     return ok({ createdMetadata: exercise });
   }
 }
@@ -908,5 +927,134 @@ function migrateBestTab() {
   Logger.log("=== Migration complete. You can now redeploy. ===");
 }
 
+// =============================================================================
+// ONE-TIME MIGRATION UTILITY for Circuit Training Mode
+//
+// Reads from "testing exercises" tab and merges into "GymLog_Exercises"
+// Creates a backup of GymLog_Exercises first.
+// =============================================================================
 
+function migrateTestingExercises() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  
+  // 1. Get Testing Exercises tab
+  const testingSheet = ss.getSheetByName("testing exercises");
+  if (!testingSheet) {
+    Logger.log("Error: 'testing exercises' tab not found!");
+    return;
+  }
+  
+  // 2. Get GymLog_Exercises tab and duplicate for backup
+  let exSheet = ss.getSheetByName(EXERCISES_TAB);
+  if (!exSheet) {
+    exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  }
+  
+  // Create backup
+  const backupName = EXERCISES_TAB + "_Backup_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss");
+  ss.insertSheet(backupName, {template: exSheet});
+  Logger.log("Backup created: " + backupName);
+  
+  // 3. Update headers just in case they are missing the new ones
+  exSheet.getRange(1, 1, 1, EXERCISES_HEADERS.length).setValues([EXERCISES_HEADERS]);
+  
+  // 4. Read existing GymLog_Exercises to find exact matches
+  const exLastRow = exSheet.getLastRow();
+  let exData = [];
+  if (exLastRow > 1) {
+    // Fill array so it matches full header length
+    const rawData = exSheet.getRange(2, 1, exLastRow - 1, exSheet.getLastColumn()).getValues();
+    exData = rawData.map(r => {
+      while (r.length < EXERCISES_HEADERS.length) r.push("");
+      return r;
+    });
+  }
+  
+  // 5. Read Testing Exercises tab
+  // Format: Order, Machine Name (Manufacturer - Model - Exercise), Manufacturer, Model Series, Exercise Name, Primary Muscle Groups, Movement Pattern, File Reference
+  const tLastRow = testingSheet.getLastRow();
+  if (tLastRow <= 1) {
+    Logger.log("No data found in 'testing exercises'.");
+    return;
+  }
+  const tData = testingSheet.getRange(2, 1, tLastRow - 1, 8).getValues();
+  
+  // Helper to map categories to our standardized list
+  function normalizeCategory(cat) {
+    const c = String(cat).toLowerCase().trim();
+    if (c.includes("knee dominant")) return "Knee Dominant";
+    if (c.includes("hip dominant")) return "Hip Dominant";
+    if (c.includes("horizontal pull")) return "Horizontal Pull";
+    if (c.includes("vertical pull")) return "Vertical Pull";
+    if (c.includes("horizontal push")) return "Horizontal Push";
+    if (c.includes("vertical push")) return "Vertical Push";
+    if (c.includes("rotational core")) return "Rotational Core";
+    if (c.includes("plank core")) return "Plank Core";
+    if (c.includes("explosive")) return "Explosive";
+    if (c.includes("accessory")) return "Accessory";
+    return String(cat).trim(); // fallback
+  }
 
+  let mergedCount = 0;
+  let addedCount = 0;
+  
+  for (const tRow of tData) {
+    const machineName   = String(tRow[1]).trim();
+    if (!machineName) continue;
+    
+    const manufacturer  = String(tRow[2]).trim();
+    const modelSeries   = String(tRow[3]).trim();
+    const baseExercise  = String(tRow[4]).trim();
+    const muscleGroups  = String(tRow[5]).trim();
+    const movementRaw   = String(tRow[6]).trim();
+    const fileReference = String(tRow[7]).trim();
+    
+    const category = normalizeCategory(movementRaw);
+    
+    // Find if machine name already exists in GymLog_Exercises
+    let foundIndex = -1;
+    for (let i = 0; i < exData.length; i++) {
+      if (String(exData[i][0]).toLowerCase().trim() === machineName.toLowerCase()) {
+        foundIndex = i;
+        break;
+      }
+    }
+    
+    if (foundIndex > -1) {
+      // Update existing
+      exData[foundIndex][2] = category; // update category
+      exData[foundIndex][5] = manufacturer;
+      exData[foundIndex][6] = modelSeries;
+      exData[foundIndex][7] = baseExercise;
+      exData[foundIndex][8] = muscleGroups;
+      exData[foundIndex][9] = fileReference;
+      mergedCount++;
+    } else {
+      // Add new
+      // Headers: Exercise, Timed, Category, Location, Note, Manufacturer, Model Series, Base Exercise, Muscle Groups, File Reference
+      const newRow = [
+        machineName, 
+        false, // Timed
+        category,
+        "Anywhere", // Default Location
+        "", // Note
+        manufacturer,
+        modelSeries,
+        baseExercise,
+        muscleGroups,
+        fileReference
+      ];
+      exData.push(newRow);
+      addedCount++;
+    }
+  }
+  
+  // 6. Write back to GymLog_Exercises
+  if (exData.length > 0) {
+    exSheet.getRange(2, 1, exData.length, EXERCISES_HEADERS.length).setValues(exData);
+  }
+  
+  Logger.log("Migration complete!");
+  Logger.log("Merged (updated) existing items: " + mergedCount);
+  Logger.log("Added new items: " + addedCount);
+}

@@ -1572,6 +1572,7 @@
         }
 
         function generateWorkout() {
+            try {
             const loc = document.getElementById('locationSelect').value;
 
             // Check global type first
@@ -1689,9 +1690,14 @@
 
             saveWorkoutState();
             renderWorkout(AppState.workout, genExercises);
+            } catch (e) {
+                alert("Error in generateWorkout: " + e.message + "\n" + e.stack);
+                hideLoading();
+            }
         }
 
         function renderWorkout(workout, exercises) {
+            try {
             document.getElementById('headerSub').textContent = `#${workout.workoutNum} · ${workout.type} Day`;
             const badge = document.getElementById('workoutBadge');
             badge.textContent = workout.type;
@@ -1883,6 +1889,10 @@
 
             hideLoading();
             document.getElementById('workoutContent').style.display = 'block';
+            } catch(e) {
+                alert("Error in renderWorkout: " + e.message + "\n" + e.stack);
+                hideLoading();
+            }
         }
 
         function showSwap(idx) {

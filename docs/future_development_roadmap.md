@@ -30,8 +30,14 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 
 ### Group 5: Major Feature Development (High Difficulty)
 *Recommended Model: Gemini 3.1 Pro (High)*
-- [ ] Circuit Training Mode: Develop the Custom sequential deck tracker.
-- [ ] Circuit Training Mode: Develop the Auto-Circuit planner.
+- [x] Circuit Training Mode: Develop the Custom sequential deck tracker.
+- [x] Circuit Training Mode: Develop the Auto-Circuit planner.
+
+### Group 5A: Circuit App Polish & Parity Sync (Medium Difficulty)
+*Recommended Model: Gemini 3.1 Pro (High)*
+- [ ] Rep-Range Edge Visualization: Redesign the machine-max UI block to display all available historical maxes side-by-side (1-3 Max, 4-7 Max, 8-12 Max, 13+ Max) for complete edge progression visibility.
+- [ ] Code Cleanup: Audit `circuit-training-pro-beta.html` line-by-line, abstract inline styles to CSS, and consolidate redundant mapping.
+- [ ] Feature Parity: Standardize and sync the custom exercise creation, variation toggling/max recalculation, and inline history viewer back to the standard GymLog beta (`gymlog-variation-beta.html`).
 
 ### Group 6: End-to-End Verification & Optimization Audit (Low Difficulty)
 *Recommended Model: Gemini Flash or 3.1 Pro (Low)*
