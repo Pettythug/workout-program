@@ -4,7 +4,7 @@ This is a quick reference for the current status of the Workout Tracker project 
 
 | File | Status | Description |
 | :--- | :--- | :--- |
-| `gymlog-ultimate.html` | **PRODUCTION** | [DONE] Updated 2026-05-18. Added Glassmorphic Help Drawer guide overlay and premium button micro-animations. |
+| `gymlog-ultimate.html` | **PRODUCTION** | [DONE] Updated 2026-05-24. Promoted Groups 1, 2, 3, and 4 changes (UI alignments, Category Sheets persistence, Admin PINs, and Concurrency Locks). |
 | `workout-builder-pro.html` | **ACTIVE** | AI-powered workout generator and customization engine. |
 | `index.html` | **PORTAL** | Unified hub for accessing all Pro applications. |
 | `gym-core.js` | **CORE** | The Brain. Centralized logic for time parsing, ranges, and data mapping. |
@@ -13,6 +13,7 @@ This is a quick reference for the current status of the Workout Tracker project 
 | `gymlog-variation-beta.html` | **BETA** | Validated Beta Master environment with full premium UI/UX refinements. |
 
 ## Recent Refinements (v4.0 - Stabilization & Phase 2 Flash)
+- **Production Migration (May 24, 2026)**: Promoted Groups 1, 2, 3, and 4 changes (UI alignments, Category Sheets persistence, Admin PINs, and Concurrency Locks) to production.
 - **Visual Design Unification**: Refined `gym-log-pro.html` layout to align its design tokens, neon orange card borders, and solid green "+ LOG" buttons 100% with the master SPA.
 - **Smart Skip (Logging)**: "Skip" button now logs a 0/0 entry with reason to Sheets for history persistence.
 - **Header Unification**: Standardized Orange 20px headers across LIFT and PLAN for a cohesive app feel.
