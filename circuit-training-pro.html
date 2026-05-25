@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0c0c0c" />
+    <title>LIFT - Circuit Training Pro</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+    <script src="gym-core.js"></script>
+    <style>
+        :root {
+            --bg: #0c0c0c;
+            --surface: #111111;
+            --border: #1a1a1a;
+            --text: #e0e0e0;
+            --muted: #555555;
+            --accent: #f97316;
+            --accent-light: rgba(249, 115, 22, 0.1);
+            --success: #22c55e;
+            --success-light: rgba(34, 197, 94, 0.1);
+            --skip: #444444;
+            --mono: 'DM Mono', monospace;
+            --sans: sans-serif;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            animation: spin 0.8s linear infinite;
+        }
+        
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .card.done {
+            opacity: 0.6;
+            border-color: var(--success);
+        }
+
+        .card.skipped {
+            opacity: 0.5;
+            border-color: var(--skip);
+        }
+
+        .card-header {
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .category-tag {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            display: inline-block;
+        }
+
+        .machine-name {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+        
+        .metadata-row {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+
+        .metadata-row span {
+            color: #aaa;
+        }
+        
+        .machine-max {
+            margin-top: 8px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            background: rgba(249, 115, 22, 0.05);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(249, 115, 22, 0.1);
+            display: inline-block;
+        }
+
+        .machine-max span {
+            color: var(--accent);
+            font-weight: 700;
+            margin-left: 4px;
+        }
+
+        .set-logger {
+            display: none;
+            border-top: 1px solid var(--border);
+            padding: 16px;
+            background: #080808;
+        }
+
+        .card.open .set-logger {
+            display: block;
+        }
+
+        .btn-log {
+            flex: 2;
+            background: var(--success);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-primary,
+        .btn-secondary,
+        .btn-success,
+        .btn-danger,
+        .btn-ghost,
+        .btn-accent {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-family: var(--sans);
+            font-size: 12px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-primary:hover,
+        .btn-secondary:hover,
+        .btn-success:hover,
+        .btn-danger:hover,
+        .btn-ghost:hover,
+        .btn-accent:hover {
+            transform: translateY(-1.5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .btn-primary {
+            background: var(--success);
+            color: #000;
+            border-color: var(--success);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
+        .btn-secondary {
+            background: rgba(249, 115, 22, 0.07);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.07);
+            color: #ef4444;
+            border-color: #ef4444;
+        }
+
+        .btn-primary:active,
+        .btn-secondary:active,
+        .btn-success:active,
+        .btn-danger:active,
+        .btn-ghost:active,
+        .btn-accent:active {
+            transform: translateY(0.5px) scale(0.97);
+            opacity: 0.85;
+        }
+
+        .btn-primary:disabled,
+        .btn-secondary:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-action-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .var-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--mono);
+        }
+        .var-btn.active {
+            background: rgba(249, 115, 22, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .input-group {
+            flex: 1;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .input-group input {
+            width: 100%;
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            color: #e0e0e0;
+            font-size: 16px;
+            font-family: var(--mono);
+            outline: none;
+            text-align: center;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent);
+        }
+        
+        /* Hide spin buttons */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            font-size: 11px;
+            color: var(--muted);
+            font-family: var(--mono);
+            margin-top: 2px;
+        }
+        
+        .wizard-btn {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 20px;
+            color: var(--text);
+            font-size: 16px;
+            font-weight: 700;
+            text-align: left;
+            margin-bottom: 16px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s;
+        }
+        
+        .wizard-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .wizard-btn span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400;
+            margin-top: 4px;
+            font-family: var(--mono);
+        }
+        
+        .floating-action {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-weight: 700;
+            font-size: 16px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(249,115,22,0.4);
+            z-index: 200;
+        }
+        
+        .planner-note-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 8px 12px;
+            font-size: 13px;
+            margin-top: 6px;
+            outline: none;
+            font-family: var(--mono);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        function CircuitApp() {
+            const [data, setData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [hiddenPeople, setHiddenPeople] = React.useState(JSON.parse(localStorage.getItem('gym-hidden-people')) || []);
+            const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+            
+            const [view, setView] = useState("planner"); // planner, mimic-setup, tracker
+            const [circuit, setCircuit] = React.useState([]);
+            const [completedMap, setCompletedMap] = useState({});
+            const [openCard, setOpenCard] = useState(null);
+            const [openHistory, setOpenHistory] = useState(null);
+            const [openPersonBox, setOpenPersonBox] = useState({});
+            const [notes, setNotes] = React.useState({});
+            const [swapMode, setSwapMode] = useState(null);
+            const [customSwapState, setCustomSwapState] = useState(null);
+
+            // Load circuit state from localStorage
+            useEffect(() => {
+                const saved = localStorage.getItem('gym-circuit-active');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (parsed.circuit && parsed.circuit.length > 0) {
+                            setCircuit(parsed.circuit);
+                            setCompletedMap(parsed.completedMap || {});
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse saved circuit", e);
+                    }
+                }
+            }, []);
+
+            // Save circuit state on change
+            useEffect(() => {
+                if (circuit.length > 0) {
+                    localStorage.setItem('gym-circuit-active', JSON.stringify({ circuit, completedMap }));
+                } else {
+                    localStorage.removeItem('gym-circuit-active');
+                }
+            }, [circuit, completedMap]);
+
+            
+            const activePeople = (data?.people || []).filter(p => !hiddenPeople.includes(p));
+            if (activePeople.length === 0 && data?.people?.length > 0) activePeople.push(data.people[0]);
+            
+            const togglePerson = (person) => {
+                let next;
+                if (hiddenPeople.includes(person)) next = hiddenPeople.filter(p => p !== person);
+                else next = [...hiddenPeople, person];
+                setHiddenPeople(next);
+                localStorage.setItem('gym-hidden-people', JSON.stringify(next));
+            };
+            
+            const [mimicCategories, setMimicCategories] = useState({});
+
+            // Load Initial Data
+            useEffect(() => {
+                window.sheetsGet().then(res => {
+                    if (res) {
+                        setData(res);
+                    } else {
+                        alert("Failed to load data.");
+                    }
+                    setLoading(false);
+                }).catch(err => {
+                    alert("Failed to load data: " + err.message);
+                    setLoading(false);
+                });
+            }, []);
+
+            const machines = useMemo(() => {
+                if (!data) return [];
+                // A machine is defined by having manufacturer/fileReference OR by being in categories
+                return data.exercises.filter(ex => ex.manufacturer || ex.fileReference || ex.baseExercise);
+            }, [data]);
+            
+            const { uniqueCategories, allManufacturers, allMuscles, allBaseExercises } = useMemo(() => {
+                const exercises = data?.exercises || [];
+                const formatMeta = (val) => {
+                    if (!val) return val;
+                    const str = String(val);
+                    if (str === 'true') return 'True';
+                    if (str === 'false') return 'False';
+                    return str;
+                };
+                return {
+                    uniqueCategories: [...new Set(exercises.map(e => e.category || "General"))].sort(),
+                    allManufacturers: [...new Set(exercises.map(e => formatMeta(e.manufacturer)).filter(Boolean))].sort(),
+                    allMuscles: [...new Set(exercises.map(e => formatMeta(e.muscleGroups || e.muscle)).filter(Boolean))].sort(),
+                    allBaseExercises: [...new Set(exercises.map(e => formatMeta(e.baseExercise)).filter(Boolean))].sort()
+                };
+            }, [data]);
+
+            // Setup Full Body Circuit
+            const startFullBody = () => {
+                const selected = [];
+                for (const cat of uniqueCategories) {
+                    const catMachines = machines.filter(m => m.category === cat);
+                    if (catMachines.length > 0) {
+                        const random = catMachines[Math.floor(Math.random() * catMachines.length)];
+                        selected.push(random);
+                    }
+                }
+                setCircuit(selected);
+                setCompletedMap({});
+                setView("tracker");
+            };
+
+            // Setup Hit Every Machine
+            const startAllMachines = () => {
+                // Keep the order from the sheet (already in array order)
+                setCircuit(machines);
+                setCompletedMap({});
+                setView("tracker");
+            };
+            
+            // Start Mimic Plan
+            const startMimic = () => {
+                const selectedCats = Object.keys(mimicCategories).filter(k => mimicCategories[k]);
+                if (selectedCats.length === 0) {
+                    alert("Select at least one category.");
+                    return;
+                }
+                const selected = [];
+                for (const cat of selectedCats) {
+                    const catMachines = machines.filter(m => m.category === cat);
+                    if (catMachines.length > 0) {
+                        const random = catMachines[Math.floor(Math.random() * catMachines.length)];
+                        selected.push(random);
+                    }
+                }
+                setCircuit(selected);
+                setCompletedMap({});
+                setView("tracker");
+            };
+
+            const markDone = async (exName, logs, exObj) => {
+                const entries = [];
+                activePeople.forEach(p => {
+                    const log = logs[p.toLowerCase()];
+                    if (log && log.reps) {
+                        const noteKey = `${exName}_${p}`;
+                        const userNote = notes[noteKey] || "";
+                        
+                        entries.push({
+                            date: window.todayStr ? window.todayStr() : new Date().toISOString().split('T')[0],
+                            person: p.toLowerCase(),
+                            reps: String(log.reps),
+                            weight: String(log.weight || ""),
+                            range: window.getRange ? window.getRange(log.reps) : "r8_12",
+                            note: userNote,
+                            setNum: 1,
+                            timed: exObj ? !!exObj.timed : false
+                        });
+                    }
+                });
+                
+                if (entries.length === 0) return alert("Please enter reps for at least one person.");
+
+                const setPayload = {
+                    action: "logSet",
+                    exercise: exName,
+                    entries: entries,
+                    pin: window.requireAdminPin ? window.requireAdminPin() : "5050" // Fallback if needed
+                };
+                
+                // Optimistic UI update
+                setCompletedMap(prev => ({ ...prev, [exName]: 'done' }));
+                setOpenCard(null);
+
+                window.sheetsPost(setPayload).then(res => {
+                    // Success! res is json.data
+                }).catch(err => {
+                    alert("Failed to save set for " + exName + "\nError: " + (err.message || err));
+                    console.error(err);
+                });
+            };
+
+            const executeSwap = (index, swapPayload) => {
+                const isCustom = typeof swapPayload === 'object';
+                const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
+                if (!stdName) return alert("Exercise name cannot be blank.");
+                
+                // See if it exists in DB, otherwise make a mock one
+                let targetEx = data.exercises.find(e => e.name.toLowerCase() === stdName.toLowerCase());
+                if (!targetEx) {
+                    const currentEx = circuit[index];
+                    targetEx = { 
+                        name: stdName, 
+                        category: isCustom ? swapPayload.category : (currentEx.category || "General"),
+                        muscle: isCustom ? swapPayload.muscle : (currentEx.muscleGroups || currentEx.muscle || ""),
+                        muscleGroups: isCustom ? swapPayload.muscle : (currentEx.muscleGroups || currentEx.muscle || ""),
+                        manufacturer: isCustom ? swapPayload.manufacturer : (currentEx.manufacturer || ""),
+                        baseExercise: isCustom ? swapPayload.baseExercise : (currentEx.baseExercise || ""),
+                        timed: currentEx.timed || false
+                    };
+                    
+                    data.exercises.push(targetEx);
+
+                    // Push the cloned metadata to the GymLog_Exercises sheet immediately
+                    const clonePayload = {
+                        action: "saveExercise",
+                        exercise: targetEx.name,
+                        timed: targetEx.timed,
+                        category: targetEx.category,
+                        manufacturer: targetEx.manufacturer,
+                        baseExercise: targetEx.baseExercise,
+                        muscleGroups: targetEx.muscleGroups,
+                        pin: window.requireAdminPin ? window.requireAdminPin() : "5050"
+                    };
+                    window.sheetsPost(clonePayload).catch(err => console.error("Failed to save new exercise metadata:", err));
+                }
+                
+                const newCircuit = [...circuit];
+                const oldName = newCircuit[index].name;
+                newCircuit[index] = targetEx;
+                
+                if (openCard === oldName) setOpenCard(targetEx.name);
+                if (completedMap[oldName]) {
+                    const newMap = {...completedMap};
+                    newMap[targetEx.name] = newMap[oldName];
+                    delete newMap[oldName];
+                    setCompletedMap(newMap);
+                }
+                
+                setCircuit(newCircuit);
+                setSwapMode(null);
+                setCustomSwapState(null);
+            };
+
+            const switchVariation = (index, targetMode) => {
+                const currentEx = circuit[index];
+                const baseName = currentEx.name.replace(" (Single)", "").replace(" (Alt)", "");
+                let targetName = baseName;
+                if (targetMode === 'single') targetName = `${baseName} (Single)`;
+                if (targetMode === 'alt') targetName = `${baseName} (Alt)`;
+                
+                const found = data.exercises.find(e => e.name === targetName);
+                if (found) {
+                    const newCircuit = [...circuit];
+                    newCircuit[index] = found;
+                    
+                    if (openCard === currentEx.name) {
+                        setOpenCard(found.name);
+                    }
+                    
+                    if (completedMap[currentEx.name]) {
+                        const newMap = {...completedMap};
+                        newMap[found.name] = newMap[currentEx.name];
+                        delete newMap[currentEx.name];
+                        setCompletedMap(newMap);
+                    }
+                    
+                    setCircuit(newCircuit);
+                }
+            };
+
+            const markSkip = (exName) => {
+                setCompletedMap(prev => ({ ...prev, [exName]: 'skipped' }));
+                setOpenCard(null);
+            };
+            
+            const undoAction = (exName) => {
+                setCompletedMap(prev => {
+                    const next = { ...prev };
+                    delete next[exName];
+                    return next;
+                });
+            };
+
+            if (loading || !data) {
+                return (
+                    <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
+                        <div className="spinner" style={{ width: 40, height: 40, border: "3px solid #1a1a1a", borderTopColor: "#f97316", borderRadius: "50%" }}></div>
+                        <div style={{ marginTop: 16, color: "#555", fontFamily: "var(--mono)", fontSize: 12 }}>LOADING CIRCUIT ENGINE...</div>
+                    </div>
+                );
+            }
+
+            // Planner View
+            if (view === "planner") {
+                return (
+                    <div>
+                        <div className="header">
+                            <div>
+                                <h1>CIRCUIT TRAINING PRO</h1>
+                                <p>Automated Machine Circuits</p>
+                            </div>
+                            <button onClick={() => setIsSettingsOpen(true)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer" }}>⚙️</button>
+                        </div>
+                        
+                        {isSettingsOpen && (
+                            <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", zIndex: 1000, display: "flex", justifyContent: "center", alignItems: "center" }} onClick={() => setIsSettingsOpen(false)}>
+                                <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 24, width: "90%", maxWidth: 340 }} onClick={e => e.stopPropagation()}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+                                        <h3 style={{ margin: 0, color: "var(--accent)" }}>ROSTER</h3>
+                                        <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 16 }}>✕</button>
+                                    </div>
+                                    {data.people.map(p => (
+                                        <label key={p} style={{ display: "flex", alignItems: "center", padding: "12px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 8, cursor: "pointer" }}>
+                                            <input type="checkbox" checked={!hiddenPeople.includes(p)} onChange={() => togglePerson(p)} style={{ width: 18, height: 18, marginRight: 12, accentColor: "#f97316" }} />
+                                            <span style={{ fontSize: 14 }}>{p}</span>
+                                        </label>
+                                    ))}
+                                    <button onClick={() => setIsSettingsOpen(false)} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", padding: 12, borderRadius: 8, fontWeight: 700, marginTop: 12 }}>SAVE</button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ padding: 20 }}>
+                            {circuit.length > 0 && (
+                                <div style={{ marginBottom: 24 }}>
+                                    <button className="wizard-btn" onClick={() => setView("tracker")} style={{ border: "1px solid var(--success)" }}>
+                                        RESUME ACTIVE CIRCUIT
+                                        <span>Continue your in-progress workout.</span>
+                                    </button>
+                                </div>
+                            )}
+                            <div style={{ marginBottom: 24 }}>
+                                <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", letterSpacing: 1, marginBottom: 12 }}>SELECT CIRCUIT MODE</div>
+                                
+                                <button className="wizard-btn" onClick={startFullBody}>
+                                    FULL BODY CIRCUIT
+                                    <span>Selects 1 machine from every category randomly.</span>
+                                </button>
+                                
+                                <button className="wizard-btn" onClick={() => setView("mimic-setup")}>
+                                    PLAN EXERCISE MIMIC
+                                    <span>Choose your target categories, and we pick the machines.</span>
+                                </button>
+                                
+                                <button className="wizard-btn" onClick={startAllMachines}>
+                                    HIT EVERY MACHINE
+                                    <span>Run through all 59 machines in gym-floor order.</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            // Mimic Setup View
+            if (view === "mimic-setup") {
+                return (
+                    <div>
+                        <div className="header">
+                            <div>
+                                <h1>PLAN MIMIC</h1>
+                                <p>Select Categories</p>
+                            </div>
+                            <button onClick={() => setView("planner")} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 14 }}>BACK</button>
+                        </div>
+                        <div style={{ padding: 20 }}>
+                            {uniqueCategories.map(cat => (
+                                <label key={cat} style={{ display: "flex", alignItems: "center", padding: "16px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 12, marginBottom: 8, cursor: "pointer" }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={!!mimicCategories[cat]}
+                                        onChange={(e) => setMimicCategories({...mimicCategories, [cat]: e.target.checked})}
+                                        style={{ width: 20, height: 20, marginRight: 16, accentColor: "#f97316" }}
+                                    />
+                                    <span style={{ fontSize: 14, fontWeight: 500 }}>{cat}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <button className="floating-action" onClick={startMimic}>GENERATE CIRCUIT</button>
+                    </div>
+                );
+            }
+
+            // Tracker View
+            const activeCircuit = circuit.filter(ex => !completedMap[ex.name]);
+            const completedCircuit = circuit.filter(ex => completedMap[ex.name]);
+            const displayedList = [...activeCircuit, ...completedCircuit];
+
+            return (
+                <div>
+                    <div className="header">
+                        <div>
+                            <h1>CIRCUIT TRACKER</h1>
+                            <p>{activeCircuit.length} Machines Remaining</p>
+                        </div>
+                        <div style={{ display: "flex", gap: "12px" }}>
+                            <button onClick={() => setView("planner")} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 14, fontWeight: 600, padding: 8 }}>BACK</button>
+                            <button onClick={() => {
+                                if (confirm("End and clear the current circuit?")) {
+                                    setCircuit([]);
+                                    setCompletedMap({});
+                                    setView("planner");
+                                }
+                            }} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontWeight: 700 }}>END CIRCUIT</button>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: 20 }}>
+                        {displayedList.length === 0 ? (
+                            <div style={{ textAlign: "center", padding: 40, color: "var(--muted)", fontSize: 14 }}>Circuit Complete!</div>
+                        ) : (
+                            displayedList.map((ex, index) => {
+                                const status = completedMap[ex.name];
+                                const isOpen = openCard === ex.name && !status;
+                                
+                                const baseName = ex.name.replace(" (Single)", "").replace(" (Alt)", "");
+                                const hasSingle = data.exercises.some(e => e.name === `${baseName} (Single)`);
+                                const hasAlt = data.exercises.some(e => e.name === `${baseName} (Alt)`);
+                                const currentMode = ex.name.includes("(Single)") ? "single" : ex.name.includes("(Alt)") ? "alt" : "std";
+                                
+                                const maxLabels = activePeople.map(p => {
+                                    const exBestObj = data.best[ex.name] && data.best[ex.name][p.toLowerCase()];
+                                    let ranges = { '1-3': '—', '4-7': '—', '8-12': '—', '13+': '—' };
+                                    if (exBestObj) {
+                                        if (exBestObj.r1_3 && exBestObj.r1_3.weight) ranges['1-3'] = `${exBestObj.r1_3.reps}x${exBestObj.r1_3.weight}`;
+                                        if (exBestObj.r4_7 && exBestObj.r4_7.weight) ranges['4-7'] = `${exBestObj.r4_7.reps}x${exBestObj.r4_7.weight}`;
+                                        if (exBestObj.r8_12 && exBestObj.r8_12.weight) ranges['8-12'] = `${exBestObj.r8_12.reps}x${exBestObj.r8_12.weight}`;
+                                        if (exBestObj.r13_plus && exBestObj.r13_plus.weight) ranges['13+'] = `${exBestObj.r13_plus.reps}x${exBestObj.r13_plus.weight}`;
+                                    }
+                                    return { person: p, ranges };
+                                });
+
+                                return (
+                                    <div key={ex.name + index} className={`card ${status ? status : ''} ${isOpen ? 'open' : ''}`}>
+                                        <div className="card-header" onClick={() => !status ? setOpenCard(isOpen ? null : ex.name) : undoAction(ex.name)}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                                    <div className="category-tag">{ex.category || "General"}</div>
+                                                    {(hasSingle || hasAlt) ? (
+                                                        <div style={{ display: "flex", gap: 4 }}>
+                                                            <button onClick={(e) => { e.stopPropagation(); switchVariation(index, 'std'); }} className={`var-btn ${currentMode==='std' ? 'active' : ''}`}>STD</button>
+                                                            {hasSingle ? <button onClick={(e) => { e.stopPropagation(); switchVariation(index, 'single'); }} className={`var-btn ${currentMode==='single' ? 'active' : ''}`}>SINGLE</button> : null}
+                                                            {hasAlt ? <button onClick={(e) => { e.stopPropagation(); switchVariation(index, 'alt'); }} className={`var-btn ${currentMode==='alt' ? 'active' : ''}`}>ALT</button> : null}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div className="machine-name">{ex.name}</div>
+                                                </div>
+                                                
+                                                {ex.muscle ? (
+                                                    <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 8, fontFamily: "var(--mono)" }}>
+                                                        Muscles: {ex.muscle}
+                                                    </div>
+                                                ) : null}
+
+
+                                                {status ? (
+                                                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: status === 'done' ? 'var(--success)' : 'var(--skip)', textTransform: "uppercase" }}>
+                                                        {status} (Tap to Undo)
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                            {!status ? (
+                                                <div style={{ color: "var(--muted)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                                                    ▼
+                                                </div>
+                                            ) : null}
+                                        </div>
+
+                                        <div className="set-logger">
+                                            <form onSubmit={(e) => {
+                                                e.preventDefault();
+                                                const logs = {};
+                                                activePeople.forEach(p => {
+                                                    const r = e.target.elements[`reps_${p}`]?.value;
+                                                    const w = e.target.elements[`weight_${p}`]?.value;
+                                                    logs[p.toLowerCase()] = { reps: r, weight: w };
+                                                });
+                                                markDone(ex.name, logs, ex);
+                                            }}>
+                                                {activePeople.map(p => {
+                                                    const pMaxes = maxLabels.find(m => m.person === p).ranges;
+                                                    const boxKey = `${ex.name}_${p}`;
+                                                    const isBoxOpen = openPersonBox[boxKey] || (activePeople.length === 1);
+                                                    const isHistoryOpen = openHistory === boxKey;
+                                                    
+                                                    return (
+                                                        <div key={p} style={{ marginBottom: 12, background: "#0e0e0e", borderRadius: 8, border: "1px solid var(--accent)", overflow: "hidden" }}>
+                                                            <div 
+                                                                onClick={() => { if (activePeople.length > 1) setOpenPersonBox(prev => ({...prev, [boxKey]: !prev[boxKey]})) }}
+                                                                style={{ padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: activePeople.length > 1 ? "pointer" : "default", background: isBoxOpen ? "#161616" : "transparent" }}
+                                                            >
+                                                                <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", fontFamily: "var(--mono)", flexShrink: 0, width: "60px" }}>{p}</div>
+                                                                <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                                                    1-3 ({pMaxes['1-3']}) ➔ 4-7 ({pMaxes['4-7']}) ➔ 8-12 ({pMaxes['8-12']}) ➔ 13+ ({pMaxes['13+']})
+                                                                </div>
+                                                                {activePeople.length > 1 && (
+                                                                    <div style={{ color: "var(--muted)", transform: isBoxOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s", fontSize: 10, marginLeft: 8 }}>▼</div>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            {isBoxOpen && (
+                                                                <div style={{ padding: "12px", borderTop: "1px solid #1a1a1a", background: "#0c0c0c" }}>
+                                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                                                            <input type="number" name={`reps_${p}`} inputMode="numeric" placeholder="reps" style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none" }} />
+                                                                            <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>×</span>
+                                                                            <input type="number" name={`weight_${p}`} inputMode="decimal" step="any" placeholder="lbs" style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none" }} />
+                                                                        </div>
+                                                                        <button 
+                                                                            type="button"
+                                                                            onClick={(e) => { e.stopPropagation(); setOpenHistory(isHistoryOpen ? null : boxKey); }}
+                                                                            style={{ background: isHistoryOpen ? "rgba(249,115,22,0.1)" : "transparent", border: isHistoryOpen ? "1px solid var(--accent)" : "1px solid var(--border)", borderRadius: 8, padding: "6px 12px", color: isHistoryOpen ? "var(--accent)" : "var(--muted)", cursor: "pointer", fontSize: 16 }}
+                                                                        >⏱️</button>
+                                                                    </div>
+                                                                    <input 
+                                                                        type="text" 
+                                                                        className="planner-note-input" 
+                                                                        placeholder="Add cue/note..." 
+                                                                        value={notes[`${ex.name}_${p}`] || ""}
+                                                                        onChange={(e) => setNotes({...notes, [`${ex.name}_${p}`]: e.target.value})}
+                                                                        style={{ marginTop: 8 }}
+                                                                    />
+                                                                    
+                                                                    {isHistoryOpen && (
+                                                                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #222" }}>
+                                                                            <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, letterSpacing: 1 }}>{p}'s Recent History</div>
+                                                                            {(() => {
+                                                                                const pHist = data.history.filter(h => h.exercise === ex.name && h.person.toLowerCase() === p.toLowerCase()).slice(0, 5);
+                                                                                if (pHist.length === 0) return <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>No recent history found.</div>;
+                                                                                return pHist.map((h, i) => (
+                                                                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+                                                                                        <div style={{ color: "var(--muted)" }}>{h.date}</div>
+                                                                                        <div style={{ color: "#eee", fontWeight: 700 }}>{h.reps} reps {h.weight ? `x ${h.weight} lbs` : ''}</div>
+                                                                                    </div>
+                                                                                ));
+                                                                            })()}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                                    <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                                                        <button type="submit" className="btn-primary" style={{ flex: 1, padding: "12px", fontSize: 14 }}>LOG SET</button>
+                                                        <button type="button" className="btn-danger" onClick={() => markSkip(ex.name)} style={{ flex: 1, padding: "12px", fontSize: 14 }}>SKIP</button>
+                                                    </div>
+                                                </form>
+
+                                                {/* Swap UI */}
+                                                <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 16 }}>
+                                                    {swapMode === ex.name ? (
+                                                        <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+                                                            <select 
+                                                                onChange={(e) => {
+                                                                    if (e.target.value === "custom") {
+                                                                        setCustomSwapState({
+                                                                            name: "",
+                                                                            category: ex.category || "General",
+                                                                            manufacturer: "",
+                                                                            baseExercise: "",
+                                                                            muscle: ""
+                                                                        });
+                                                                    } else if (e.target.value) {
+                                                                        executeSwap(index, e.target.value);
+                                                                    }
+                                                                }}
+                                                                style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontFamily: "var(--sans)", marginBottom: 8 }}
+                                                            >
+                                                                <option value="">Select replacement in {ex.category || "General"}...</option>
+                                                                <option value="custom" style={{ color: "var(--accent)" }}>+ Add custom exercise</option>
+                                                                {machines.filter(m => (m.category || "General") === (ex.category || "General")).map(m => (
+                                                                    <option key={m.name} value={m.name}>{m.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            
+                                                            {customSwapState !== null && (
+                                                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, background: "#111", padding: 12, borderRadius: 8, border: "1px dashed var(--accent)" }}>
+                                                                    <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, textTransform: "uppercase" }}>Create New Exercise</div>
+                                                                    
+                                                                    <input type="text" placeholder="Exercise Name (Required)" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4 }} />
+                                                                    
+                                                                    <input list="cat-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                                    <datalist id="cat-list">{uniqueCategories.map(c => <option key={c} value={c} />)}</datalist>
+
+                                                                    <input list="mfg-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                                    <datalist id="mfg-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                                    <input list="base-list" placeholder="Base Exercise" value={customSwapState.baseExercise} onChange={e => setCustomSwapState({...customSwapState, baseExercise: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                                    <datalist id="base-list">{allBaseExercises.map(b => <option key={b} value={b} />)}</datalist>
+
+                                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                                    <button 
+                                                                        onClick={() => executeSwap(index, customSwapState)}
+                                                                        className="btn-primary"
+                                                                        style={{ padding: "12px", marginTop: 4 }}
+                                                                    >SAVE & SWAP</button>
+                                                                </div>
+                                                            )}
+                                                            <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-accent" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14 }}>CANCEL SWAP</button>
+                                                        </div>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => setSwapMode(ex.name)}
+                                                            className="btn-secondary"
+                                                            style={{ width: "100%", padding: 12 }}
+                                                        >
+                                                            ↺ SWAP EXERCISE
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<CircuitApp />);
+    </script>
+</body>
+</html>
