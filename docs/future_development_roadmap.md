@@ -56,7 +56,16 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 - [x] Intermittent Log Failure Bug: Troubleshoot and fix the false failure message that claims logging failed when the set actually logged successfully.
 - [x] Shaded State Retention: Keep completed exercises in place and shade them green, rather than sorting them to the bottom, to preserve circuit order and readability.
 
+### Group 8: Circuit Trainer History & Deletion (Medium Difficulty)
+*Recommended Model: Gemini 3.1 Pro (High) or Flash*
+- [x] Remove Card-Level Set Undo: Remove the local set-level "UNDO" button to prevent state mismatch with the spreadsheet database.
+- [x] Instant History Update: Append newly logged sets to the local history state immediately upon successful sheetsPost resolution so they show up in the history list without reloading.
+- [x] History Deletion UI & Integration: Add delete buttons to the card's history drawer entries, prompting for the Admin PIN and sending the deleteHistory API request.
+- [x] Sync Session Sets on Delete: When a session set is deleted from the history list, automatically remove it from the card's completed sets array to keep the counts aligned.
+
 Let me know if you need any other details on this.
+
+
 
 
 

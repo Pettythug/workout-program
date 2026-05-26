@@ -76,6 +76,16 @@
                 return json.data;
             };
         })();
+
+        window.requireAdminPin = () => {
+            const pin = prompt("Enter Admin PIN to continue:");
+            if (!pin) return null;
+            if (pin.trim() !== "5050") {
+                alert("Invalid Admin PIN");
+                return null;
+            }
+            return pin.trim();
+        };
     </script>
     <style>
         :root {
@@ -606,7 +616,7 @@
                         const userNote = notes[noteKey] || "";
                         
                         entries.push({
-                            date: window.todayStr ? window.todayStr() : new Date().toISOString().split('T')[0],
+                            date: typeof todayStr === 'function' ? todayStr() : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
                             person: p.toLowerCase(),
                             reps: String(log.reps),
                             weight: String(log.weight || ""),
@@ -640,6 +650,18 @@
                                 done: false,
                                 skipped: false
                             }
+                        };
+                    });
+                    
+                    setData(prev => {
+                        if (!prev) return prev;
+                        const newHistoryEntries = entries.map(entry => ({
+                            ...entry,
+                            exercise: exName
+                        }));
+                        return {
+                            ...prev,
+                            history: [...newHistoryEntries, ...prev.history]
                         };
                     });
                     
@@ -786,6 +808,80 @@
                     }
                     return next;
                 });
+            };
+
+            const handleDeleteHistory = async (h) => {
+                if (!confirm(`Delete this entry for ${h.person.toUpperCase()}?`)) return;
+                const pin = window.requireAdminPin ? window.requireAdminPin() : null;
+                if (!pin) return;
+
+                const payload = {
+                    action: "deleteHistory",
+                    exercise: h.exercise,
+                    person: h.person.toLowerCase(),
+                    reps: String(h.reps),
+                    weight: h.weight !== undefined && h.weight !== null ? String(h.weight) : "",
+                    range: h.range || "",
+                    pin: pin
+                };
+
+                try {
+                    await window.sheetsPost(payload);
+
+                    // Remove from data.history in state
+                    setData(prev => {
+                        if (!prev) return prev;
+                        const index = prev.history.findIndex(item => (
+                            item.exercise === h.exercise &&
+                            item.person.toLowerCase() === h.person.toLowerCase() &&
+                            String(item.reps) === String(h.reps) &&
+                            String(item.weight || "") === String(h.weight || "") &&
+                            item.date === h.date
+                        ));
+                        if (index === -1) return prev;
+                        const newHistory = [...prev.history];
+                        newHistory.splice(index, 1);
+                        return {
+                            ...prev,
+                            history: newHistory
+                        };
+                    });
+
+                    // Sync Session Sets
+                    const today = typeof todayStr === 'function' ? todayStr() : (window.todayStr ? window.todayStr() : new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+                    if (h.date === today) {
+                        setCompletedMap(prev => {
+                            const prevStatus = prev[h.exercise];
+                            if (!prevStatus) return prev;
+                            const prevSets = Array.isArray(prevStatus) ? prevStatus : (prevStatus.sets || []);
+                            
+                            const nextSets = prevSets.map(set => {
+                                const pKey = h.person.toLowerCase();
+                                if (set[pKey] && String(set[pKey].reps) === String(h.reps) && String(set[pKey].weight || "") === String(h.weight || "")) {
+                                    const nextSet = { ...set };
+                                    delete nextSet[pKey];
+                                    return nextSet;
+                                }
+                                return set;
+                            }).filter(set => Object.keys(set).length > 0);
+
+                            return {
+                                ...prev,
+                                [h.exercise]: {
+                                    ...prevStatus,
+                                    sets: nextSets
+                                }
+                            };
+                        });
+                    }
+
+                    if (window.showToast) {
+                        window.showToast(`Deleted history entry for ${h.person}`);
+                    }
+                } catch (err) {
+                    alert("Failed to delete history entry: " + (err.message || err));
+                    console.error(err);
+                }
             };
 
             if (loading || !data) {
@@ -983,11 +1079,11 @@
                                                             UNDO
                                                         </button>
                                                     </div>
-                                                ) : hasLogged ? (
+                                                ) : isDone ? (
                                                     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                                                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                                             <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', textTransform: "uppercase" }}>
-                                                                Completed Sets: {loggedSets.length}
+                                                                DONE
                                                             </span>
                                                             <button 
                                                                 type="button"
@@ -997,6 +1093,42 @@
                                                             >
                                                                 UNDO
                                                             </button>
+                                                        </div>
+                                                        {hasLogged && (
+                                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                                                {loggedSets.map((set, sIdx) => {
+                                                                    const summary = activePeople.map(p => {
+                                                                        const pLog = set[p.toLowerCase()];
+                                                                        if (pLog && pLog.reps) {
+                                                                            const nameInit = p.charAt(0).toUpperCase();
+                                                                            return `${nameInit}:${pLog.reps}${pLog.weight ? `@${pLog.weight}` : ''}`;
+                                                                        }
+                                                                        return null;
+                                                                    }).filter(Boolean).join(' ');
+
+                                                                    return (
+                                                                        <span key={sIdx} style={{ 
+                                                                            fontSize: "9px", 
+                                                                            fontFamily: "var(--mono)", 
+                                                                            background: "rgba(34, 197, 94, 0.12)", 
+                                                                            color: "#22c55e", 
+                                                                            padding: "2px 6px", 
+                                                                            borderRadius: "4px",
+                                                                            border: "1px solid rgba(34, 197, 94, 0.25)"
+                                                                        }}>
+                                                                            L{sIdx + 1}: {summary}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : hasLogged ? (
+                                                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', textTransform: "uppercase" }}>
+                                                                Completed Sets: {loggedSets.length}
+                                                            </span>
                                                         </div>
                                                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                                                             {loggedSets.map((set, sIdx) => {
@@ -1099,9 +1231,19 @@
                                                                                 const pHist = data.history.filter(h => h.exercise === ex.name && h.person.toLowerCase() === p.toLowerCase()).slice(0, 5);
                                                                                 if (pHist.length === 0) return <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>No recent history found.</div>;
                                                                                 return pHist.map((h, i) => (
-                                                                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 0" }}>
+                                                                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "4px 0" }}>
                                                                                         <div style={{ color: "var(--muted)" }}>{h.date}</div>
-                                                                                        <div style={{ color: "#eee", fontWeight: 700 }}>{h.reps} reps {h.weight ? `x ${h.weight} lbs` : ''}</div>
+                                                                                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                                                            <div style={{ color: "#eee", fontWeight: 700 }}>{h.reps} reps {h.weight ? `x ${h.weight} lbs` : ''}</div>
+                                                                                            <button 
+                                                                                                type="button"
+                                                                                                onClick={() => handleDeleteHistory(h)}
+                                                                                                style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, padding: "2px 6px" }}
+                                                                                                title="Delete History Entry"
+                                                                                            >
+                                                                                                🗑️
+                                                                                            </button>
+                                                                                        </div>
                                                                                     </div>
                                                                                 ));
                                                                             })()}
