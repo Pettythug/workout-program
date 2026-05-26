@@ -69,7 +69,7 @@
         }
 
         .card.done {
-            opacity: 0.6;
+            background: var(--success-light);
             border-color: var(--success);
         }
 
@@ -762,16 +762,14 @@
             }
 
             // Tracker View
-            const activeCircuit = circuit.filter(ex => !completedMap[ex.name]);
-            const completedCircuit = circuit.filter(ex => completedMap[ex.name]);
-            const displayedList = [...activeCircuit, ...completedCircuit];
+            const displayedList = circuit;
 
             return (
                 <div>
                     <div className="header">
                         <div>
                             <h1>CIRCUIT TRACKER</h1>
-                            <p>{activeCircuit.length} Machines Remaining</p>
+                            <p>{circuit.filter(ex => !completedMap[ex.name]).length} Machines Remaining</p>
                         </div>
                         <div style={{ display: "flex", gap: "12px" }}>
                             <button onClick={() => setView("planner")} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 14, fontWeight: 600, padding: 8 }}>BACK</button>
@@ -791,7 +789,7 @@
                         ) : (
                             displayedList.map((ex, index) => {
                                 const status = completedMap[ex.name];
-                                const isOpen = openCard === ex.name && !status;
+                                const isOpen = openCard === ex.name;
                                 
                                 const baseName = ex.name.replace(" (Single)", "").replace(" (Alt)", "");
                                 const hasSingle = data.exercises.some(e => e.name === `${baseName} (Single)`);
@@ -812,7 +810,7 @@
 
                                 return (
                                     <div key={ex.name + index} className={`card ${status ? status : ''} ${isOpen ? 'open' : ''}`}>
-                                        <div className="card-header" onClick={() => !status ? setOpenCard(isOpen ? null : ex.name) : undoAction(ex.name)}>
+                                        <div className="card-header" onClick={() => setOpenCard(isOpen ? null : ex.name)}>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                                     <div className="category-tag">{ex.category || "General"}</div>
@@ -836,16 +834,24 @@
 
 
                                                 {status ? (
-                                                    <div style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: status === 'done' ? 'var(--success)' : 'var(--skip)', textTransform: "uppercase" }}>
-                                                        {status} (Tap to Undo)
+                                                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                                                        <span style={{ fontSize: 11, fontWeight: 700, color: status === 'done' ? 'var(--success)' : 'var(--skip)', textTransform: "uppercase" }}>
+                                                            {status}
+                                                        </span>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => { e.stopPropagation(); undoAction(ex.name); }} 
+                                                            className="var-btn" 
+                                                            style={{ fontSize: 9, padding: "2px 6px", border: "1px solid var(--accent)", color: "var(--accent)" }}
+                                                        >
+                                                            UNDO
+                                                        </button>
                                                     </div>
                                                 ) : null}
                                             </div>
-                                            {!status ? (
-                                                <div style={{ color: "var(--muted)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
-                                                    ▼
-                                                </div>
-                                            ) : null}
+                                            <div style={{ color: "var(--muted)", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                                                ▼
+                                            </div>
                                         </div>
 
                                         <div className="set-logger">

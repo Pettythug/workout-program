@@ -8,7 +8,9 @@ Because this is a huge upgrade, we've formalized the structure so it scales nice
 Files & Current Status:
 * gymlog-ultimate.html -> This is the absolute MAIN live production file. If you are working out today, use this. It has all the newest features locked in and tested.
 * index.html -> This is the main landing page that routing everything. It has been updated to point directly to the ultimate production file.
+* circuit-training-pro.html -> Live production file for sequential machine circuits. Updated to keep completed cards in-place with shaded green backgrounds.
 * gymlog-variation-beta.html -> This is our testing ground. We test crazy ideas here before they ever touch production.
+* circuit-training-pro-beta.html -> This is our beta testing ground for the circuit training engine. Currently testing keeping completed cards in-place with inline interaction.
 * docs/architecture_sop.md -> This is a strict rulebook for any developers touching the code, explaining exactly how the Vanilla JS and React code play nicely together in one file.
 
 Stay disciplined, and keep lifting!
