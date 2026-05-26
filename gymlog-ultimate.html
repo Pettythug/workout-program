@@ -1938,9 +1938,9 @@
                   </div>
                   <div class="new-max-banner" id="maxbanner-${idx}"></div>
                   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
-                    <button class="btn-success" style="width: 100%;" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ DONE</button>
+                    <button class="btn-success" style="grid-column: 1 / -1; width: 100%;" onclick="markDone(${idx}, '${ex.name.replace(/'/g, "\\'")}')">✓ DONE</button>
                     <button class="btn-danger skip-btn" style="width: 100%;" onclick="skipExercise(${idx}, '${ex.name.replace(/'/g, "\\'")}')">— SKIP</button>
-                    <button class="btn-secondary" style="grid-column: 1 / -1; width: 100%;" onclick="showSwap(${idx})">↺ SWAP EXERCISE</button>
+                    <button class="btn-secondary" style="width: 100%;" onclick="showSwap(${idx})">↺ SWAP EXERCISE</button>
                   </div>
                 </div>
                 
