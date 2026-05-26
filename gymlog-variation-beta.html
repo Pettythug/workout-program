@@ -466,6 +466,7 @@
             align-items: center;
             gap: 6px;
             flex: 1;
+            min-width: 0;
         }
 
         .set-input {
@@ -473,7 +474,9 @@
             border: 1px solid var(--accent);
             border-radius: 8px;
             padding: 8px;
-            width: 70px;
+            width: 100%;
+            max-width: 70px;
+            min-width: 0;
             text-align: center;
             font-size: 16px;
             font-family: var(--mono);
@@ -1175,6 +1178,13 @@
     </div>
 
     <script>
+        /*******************************************************************************
+         * ARCHITECTURE ZONE 1: VANILLA JAVASCRIPT (PLAN TAB)
+         * 
+         * This section handles the state, rendering, and logic for the daily "PLAN" tab.
+         * It relies on direct DOM manipulation (document.getElementById, innerHTML) to
+         * render the active workout and the per-person exercise cards.
+         *******************************************************************************/
         let exerciseModes = {};
         window.requireAdminPin = () => {
             const pin = prompt("Enter Admin PIN to continue:");
@@ -2850,6 +2860,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <!--
+      ********************************************************************************
+      * ARCHITECTURE ZONE 2: REACT + BABEL (LIFT TAB)
+      * 
+      * This section handles the "LIFT" tab (exercise database viewer). It is built 
+      * using a completely separate React rendering pipeline and relies on local React 
+      * state (useState, useEffect) for data presentation and filtering.
+      ********************************************************************************
+    -->
     <script type="text/babel">
         const { useState, useEffect } = React;
 
