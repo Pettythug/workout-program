@@ -51,11 +51,14 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 ### Group 7: Circuit Trainer Refinements & Fixes (Medium Difficulty)
 *Recommended Model: Gemini 3.1 Pro (High) or Flash*
 - [x] Save Feedback: Add visual UI feedback confirming when a set has been successfully saved in the circuit trainer.
-- [ ] Multi-Set Counter: Count up and display multiple logged sets (e.g., Log 1, Log 2, Log 3) on the same machine to support extra sets or series of circuits.
+- [x] Multi-Set Counter & Done Button: Implement sequential set logging (Log 1, Log 2...) and a separate "DONE" button to mark the machine complete, matching the standard Plan/Lift card behavior.
+- [x] Resolute UI State: Only shade cards green/skipped and collapse them after receiving a successful API response from Sheets (no optimistic UI state changes).
 - [x] Intermittent Log Failure Bug: Troubleshoot and fix the false failure message that claims logging failed when the set actually logged successfully.
 - [x] Shaded State Retention: Keep completed exercises in place and shade them green, rather than sorting them to the bottom, to preserve circuit order and readability.
 
 Let me know if you need any other details on this.
+
+
 
 
 

@@ -266,6 +266,12 @@
             border-color: var(--accent);
         }
 
+        .btn-success {
+            background: rgba(34, 197, 94, 0.07);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
         .btn-danger {
             background: rgba(239, 68, 68, 0.07);
             color: #ef4444;
@@ -465,6 +471,7 @@
             const [notes, setNotes] = React.useState({});
             const [swapMode, setSwapMode] = useState(null);
             const [customSwapState, setCustomSwapState] = useState(null);
+            const [savingStates, setSavingStates] = useState({});
 
             // Load circuit state from localStorage
             useEffect(() => {
@@ -586,7 +593,11 @@
                 setView("tracker");
             };
 
-            const markDone = async (exName, logs, exObj) => {
+            const markDone = async (exName, logs, exObj, clearInputsFn) => {
+                const currentStatus = completedMap[exName] || { sets: [], done: false, skipped: false };
+                // Backwards compatibility if it's still an array from old state
+                const currentSets = Array.isArray(currentStatus) ? currentStatus : (currentStatus.sets || []);
+                const nextSetNum = currentSets.length + 1;
                 const entries = [];
                 activePeople.forEach(p => {
                     const log = logs[p.toLowerCase()];
@@ -601,7 +612,7 @@
                             weight: String(log.weight || ""),
                             range: window.getRange ? window.getRange(log.reps) : "r8_12",
                             note: userNote,
-                            setNum: 1,
+                            setNum: nextSetNum,
                             timed: exObj ? !!exObj.timed : false
                         });
                     }
@@ -616,17 +627,32 @@
                     pin: window.requireAdminPin ? window.requireAdminPin() : "5050" // Fallback if needed
                 };
                 
-                // Optimistic UI update
-                setCompletedMap(prev => ({ ...prev, [exName]: 'done' }));
-                setOpenCard(null);
+                setSavingStates(prev => ({ ...prev, [exName]: true }));
 
                 window.sheetsPost(setPayload).then(res => {
+                    setCompletedMap(prev => {
+                        const prevStatus = prev[exName] || { sets: [], done: false, skipped: false };
+                        const prevSets = Array.isArray(prevStatus) ? prevStatus : (prevStatus.sets || []);
+                        return {
+                            ...prev,
+                            [exName]: {
+                                sets: [...prevSets, logs],
+                                done: false,
+                                skipped: false
+                            }
+                        };
+                    });
+                    
+                    if (clearInputsFn) clearInputsFn();
+                    
                     if (window.showToast) {
                         window.showToast(`Saved set for ${exName}`);
                     }
                 }).catch(err => {
                     alert("Failed to save set for " + exName + "\nError: " + (err.message || err));
                     console.error(err);
+                }).finally(() => {
+                    setSavingStates(prev => ({ ...prev, [exName]: false }));
                 });
             };
 
@@ -709,15 +735,55 @@
                 }
             };
 
+            const markExplicitDone = (exName) => {
+                setCompletedMap(prev => {
+                    const prevStatus = prev[exName] || { sets: [], done: false, skipped: false };
+                    const prevSets = Array.isArray(prevStatus) ? prevStatus : (prevStatus.sets || []);
+                    return {
+                        ...prev,
+                        [exName]: { sets: prevSets, done: true, skipped: false }
+                    };
+                });
+                setOpenCard(null);
+            };
+
             const markSkip = (exName) => {
-                setCompletedMap(prev => ({ ...prev, [exName]: 'skipped' }));
+                setCompletedMap(prev => {
+                    const prevStatus = prev[exName] || { sets: [], done: false, skipped: false };
+                    const prevSets = Array.isArray(prevStatus) ? prevStatus : (prevStatus.sets || []);
+                    return {
+                        ...prev,
+                        [exName]: { sets: prevSets, done: false, skipped: true }
+                    };
+                });
                 setOpenCard(null);
             };
             
             const undoAction = (exName) => {
                 setCompletedMap(prev => {
                     const next = { ...prev };
-                    delete next[exName];
+                    const status = next[exName];
+                    if (!status) return next;
+                    
+                    if (status === 'skipped') {
+                        delete next[exName];
+                        return next;
+                    }
+                    
+                    const isObj = status && typeof status === 'object' && !Array.isArray(status);
+                    
+                    if (isObj && (status.done || status.skipped)) {
+                        // Undo the explicit completion status but keep sets
+                        next[exName] = { ...status, done: false, skipped: false };
+                    } else {
+                        // Pop a set
+                        const currentSets = isObj ? (status.sets || []) : (Array.isArray(status) ? status : []);
+                        if (currentSets.length > 1) {
+                            next[exName] = isObj ? { ...status, sets: currentSets.slice(0, -1) } : currentSets.slice(0, -1);
+                        } else {
+                            delete next[exName];
+                        }
+                    }
                     return next;
                 });
             };
@@ -849,7 +915,16 @@
                             <div style={{ textAlign: "center", padding: 40, color: "var(--muted)", fontSize: 14 }}>Circuit Complete!</div>
                         ) : (
                             displayedList.map((ex, index) => {
-                                const status = completedMap[ex.name];
+                                const statusRaw = completedMap[ex.name];
+                                const status = (statusRaw && typeof statusRaw === 'object' && !Array.isArray(statusRaw)) 
+                                    ? statusRaw 
+                                    : { sets: Array.isArray(statusRaw) ? statusRaw : [], done: false, skipped: statusRaw === 'skipped' };
+                                
+                                const isSkipped = status.skipped;
+                                const isDone = status.done;
+                                const loggedSets = status.sets || [];
+                                const hasLogged = loggedSets.length > 0;
+                                const cardClass = isSkipped ? 'skipped' : (isDone ? 'done' : '');
                                 const isOpen = openCard === ex.name;
                                 
                                 const baseName = ex.name.replace(" (Single)", "").replace(" (Alt)", "");
@@ -870,7 +945,7 @@
                                 });
 
                                 return (
-                                    <div key={ex.name + index} className={`card ${status ? status : ''} ${isOpen ? 'open' : ''}`}>
+                                    <div key={ex.name + index} className={`card ${cardClass} ${isOpen ? 'open' : ''}`}>
                                         <div className="card-header" onClick={() => setOpenCard(isOpen ? null : ex.name)}>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -894,10 +969,10 @@
                                                 ) : null}
 
 
-                                                {status ? (
+                                                {isSkipped ? (
                                                     <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                                                        <span style={{ fontSize: 11, fontWeight: 700, color: status === 'done' ? 'var(--success)' : 'var(--skip)', textTransform: "uppercase" }}>
-                                                            {status}
+                                                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--skip)', textTransform: "uppercase" }}>
+                                                            SKIPPED
                                                         </span>
                                                         <button 
                                                             type="button"
@@ -907,6 +982,48 @@
                                                         >
                                                             UNDO
                                                         </button>
+                                                    </div>
+                                                ) : hasLogged ? (
+                                                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', textTransform: "uppercase" }}>
+                                                                Completed Sets: {loggedSets.length}
+                                                            </span>
+                                                            <button 
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); undoAction(ex.name); }} 
+                                                                className="var-btn" 
+                                                                style={{ fontSize: 9, padding: "2px 6px", border: "1px solid var(--accent)", color: "var(--accent)" }}
+                                                            >
+                                                                UNDO
+                                                            </button>
+                                                        </div>
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                                            {loggedSets.map((set, sIdx) => {
+                                                                const summary = activePeople.map(p => {
+                                                                    const pLog = set[p.toLowerCase()];
+                                                                    if (pLog && pLog.reps) {
+                                                                        const nameInit = p.charAt(0).toUpperCase();
+                                                                        return `${nameInit}:${pLog.reps}${pLog.weight ? `@${pLog.weight}` : ''}`;
+                                                                    }
+                                                                    return null;
+                                                                }).filter(Boolean).join(' ');
+
+                                                                return (
+                                                                    <span key={sIdx} style={{ 
+                                                                        fontSize: "9px", 
+                                                                        fontFamily: "var(--mono)", 
+                                                                        background: "rgba(34, 197, 94, 0.12)", 
+                                                                        color: "#22c55e", 
+                                                                        padding: "2px 6px", 
+                                                                        borderRadius: "4px",
+                                                                        border: "1px solid rgba(34, 197, 94, 0.25)"
+                                                                    }}>
+                                                                        L{sIdx + 1}: {summary}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
                                                 ) : null}
                                             </div>
@@ -924,7 +1041,11 @@
                                                     const w = e.target.elements[`weight_${p}`]?.value;
                                                     logs[p.toLowerCase()] = { reps: r, weight: w };
                                                 });
-                                                markDone(ex.name, logs, ex);
+                                                
+                                                const formEl = e.target;
+                                                const clearInputsFn = () => formEl.reset();
+                                                
+                                                markDone(ex.name, logs, ex, clearInputsFn);
                                             }}>
                                                 {activePeople.map(p => {
                                                     const pMaxes = maxLabels.find(m => m.person === p).ranges;
@@ -951,9 +1072,9 @@
                                                                 <div style={{ padding: "12px", borderTop: "1px solid #1a1a1a", background: "#0c0c0c" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                                                            <input type="number" name={`reps_${p}`} inputMode="numeric" placeholder="reps" style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none" }} />
+                                                                            <input type="number" name={`reps_${p}`} inputMode="numeric" placeholder="reps" disabled={savingStates[ex.name]} style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none", opacity: savingStates[ex.name] ? 0.5 : 1 }} />
                                                                             <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>×</span>
-                                                                            <input type="number" name={`weight_${p}`} inputMode="decimal" step="any" placeholder="lbs" style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none" }} />
+                                                                            <input type="number" name={`weight_${p}`} inputMode="decimal" step="any" placeholder="lbs" disabled={savingStates[ex.name]} style={{ background: "#0c0c0c", border: "1px solid var(--accent)", borderRadius: 8, padding: 8, width: 70, textAlign: "center", fontSize: 16, fontFamily: "var(--mono)", color: "var(--text)", outline: "none", opacity: savingStates[ex.name] ? 0.5 : 1 }} />
                                                                         </div>
                                                                         <button 
                                                                             type="button"
@@ -965,9 +1086,10 @@
                                                                         type="text" 
                                                                         className="planner-note-input" 
                                                                         placeholder="Add cue/note..." 
+                                                                        disabled={savingStates[ex.name]}
                                                                         value={notes[`${ex.name}_${p}`] || ""}
                                                                         onChange={(e) => setNotes({...notes, [`${ex.name}_${p}`]: e.target.value})}
-                                                                        style={{ marginTop: 8 }}
+                                                                        style={{ marginTop: 8, opacity: savingStates[ex.name] ? 0.5 : 1 }}
                                                                     />
                                                                     
                                                                     {isHistoryOpen && (
@@ -991,10 +1113,16 @@
                                                     );
                                                 })}
                                                     <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                                                        <button type="submit" className="btn-primary" style={{ flex: 1, padding: "12px", fontSize: 14 }}>LOG SET</button>
-                                                        <button type="button" className="btn-danger" onClick={() => markSkip(ex.name)} style={{ flex: 1, padding: "12px", fontSize: 14 }}>SKIP</button>
+                                                        <button type="submit" className="btn-primary" disabled={savingStates[ex.name]} style={{ flex: 1, padding: "12px", fontSize: 14 }}>
+                                                            {savingStates[ex.name] ? "Saving..." : `+ LOG SET ${loggedSets.length + 1}`}
+                                                        </button>
                                                     </div>
                                                 </form>
+                                                
+                                                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                                                    <button type="button" className="btn-success" onClick={() => markExplicitDone(ex.name)} style={{ flex: 1, padding: "12px", fontSize: 14 }}>✓ DONE</button>
+                                                    <button type="button" className="btn-danger" onClick={() => markSkip(ex.name)} style={{ flex: 1, padding: "12px", fontSize: 14 }}>— SKIP</button>
+                                                </div>
 
                                                 {/* Swap UI */}
                                                 <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 16 }}>
