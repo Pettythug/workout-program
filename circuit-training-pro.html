@@ -18,6 +18,65 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
     <script src="gym-core.js"></script>
+    <script>
+        // Override sheetsPost with a robust version that handles Apps Script timeout and redirect parsing issues
+        (function() {
+            window.sheetsPost = async function(payload) {
+                const url = localStorage.getItem('gym_api_url') || SCRIPT_URL;
+                const payloadStr = JSON.stringify(payload);
+                let res;
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                
+                try {
+                    if (payloadStr.length > 1500 || payload.action === "syncAll") {
+                        res = await fetch(url, {
+                            method: "POST",
+                            body: payloadStr,
+                            headers: { "Content-Type": "text/plain;charset=utf-8" },
+                            signal: controller.signal
+                        });
+                    } else {
+                        const encoded = encodeURIComponent(payloadStr);
+                        res = await fetch(url + "?payload=" + encoded, { 
+                            signal: controller.signal 
+                        });
+                    }
+                } catch (fetchErr) {
+                    if (fetchErr.name === 'AbortError') {
+                        throw new Error("Request timed out after 30 seconds");
+                    }
+                    throw fetchErr;
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+                
+                const text = await res.text();
+                let json;
+                try {
+                    json = JSON.parse(text);
+                } catch (e) {
+                    if (text.includes('"status":"ok"') || text.includes("'status':'ok'")) {
+                        const match = text.match(/\{"status"\s*:\s*"ok"[^\}]*\}/) || text.match(/\{'status'\s*:\s*'ok'[^\}]*\}/);
+                        if (match) {
+                            try {
+                                json = JSON.parse(match[0]);
+                            } catch (innerErr) {}
+                        }
+                        if (!json) {
+                            json = { status: "ok", data: {} };
+                        }
+                    } else {
+                        throw new Error("Failed to parse response: " + text.slice(0, 100));
+                    }
+                }
+                
+                if (json.status !== "ok") throw new Error(json.message);
+                return json.data;
+            };
+        })();
+    </script>
     <style>
         :root {
             --bg: #0c0c0c;
@@ -562,7 +621,9 @@
                 setOpenCard(null);
 
                 window.sheetsPost(setPayload).then(res => {
-                    // Success! res is json.data
+                    if (window.showToast) {
+                        window.showToast(`Saved set for ${exName}`);
+                    }
                 }).catch(err => {
                     alert("Failed to save set for " + exName + "\nError: " + (err.message || err));
                     console.error(err);
