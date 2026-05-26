@@ -1,4 +1,4 @@
-Hey there,
+﻿Hey there,
 
 Here is a quick look at where we stand with the GymLog ecosystem and what is left on the radar for future development.
 
@@ -35,9 +35,9 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 
 ### Group 5A: Circuit App Polish & Parity Sync (Medium Difficulty)
 *Recommended Model: Gemini 3.1 Pro (High)*
-- [ ] Rep-Range Edge Visualization: Redesign the machine-max UI block to display all available historical maxes side-by-side (1-3 Max, 4-7 Max, 8-12 Max, 13+ Max) for complete edge progression visibility.
-- [ ] Code Cleanup: Audit `circuit-training-pro-beta.html` line-by-line, abstract inline styles to CSS, and consolidate redundant mapping.
-- [ ] Feature Parity: Standardize and sync the custom exercise creation, variation toggling/max recalculation, and inline history viewer back to the standard GymLog beta (`gymlog-variation-beta.html`).
+- [x] Rep-Range Edge Visualization: Redesign the machine-max UI block to display all available historical maxes side-by-side (1-3 Max, 4-7 Max, 8-12 Max, 13+ Max) for complete edge progression visibility.
+- [x] Code Cleanup: Audit `circuit-training-pro-beta.html` line-by-line, abstract inline styles to CSS, and consolidate redundant mapping.
+- [x] Feature Parity: Standardize and sync the custom exercise creation, variation toggling/max recalculation, and inline history viewer back to the standard GymLog beta (`gymlog-variation-beta.html`).
 
 ### Group 6: End-to-End Verification & Optimization Audit (Low Difficulty)
 *Recommended Model: Gemini Flash or 3.1 Pro (Low)*
@@ -47,4 +47,13 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 - [x] Sheets Sync Verification: Verify that new categories and skipped/logged sets successfully write back to Google Sheets.
 - [x] Explosive Category Test: Verify that changing the workout number correctly toggles the target range between "1-3" and "1-5" on Explosive exercises, and hides standard ranges.
 
+
+### Group 7: Circuit Trainer Refinements & Fixes (Medium Difficulty)
+*Recommended Model: Gemini 3.1 Pro (High) or Flash*
+- [ ] Save Feedback: Add visual UI feedback confirming when a set has been successfully saved in the circuit trainer.
+- [ ] Multi-Set Counter: Count up and display multiple logged sets (e.g., Log 1, Log 2, Log 3) on the same machine to support extra sets or series of circuits.
+- [ ] Intermittent Log Failure Bug: Troubleshoot and fix the false failure message that claims logging failed when the set actually logged successfully.
+- [ ] Shaded State Retention: Keep completed exercises in place and shade them green, rather than sorting them to the bottom, to preserve circuit order and readability.
+
 Let me know if you need any other details on this.
+
