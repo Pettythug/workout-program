@@ -308,17 +308,13 @@ function gymlog_handleLogSet(payload) {
 // =============================================================================
 
 function gymlog_recalculateBestForExercise(exerciseName) {
-  SpreadsheetApp.flush();
-
   const histSheet  = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
   const bestSheet  = getOrCreateSheet(BEST_TAB,    BEST_HEADERS);
   const targetName = String(exerciseName).trim();
-
-  // Read all history rows for this exercise
+  // 1. Read all history rows for this exercise in a single batch read
   const histRaw = histSheet.getLastRow() > 1
     ? histSheet.getRange(2, 1, histSheet.getLastRow() - 1, HISTORY_HEADERS.length).getValues()
     : [];
-
   const entries = histRaw
     .filter(r => String(r[2]).trim() === targetName)
     .map(r => ({
@@ -327,8 +323,7 @@ function gymlog_recalculateBestForExercise(exerciseName) {
       weight: String(r[4]),
       range:  normalizeRange(r[5])
     }));
-
-  // Build best-per-person-per-range from history
+  // 2. Build best-per-person-per-range from history in memory
   const byPerson = {};
   entries.forEach(entry => {
     if (!REP_RANGES.includes(entry.range)) return; // skip unknown
@@ -344,29 +339,30 @@ function gymlog_recalculateBestForExercise(exerciseName) {
       byPerson[entry.person][entry.range] = { reps: entry.reps, weight: entry.weight };
     }
   });
-
-  // Delete existing best rows for this exercise
-  SpreadsheetApp.flush();
-  const lastRow = bestSheet.getLastRow();
-  if (lastRow > 1) {
-    const names = bestSheet.getRange(2, 1, lastRow - 1, 1).getValues();
-    for (let i = names.length - 1; i >= 0; i--) {
-      if (String(names[i][0]).trim() === targetName) bestSheet.deleteRow(i + 2);
-    }
-  }
-
-  // Write new rows — one per person with data
-  if (Object.keys(byPerson).length === 0) return;
-  SpreadsheetApp.flush();
+  // 3. Batch read the entire Best sheet to modify it in memory
+  const bestLastRow = bestSheet.getLastRow();
+  let allBests = bestLastRow > 1
+    ? bestSheet.getRange(2, 1, bestLastRow - 1, BEST_HEADERS.length).getValues()
+    : [];
+  // Filter out any existing rows for this exercise in memory (no slow deleteRow in a loop)
+  allBests = allBests.filter(row => String(row[0]).trim() !== targetName);
+  // Append new computed best rows in memory
   for (const person of Object.keys(byPerson)) {
     const b = byPerson[person];
-    bestSheet.appendRow([
+    allBests.push([
       targetName, person,
       formatBest(b.r1_3),
       formatBest(b.r4_7),
       formatBest(b.r8_12),
       formatBest(b.r13_plus)
     ]);
+  }
+  // 4. Batch write back to the sheet
+  if (bestLastRow > 1) {
+    bestSheet.getRange(2, 1, bestLastRow - 1, BEST_HEADERS.length).clearContent();
+  }
+  if (allBests.length > 0) {
+    bestSheet.getRange(2, 1, allBests.length, BEST_HEADERS.length).setValues(allBests);
   }
 }
 

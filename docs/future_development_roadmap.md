@@ -67,7 +67,17 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 *Recommended Model: Gemini Flash or 3.1 Pro (Low)*
 - [x] Fix Logging PIN Prompt: Remove the admin PIN prompt from the standard set logging action in the Circuit Trainer by removing the dynamic call to requireAdminPin for non-destructive actions.
 
+### Group 10: Circuit Trainer Usability & Logging Polish (Medium Difficulty)
+*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
+- [x] Fix False Failure on Set Log: Resolve the intermittent false failure alert that prevents the UI from updating/syncing and leads to double-logging or out-of-order set logging.
+- [x] Category Tag Visibility: Adjust .category-tag text color to use ar(--accent) (orange) instead of ar(--muted) (gray) for better legibility.
+- [x] Clear Notes After Logging: Automatically clear note input state after a set is successfully logged.
+- [x] Single/Alternate Quick Toggles: Add "Single Leg" and "Alternating" checkbox toggles under the note input to quickly update the note text.
+- [x] Show Notes in History List: Display the logged note under each entry in the card's history list.
+
 Let me know if you need any other details on this.
+
+
 
 
 

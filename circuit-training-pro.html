@@ -27,7 +27,7 @@
                 let res;
                 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
                 
                 try {
                     if (payloadStr.length > 1500 || payload.action === "syncAll") {
@@ -45,7 +45,7 @@
                     }
                 } catch (fetchErr) {
                     if (fetchErr.name === 'AbortError') {
-                        throw new Error("Request timed out after 30 seconds");
+                        throw new Error("Request timed out after 60 seconds. The data may have been logged successfully on the server. Please check the history or refresh before re-submitting.");
                     }
                     throw fetchErr;
                 } finally {
@@ -159,7 +159,7 @@
         .category-tag {
             font-size: 10px;
             font-family: var(--mono);
-            color: var(--muted);
+            color: var(--accent);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 4px;
@@ -666,6 +666,15 @@
                     });
                     
                     if (clearInputsFn) clearInputsFn();
+                    
+                    // Clear notes state for logging users
+                    setNotes(prev => {
+                        const nextNotes = { ...prev };
+                        activePeople.forEach(p => {
+                            delete nextNotes[`${exName}_${p}`];
+                        });
+                        return nextNotes;
+                    });
                     
                     if (window.showToast) {
                         window.showToast(`Saved set for ${exName}`);
@@ -1224,6 +1233,43 @@
                                                                         style={{ marginTop: 8, opacity: savingStates[ex.name] ? 0.5 : 1 }}
                                                                     />
                                                                     
+                                                                    <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+                                                                        <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={(notes[`${ex.name}_${p}`] || "").includes("Single Leg")}
+                                                                                onChange={(e) => {
+                                                                                    const currentNote = notes[`${ex.name}_${p}`] || "";
+                                                                                    if (e.target.checked) {
+                                                                                        if (!currentNote.includes("Single Leg")) {
+                                                                                            setNotes({...notes, [`${ex.name}_${p}`]: (currentNote + " Single Leg").trim()});
+                                                                                        }
+                                                                                    } else {
+                                                                                        setNotes({...notes, [`${ex.name}_${p}`]: currentNote.replace("Single Leg", "").replace(/\s+/g, ' ').trim()});
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                            Single Leg
+                                                                        </label>
+                                                                        <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+                                                                            <input 
+                                                                                type="checkbox" 
+                                                                                checked={(notes[`${ex.name}_${p}`] || "").includes("Alternating")}
+                                                                                onChange={(e) => {
+                                                                                    const currentNote = notes[`${ex.name}_${p}`] || "";
+                                                                                    if (e.target.checked) {
+                                                                                        if (!currentNote.includes("Alternating")) {
+                                                                                            setNotes({...notes, [`${ex.name}_${p}`]: (currentNote + " Alternating").trim()});
+                                                                                        }
+                                                                                    } else {
+                                                                                        setNotes({...notes, [`${ex.name}_${p}`]: currentNote.replace("Alternating", "").replace(/\s+/g, ' ').trim()});
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                            Alternating
+                                                                        </label>
+                                                                    </div>
+                                                                    
                                                                     {isHistoryOpen && (
                                                                         <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #222" }}>
                                                                             <div style={{ fontSize: 10, color: "var(--accent)", fontWeight: 700, textTransform: "uppercase", marginBottom: 8, letterSpacing: 1 }}>{p}'s Recent History</div>
@@ -1231,19 +1277,26 @@
                                                                                 const pHist = data.history.filter(h => h.exercise === ex.name && h.person.toLowerCase() === p.toLowerCase()).slice(0, 5);
                                                                                 if (pHist.length === 0) return <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>No recent history found.</div>;
                                                                                 return pHist.map((h, i) => (
-                                                                                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "4px 0" }}>
-                                                                                        <div style={{ color: "var(--muted)" }}>{h.date}</div>
-                                                                                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                                                                            <div style={{ color: "#eee", fontWeight: 700 }}>{h.reps} reps {h.weight ? `x ${h.weight} lbs` : ''}</div>
-                                                                                            <button 
-                                                                                                type="button"
-                                                                                                onClick={() => handleDeleteHistory(h)}
-                                                                                                style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, padding: "2px 6px" }}
-                                                                                                title="Delete History Entry"
-                                                                                            >
-                                                                                                🗑️
-                                                                                            </button>
+                                                                                    <div key={i} style={{ display: "flex", flexDirection: "column", padding: "6px 0", borderBottom: "1px solid #1a1a1a" }}>
+                                                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+                                                                                            <div style={{ color: "var(--muted)" }}>{h.date}</div>
+                                                                                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                                                                                <div style={{ color: "#eee", fontWeight: 700 }}>{h.reps} reps {h.weight ? `x ${h.weight} lbs` : ''}</div>
+                                                                                                <button 
+                                                                                                    type="button"
+                                                                                                    onClick={() => handleDeleteHistory(h)}
+                                                                                                    style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, padding: "2px 6px" }}
+                                                                                                    title="Delete History Entry"
+                                                                                                >
+                                                                                                    ✕
+                                                                                                </button>
+                                                                                            </div>
                                                                                         </div>
+                                                                                        {h.note && (
+                                                                                            <div style={{ fontSize: 11, color: "var(--accent)", fontStyle: "italic", marginTop: 2 }}>
+                                                                                                Note: {h.note}
+                                                                                            </div>
+                                                                                        )}
                                                                                     </div>
                                                                                 ));
                                                                             })()}
