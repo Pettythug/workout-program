@@ -46,6 +46,7 @@ body {
 }
 
 /* Layout */
+<<<<<<< HEAD
 .nav-tab {
     color: var(--muted);
     text-decoration: none;
@@ -65,6 +66,8 @@ body {
     border-bottom: 2px solid var(--accent);
 }
 
+=======
+>>>>>>> origin/main
 .header {
     background: var(--surface);
     border-bottom: 1px solid var(--border);

@@ -13,8 +13,13 @@
 
 ### Epic 1: Project Setup & Modernization
 - [x] **Story 1.1**: Initialize Vite + React project in a new subfolder (gymlog-react) with standard folder structure (src/components, src/hooks, etc.).
+<<<<<<< HEAD
 - [x] **Story 1.2**: Configure CSS Modules or global styles to port over the existing gym-core.css and custom UI tokens.
 - [x] **Story 1.3**: Set up React Router for navigation between the "PLAN" and "LIFT" tabs.
+=======
+- **Story 1.2**: Configure CSS Modules or global styles to port over the existing gym-core.css and custom UI tokens.
+- **Story 1.3**: Set up React Router for navigation between the "PLAN" and "LIFT" tabs.
+>>>>>>> origin/main
 
 ### Epic 2: Core Data & State Migration
 - **Story 2.1**: Port Combined_AppScript_v2.gs integration logic into a dedicated React custom hook or context provider (useGymAPI).
@@ -33,5 +38,8 @@
 - **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/main
