@@ -4,12 +4,8 @@ Files & Current Status:
 * vite.config.js -> Vite bundler configuration.
 * src/main.jsx -> React entrypoint.
 * src/index.css -> Holds the global design tokens, root variables, and standard utility classes (buttons, cards) ported from the legacy app.
-<<<<<<< HEAD
 * src/App.jsx -> Main app component, now configured with React Router to provide navigation between Plan and Lift views.
 * src/components/PlanView.jsx -> Placeholder component for the Plan screen.
 * src/components/LiftView.jsx -> Placeholder component for the Lift screen (currently holds the design system test card).
 * react-router-dom -> Installed to handle client-side routing.
 * src/hooks/useGymAPI.js -> React custom hook port of the core Google Apps Script API integration logic.
-=======
-* src/App.jsx -> Main app component, currently rendering a test block to verify global styles and UI tokens.
->>>>>>> origin/main
