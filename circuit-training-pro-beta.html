@@ -634,7 +634,7 @@
                     action: "logSet",
                     exercise: exName,
                     entries: entries,
-                    pin: window.requireAdminPin ? window.requireAdminPin() : "5050" // Fallback if needed
+                    pin: "5050" // Standard set logging does not require admin PIN verification
                 };
                 
                 setSavingStates(prev => ({ ...prev, [exName]: true }));
@@ -708,7 +708,7 @@
                         manufacturer: targetEx.manufacturer,
                         baseExercise: targetEx.baseExercise,
                         muscleGroups: targetEx.muscleGroups,
-                        pin: window.requireAdminPin ? window.requireAdminPin() : "5050"
+                        pin: "5050" // Saving exercise metadata does not require admin PIN verification
                     };
                     window.sheetsPost(clonePayload).catch(err => console.error("Failed to save new exercise metadata:", err));
                 }

@@ -1,4 +1,4 @@
-﻿# Architecture Roadmap: React Migration
+# Architecture Roadmap: React Migration
 
 ## The "Why" (Technical Debt)
 - **Monolithic Architecture**: The large monolith file creates significant maintenance overhead and increases the risk of regressions.
@@ -12,7 +12,7 @@
 ## The "What" (Jira Breakdowns)
 
 ### Epic 1: Project Setup & Modernization
-- **Story 1.1**: Initialize Vite + React project with standard folder structure (src/components, src/hooks, etc.).
+- **Story 1.1**: Initialize Vite + React project in a new subfolder (gymlog-react) with standard folder structure (src/components, src/hooks, etc.).
 - **Story 1.2**: Configure CSS Modules or global styles to port over the existing gym-core.css and custom UI tokens.
 - **Story 1.3**: Set up React Router for navigation between the "PLAN" and "LIFT" tabs.
 
@@ -31,3 +31,4 @@
 - **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
 - **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
 - **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
+

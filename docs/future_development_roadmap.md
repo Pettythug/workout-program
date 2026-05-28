@@ -1,4 +1,4 @@
-﻿Hey there,
+Hey there,
 
 Here is a quick look at where we stand with the GymLog ecosystem and what is left on the radar for future development.
 
@@ -63,7 +63,13 @@ Below is the execution plan ordered from lowest to highest difficulty, indicatin
 - [x] History Deletion UI & Integration: Add delete buttons to the card's history drawer entries, prompting for the Admin PIN and sending the deleteHistory API request.
 - [x] Sync Session Sets on Delete: When a session set is deleted from the history list, automatically remove it from the card's completed sets array to keep the counts aligned.
 
+### Group 9: Circuit Trainer Logging Pin Prompt Fix (Low Difficulty)
+*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
+- [x] Fix Logging PIN Prompt: Remove the admin PIN prompt from the standard set logging action in the Circuit Trainer by removing the dynamic call to requireAdminPin for non-destructive actions.
+
 Let me know if you need any other details on this.
+
+
 
 
 
