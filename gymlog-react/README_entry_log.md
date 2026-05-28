@@ -9,4 +9,5 @@ Files & Current Status:
 * src/components/LiftView.jsx -> Placeholder component for the Lift screen (currently holds the design system test card).
 * react-router-dom -> Installed to handle client-side routing.
 * src/hooks/useGymAPI.js -> React custom hook port of the core Google Apps Script API integration logic.
-* src/context/AppContext.jsx -> React Context provider managing global application state (workout day, people roster, active people, exercises, loading status) and fetching initial data on mount via useGymAPI.
+* src/context/AppContext.jsx -> React Context provider managing global application state (workout day, people roster, active people, exercises, loading status). Implements cache-first instant loading via localStorage and background sync on mount. Local state modifiers utilize write-through caching to persist updates.
+* src/context/dataMerge.js -> Helper function (ported from legacy gym-core.js mergeFromSheets) that combines locally cached config with the historical and personal record data fetched in the background from Google Sheets.

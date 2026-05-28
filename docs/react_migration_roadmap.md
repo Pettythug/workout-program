@@ -18,8 +18,8 @@
 
 ### Epic 2: Core Data & State Migration
 - [x] **Story 2.1**: Port Combined_AppScript_v2.gs integration logic into a dedicated React custom hook or context provider (useGymAPI).
-- **Story 2.2**: Migrate global AppState (workout day, people, maxes, active person) into React Context or Zustand for global availability.
-- **Story 2.3**: Implement caching and payload tunneling strategies in the new data layer to maintain the single source of truth.
+- [x] **Story 2.2**: Migrate global AppState (workout day, people, maxes, active person) into React Context or Zustand for global availability.
+- [x] **Story 2.3**: Implement caching and payload tunneling strategies in the new data layer to maintain the single source of truth.
 
 ### Epic 3: Lift View Migration (React to Vite/React)
 - **Story 3.1**: Extract existing React components (from gymlog-ultimate.html Zone 2) into standalone .jsx files.
@@ -31,6 +31,8 @@
 - **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
 - **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
 - **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
+
+
 
 
 
