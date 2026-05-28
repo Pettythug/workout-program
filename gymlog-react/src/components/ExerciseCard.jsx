@@ -1,0 +1,243 @@
+import React, { useState } from 'react';
+import { useAppContext } from '../context/AppContext';
+import { useGymAPI } from '../hooks/useGymAPI';
+
+const REP_RANGES = [
+    { key: "r1_3", label: "1-3 reps" },
+    { key: "r4_6", label: "4-6 reps" },
+    { key: "r7_9", label: "7-9 reps" },
+    { key: "r10_12", label: "10-12 reps" },
+    { key: "r13_plus", label: "13+ reps" }
+];
+
+export default function ExerciseCard({ group }) {
+    const { people, activePeople } = useAppContext();
+    const { logSet, deleteHistory } = useGymAPI();
+    
+    const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
+    const [isOpen, setIsOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("LOG"); // "LOG", "HISTORY"
+    const [logInputs, setLogInputs] = useState({});
+    const [isSaving, setIsSaving] = useState(false);
+    const [toast, setToast] = useState("");
+
+    // Fallback to "Standard" if not provided
+    const variations = group.variations || {};
+    const ex = variations[mode] || variations["Standard"] || Object.values(variations)[0];
+    if (!ex) return null;
+
+    const hasVariations = Object.keys(variations).length > 1;
+    const isDone = false; // Could be tracked globally or locally later
+
+    // Initialize log inputs if empty
+    const initLogInputs = () => {
+        if (Object.keys(logInputs).length === 0) {
+            const initial = {};
+            people.forEach(p => {
+                initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+            });
+            setLogInputs(initial);
+        }
+    };
+
+    const handleOpen = () => {
+        setIsOpen(!isOpen);
+        if (!isOpen) initLogInputs();
+    };
+
+    const updateLogInput = (personKey, field, value) => {
+        setLogInputs(prev => ({
+            ...prev,
+            [personKey]: { ...prev[personKey], [field]: value }
+        }));
+    };
+
+    const handleSaveSet = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        
+        try {
+            const entries = [];
+            for (const person of activePeople) {
+                const key = person.toLowerCase();
+                const input = logInputs[key];
+                if (!input) continue;
+                
+                if (ex.timed) {
+                    if (input.duration) {
+                        entries.push({
+                            date: new Date().toLocaleDateString('en-US'),
+                            person: key,
+                            reps: input.duration,
+                            weight: input.weight || "",
+                            range: "r13_plus",
+                            timed: true,
+                            note: input.note || ""
+                        });
+                    }
+                } else {
+                    if (input.reps) {
+                        // Very simple range finder
+                        const r = parseInt(input.reps);
+                        let range = "r13_plus";
+                        if (r <= 3) range = "r1_3";
+                        else if (r <= 6) range = "r4_6";
+                        else if (r <= 9) range = "r7_9";
+                        else if (r <= 12) range = "r10_12";
+
+                        entries.push({
+                            date: new Date().toLocaleDateString('en-US'),
+                            person: key,
+                            reps: input.reps,
+                            weight: input.weight || "",
+                            range: range,
+                            timed: false,
+                            note: input.note || ""
+                        });
+                    }
+                }
+            }
+
+            if (entries.length > 0) {
+                await logSet(ex.name, entries);
+                setToast("Set Saved!");
+                setTimeout(() => setToast(""), 2000);
+            }
+        } catch (e) {
+            console.error(e);
+            setToast("Error saving set");
+            setTimeout(() => setToast(""), 2000);
+        } finally {
+            setIsSaving(false);
+            initLogInputs(); // Clear inputs
+        }
+    };
+
+    const getBest = (personKey) => {
+        // Just return the first best for display simplicity or "No data"
+        if (!ex.best || !ex.best[personKey]) return "No data";
+        const keys = Object.keys(ex.best[personKey]);
+        if (keys.length === 0) return "No data";
+        const b = ex.best[personKey][keys[0]];
+        return ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
+    };
+
+    return (
+        <div className={`exercise-card ${isDone ? "cardDone" : ""}`}>
+            <div className="exercise-header" onClick={handleOpen} style={{ padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                <div>
+                    {ex.category && <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{ex.category}</div>}
+                    <div style={{ fontSize: 15, fontWeight: 500 }}>{group.baseName}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
+                        Best: <span style={{ color: 'var(--accent)' }}>{activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
+                    </div>
+                </div>
+                <div style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--muted)' }}>
+                    ▼
+                </div>
+            </div>
+
+            {isOpen && (
+                <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    {hasVariations && (
+                        <div style={{ display: 'flex', background: '#111', borderRadius: 8, padding: 4, marginBottom: 16 }}>
+                            {Object.keys(variations).map(v => (
+                                <button 
+                                    key={v}
+                                    onClick={() => setMode(v)}
+                                    style={{ 
+                                        flex: 1, 
+                                        background: mode === v ? '#1a1a1a' : 'none', 
+                                        border: 'none', 
+                                        color: mode === v ? 'var(--accent)' : 'var(--muted)', 
+                                        padding: '6px', 
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    {v}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1 }}>LOG SET</button>
+                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1 }}>HISTORY</button>
+                    </div>
+
+                    {activeTab === "LOG" && (
+                        <div>
+                            {activePeople.map(person => {
+                                const key = person.toLowerCase();
+                                const input = logInputs[key] || {};
+                                return (
+                                    <div key={person} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>{person.toUpperCase()}</div>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            {ex.timed ? (
+                                                <input 
+                                                    placeholder="mm:ss" 
+                                                    value={input.duration || ""} 
+                                                    onChange={e => updateLogInput(key, "duration", e.target.value)}
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                                />
+                                            ) : (
+                                                <>
+                                                    <input 
+                                                        placeholder="Reps" 
+                                                        type="number"
+                                                        value={input.reps || ""} 
+                                                        onChange={e => updateLogInput(key, "reps", e.target.value)}
+                                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                                    />
+                                                    <input 
+                                                        placeholder="Lbs" 
+                                                        type="number"
+                                                        value={input.weight || ""} 
+                                                        onChange={e => updateLogInput(key, "weight", e.target.value)}
+                                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                                    />
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            <button className="btn-success" style={{ width: '100%', marginTop: 8 }} onClick={handleSaveSet} disabled={isSaving}>
+                                {isSaving ? "SAVING..." : "SAVE SET"}
+                            </button>
+                        </div>
+                    )}
+
+                    {activeTab === "HISTORY" && (
+                        <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>RECENT HISTORY</div>
+                            {(!ex.history || ex.history.length === 0) ? (
+                                <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
+                            ) : (
+                                ex.history.slice(0, 5).map((h, i) => (
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                        <div>
+                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700 }}>
+                                                {ex.timed ? `${h.reps} ${h.weight ? `· ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                    
+                    {toast && <div style={{ color: 'var(--success)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>{toast}</div>}
+                </div>
+            )}
+        </div>
+    );
+}

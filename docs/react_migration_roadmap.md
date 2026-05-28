@@ -11,26 +11,32 @@
 
 ## The "What" (Jira Breakdowns)
 
-### Epic 1: Project Setup & Modernization
+### Epic 1: Project Setup & Modernization (Low Difficulty)
+*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
 - [x] **Story 1.1**: Initialize Vite + React project in a new subfolder (gymlog-react) with standard folder structure (src/components, src/hooks, etc.).
 - [x] **Story 1.2**: Configure CSS Modules or global styles to port over the existing gym-core.css and custom UI tokens.
 - [x] **Story 1.3**: Set up React Router for navigation between the "PLAN" and "LIFT" tabs.
 
-### Epic 2: Core Data & State Migration
+### Epic 2: Core Data & State Migration (Medium-High Difficulty)
+*Recommended Model: Gemini 3.1 Pro (High)*
 - [x] **Story 2.1**: Port Combined_AppScript_v2.gs integration logic into a dedicated React custom hook or context provider (useGymAPI).
 - [x] **Story 2.2**: Migrate global AppState (workout day, people, maxes, active person) into React Context or Zustand for global availability.
 - [x] **Story 2.3**: Implement caching and payload tunneling strategies in the new data layer to maintain the single source of truth.
 
-### Epic 3: Lift View Migration (React to Vite/React)
-- **Story 3.1**: Extract existing React components (from gymlog-ultimate.html Zone 2) into standalone .jsx files.
-- **Story 3.2**: Remove in-browser Babel dependencies and replace with Vite build steps.
+### Epic 3: Lift View Migration (React to Vite/React) (Medium Difficulty)
+*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
+- [x] **Story 3.1**: Extract existing React components (from gymlog-ultimate.html Zone 2) into standalone .jsx files.
+- [x] **Story 3.2**: Remove in-browser Babel dependencies and replace with Vite build steps.
 - **Story 3.3**: Refactor state props and inline functions to use the new global React Context data layer.
 
-### Epic 4: Plan View Migration (Vanilla JS to React)
+### Epic 4: Plan View Migration (Vanilla JS to React) (High Difficulty)
+*Recommended Model: Gemini 3.1 Pro (High)*
 - **Story 4.1**: Rebuild the "PLAN" view layout and history drawer as React components.
 - **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
 - **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
 - **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
+
+
 
 
 
