@@ -5,7 +5,7 @@ Files & Current Status:
 * src/main.jsx -> React entrypoint.
 * src/index.css -> Holds the global design tokens, root variables, and standard utility classes (buttons, cards) ported from the legacy app.
 * src/App.jsx -> Main app component, now configured with React Router to provide navigation between Plan and Lift views, and wrapped in the AppProvider for global state.
-* src/components/PlanView.jsx -> Placeholder component for the Plan screen.
+* src/components/PlanView.jsx -> Fully implemented Plan screen component that renders the daily workout plan layout using legacy builder logic. Displays exercise planner cards, integrates the persistent history drawer, and consumes global states via AppContext for seamless interaction.
 * src/components/LiftView.jsx -> Main orchestrator component for the Lift screen. Manages global state consumption, filter logic (search, category, location), and renders sub-components.
 * src/components/ExerciseCard.jsx -> Standalone component rendering individual exercise cards. Handles UI variations (Standard, Single, Alternating), set logging inputs, and displays recent history. Now consumes completion status and includes DONE/SKIP buttons to instantly shade cards.
 * src/components/SettingsModal.jsx -> Modal component for global application settings (adding people/locations, editing the API sync URL).
