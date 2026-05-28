@@ -24,6 +24,10 @@ export function AppProvider({ children }) {
         const cached = localStorage.getItem('gymlog_exercises');
         return cached ? JSON.parse(cached) : [];
     });
+    const [exerciseStatus, setExerciseStatus] = useState(() => {
+        const cached = localStorage.getItem('gymlog_exerciseStatus');
+        return cached ? JSON.parse(cached) : {};
+    });
     const [loading, setLoading] = useState(true);
 
     // Initial Load
@@ -82,14 +86,64 @@ export function AppProvider({ children }) {
         });
     };
 
+    const setExerciseDone = (exName) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev, [exName]: 'done' };
+            localStorage.setItem('gymlog_exerciseStatus', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const setExerciseSkipped = (exName) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev, [exName]: 'skipped' };
+            localStorage.setItem('gymlog_exerciseStatus', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const addSetToLocalHistory = (exName, entries) => {
+        setExercises(prev => {
+            const next = prev.map(ex => {
+                if (ex.name === exName) {
+                    return { ...ex, history: [...entries, ...(ex.history || [])] };
+                }
+                return ex;
+            });
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const deleteSetFromLocalHistory = (exName, entryDetails) => {
+        setExercises(prev => {
+            const next = prev.map(ex => {
+                if (ex.name === exName) {
+                    const newHistory = (ex.history || []).filter(h => 
+                        !(h.date === entryDetails.date && h.person === entryDetails.person && h.reps === entryDetails.reps && h.weight === entryDetails.weight)
+                    );
+                    return { ...ex, history: newHistory };
+                }
+                return ex;
+            });
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const contextValue = {
         workoutDay,
         people,
         activePeople,
         exercises,
+        exerciseStatus,
         loading,
         updateWorkoutDay,
-        togglePersonActive
+        togglePersonActive,
+        setExerciseDone,
+        setExerciseSkipped,
+        addSetToLocalHistory,
+        deleteSetFromLocalHistory
     };
 
     return (

@@ -11,7 +11,7 @@ const REP_RANGES = [
 ];
 
 export default function ExerciseCard({ group }) {
-    const { people, activePeople } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, addSetToLocalHistory } = useAppContext();
     const { logSet, deleteHistory } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -27,7 +27,8 @@ export default function ExerciseCard({ group }) {
     if (!ex) return null;
 
     const hasVariations = Object.keys(variations).length > 1;
-    const isDone = false; // Could be tracked globally or locally later
+    const isDone = exerciseStatus[ex.name] === 'done';
+    const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
     // Initialize log inputs if empty
     const initLogInputs = () => {
@@ -100,6 +101,7 @@ export default function ExerciseCard({ group }) {
 
             if (entries.length > 0) {
                 await logSet(ex.name, entries);
+                addSetToLocalHistory(ex.name, entries);
                 setToast("Set Saved!");
                 setTimeout(() => setToast(""), 2000);
             }
@@ -123,17 +125,30 @@ export default function ExerciseCard({ group }) {
     };
 
     return (
-        <div className={`exercise-card ${isDone ? "cardDone" : ""}`}>
-            <div className="exercise-header" onClick={handleOpen} style={{ padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-                <div>
+        <div className={`exercise-card ${isDone ? "cardDone" : isSkipped ? "cardSkipped" : ""}`} style={{ borderColor: isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--accent)', opacity: isDone || isSkipped ? 0.6 : 1 }}>
+            <div className="exercise-header" style={{ padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                <div onClick={handleOpen} style={{ flex: 1 }}>
                     {ex.category && <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{ex.category}</div>}
                     <div style={{ fontSize: 15, fontWeight: 500 }}>{group.baseName}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
                         Best: <span style={{ color: 'var(--accent)' }}>{activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
                     </div>
                 </div>
-                <div style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--muted)' }}>
-                    ▼
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {!isDone && !isSkipped && (
+                        <>
+                            <button className="btn-success" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); setExerciseDone(ex.name); }}>DONE</button>
+                            <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); setExerciseSkipped(ex.name); }}>SKIP</button>
+                        </>
+                    )}
+                    {(isDone || isSkipped) && (
+                        <div style={{ fontSize: 10, fontWeight: 700, color: isDone ? 'var(--success)' : 'var(--muted)' }}>
+                            {isDone ? 'COMPLETED' : 'SKIPPED'}
+                        </div>
+                    )}
+                    <div onClick={handleOpen} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--muted)', padding: '0 8px' }}>
+                        ▼
+                    </div>
                 </div>
             </div>
 

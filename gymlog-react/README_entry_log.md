@@ -7,10 +7,10 @@ Files & Current Status:
 * src/App.jsx -> Main app component, now configured with React Router to provide navigation between Plan and Lift views, and wrapped in the AppProvider for global state.
 * src/components/PlanView.jsx -> Placeholder component for the Plan screen.
 * src/components/LiftView.jsx -> Main orchestrator component for the Lift screen. Manages global state consumption, filter logic (search, category, location), and renders sub-components.
-* src/components/ExerciseCard.jsx -> Standalone component rendering individual exercise cards. Handles UI variations (Standard, Single, Alternating), set logging inputs, and displays recent history.
+* src/components/ExerciseCard.jsx -> Standalone component rendering individual exercise cards. Handles UI variations (Standard, Single, Alternating), set logging inputs, and displays recent history. Now consumes completion status and includes DONE/SKIP buttons to instantly shade cards.
 * src/components/SettingsModal.jsx -> Modal component for global application settings (adding people/locations, editing the API sync URL).
 * src/components/HelpDrawer.jsx -> Drawer component containing usage guidelines and instructions.
 * react-router-dom -> Installed to handle client-side routing.
 * src/hooks/useGymAPI.js -> React custom hook port of the core Google Apps Script API integration logic.
-* src/context/AppContext.jsx -> React Context provider managing global application state (workout day, people roster, active people, exercises, loading status). Implements cache-first instant loading via localStorage and background sync on mount. Local state modifiers utilize write-through caching to persist updates.
+* src/context/AppContext.jsx -> React Context provider managing global application state (workout day, people roster, active people, exercises, loading status). Implements cache-first instant loading via localStorage and background sync on mount. Local state modifiers utilize write-through caching to persist updates. Includes exercise completion tracking (done/skipped) and instant local history updates.
 * src/context/dataMerge.js -> Helper function (ported from legacy gym-core.js mergeFromSheets) that combines locally cached config with the historical and personal record data fetched in the background from Google Sheets.
