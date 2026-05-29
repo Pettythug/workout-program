@@ -199,6 +199,20 @@ export function AppProvider({ children }) {
         });
     };
 
+    const removeExerciseFromLocalState = (name) => {
+        setExercises(prev => {
+            const next = prev.filter(ex => ex.name !== name);
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            delete next[name];
+            localStorage.setItem('gymlog_exerciseStatus', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const contextValue = {
         workoutDay,
         people,
@@ -217,7 +231,8 @@ export function AppProvider({ children }) {
         swapExercise,
         addPersonToRoster,
         addLocationToRoster,
-        createExerciseMeta
+        createExerciseMeta,
+        removeExerciseFromLocalState
     };
 
     return (

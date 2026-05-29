@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function SettingsModal({ isOpen, onClose, locations, setLocations }) {
-    const { people, exercises, addPersonToRoster, addLocationToRoster, createExerciseMeta } = useAppContext();
+    const { people, exercises, addPersonToRoster, addLocationToRoster, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+    const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('gym_api_url') || '');
@@ -14,6 +16,9 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
     const [exCreateSingle, setExCreateSingle] = useState(false);
     const [exCreateAlt, setExCreateAlt] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+    const [deleteExName, setDeleteExName] = useState('');
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -78,6 +83,27 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
         setExLocation('Anywhere');
         setExCreateSingle(false);
         setExCreateAlt(false);
+    };
+
+    const handleDeleteExercise = async () => {
+        if (!deleteExName) {
+            alert("Please select an exercise to delete.");
+            return;
+        }
+        const pin = prompt("Enter Admin PIN to delete this exercise:");
+        if (pin !== "5050") {
+            alert("Invalid PIN.");
+            return;
+        }
+
+        try {
+            await deleteExercise(deleteExName);
+            removeExerciseFromLocalState(deleteExName);
+            alert(`Exercise '${deleteExName}' deleted.`);
+            setDeleteExName('');
+        } catch (err) {
+            alert("Failed to delete exercise: " + err.message);
+        }
     };
 
     return (
@@ -183,6 +209,37 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
 
                             <button className="btn-success" onClick={handleCreateExercise} style={{ marginTop: 8, width: '100%' }}>
                                 CREATE & SYNC
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <div 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setIsDeleteOpen(!isDeleteOpen)}
+                    >
+                        <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: '#ff4444', margin: 0, cursor: 'pointer' }}>
+                            DELETE EXERCISE
+                        </label>
+                        <span style={{ color: 'var(--muted)' }}>{isDeleteOpen ? '▲' : '▼'}</span>
+                    </div>
+                    
+                    {isDeleteOpen && (
+                        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <select 
+                                value={deleteExName}
+                                onChange={e => setDeleteExName(e.target.value)}
+                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                            >
+                                <option value="">Select Exercise to Delete...</option>
+                                {[...exercises].sort((a, b) => a.name.localeCompare(b.name)).map(ex => (
+                                    <option key={ex.name} value={ex.name}>{ex.name}</option>
+                                ))}
+                            </select>
+
+                            <button className="btn-danger" onClick={handleDeleteExercise} style={{ marginTop: 8, width: '100%', background: '#ff4444', color: '#fff', border: 'none', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                DELETE EXERCISE
                             </button>
                         </div>
                     )}
