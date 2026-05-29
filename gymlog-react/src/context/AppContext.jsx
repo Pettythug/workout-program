@@ -28,6 +28,10 @@ export function AppProvider({ children }) {
         const cached = localStorage.getItem('gymlog_exerciseStatus');
         return cached ? JSON.parse(cached) : {};
     });
+    const [dailySwaps, setDailySwaps] = useState(() => {
+        const cached = localStorage.getItem('gymlog_dailySwaps');
+        return cached ? JSON.parse(cached) : {};
+    });
     const [loading, setLoading] = useState(true);
 
     // Initial Load
@@ -131,19 +135,31 @@ export function AppProvider({ children }) {
         });
     };
 
+    const swapExercise = (day, originalBaseKey, newName) => {
+        setDailySwaps(prev => {
+            const next = { ...prev };
+            if (!next[day]) next[day] = {};
+            next[day][originalBaseKey] = newName;
+            localStorage.setItem('gymlog_dailySwaps', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const contextValue = {
         workoutDay,
         people,
         activePeople,
         exercises,
         exerciseStatus,
+        dailySwaps,
         loading,
         updateWorkoutDay,
         togglePersonActive,
         setExerciseDone,
         setExerciseSkipped,
         addSetToLocalHistory,
-        deleteSetFromLocalHistory
+        deleteSetFromLocalHistory,
+        swapExercise
     };
 
     return (

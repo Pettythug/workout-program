@@ -32,8 +32,8 @@
 ### Epic 4: Plan View Migration (Vanilla JS to React) (High Difficulty)
 *Recommended Model: Gemini 3.1 Pro (High)*
 - **Story 4.1**: Rebuild the "PLAN" view layout and history drawer as React components.
-- **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
-- **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
+- [x] **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
+- [x] **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
 - **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
 
 

@@ -1,6 +1,56 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
+import { useTargetLock } from '../hooks/useTargetLock';
+
+const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
+    const key = person.toLowerCase();
+    const { targetRanges } = useTargetLock(ex, key);
+
+    return (
+        <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>{person.toUpperCase()}</div>
+            <div style={{ display: 'flex', gap: 4, fontSize: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                {targetRanges.map((tr, idx) => (
+                    <React.Fragment key={tr.key}>
+                        <span style={tr.isActive ? { color: 'var(--accent)', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
+                            {tr.label} ({tr.bestValue})
+                        </span>
+                        {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
+                    </React.Fragment>
+                ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+                {ex.timed ? (
+                    <input 
+                        placeholder="mm:ss" 
+                        value={input.duration || ""} 
+                        onChange={e => updateLogInput(key, "duration", e.target.value)}
+                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                    />
+                ) : (
+                    <>
+                        <input 
+                            placeholder="Reps" 
+                            type="number"
+                            value={input.reps || ""} 
+                            onChange={e => updateLogInput(key, "reps", e.target.value)}
+                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                        />
+                        <input 
+                            placeholder="Lbs" 
+                            type="number"
+                            value={input.weight || ""} 
+                            onChange={e => updateLogInput(key, "weight", e.target.value)}
+                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                        />
+                    </>
+                )}
+            </div>
+        </div>
+    );
+};
+
 
 const REP_RANGES = [
     { key: "r1_3", label: "1-3 reps" },
@@ -11,7 +61,7 @@ const REP_RANGES = [
 ];
 
 export default function ExerciseCard({ group }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, addSetToLocalHistory } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, addSetToLocalHistory, workoutDay, swapExercise } = useAppContext();
     const { logSet, deleteHistory } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -20,6 +70,8 @@ export default function ExerciseCard({ group }) {
     const [logInputs, setLogInputs] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [toast, setToast] = useState("");
+    const [isSwapping, setIsSwapping] = useState(false);
+    const [customSwap, setCustomSwap] = useState("");
 
     // Fallback to "Standard" if not provided
     const variations = group.variations || {};
@@ -178,6 +230,55 @@ export default function ExerciseCard({ group }) {
                         </div>
                     )}
 
+                    {group.originalBaseKey && (
+                        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ textAlign: 'left', fontSize: 11, padding: 0 }}>
+                                {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
+                            </button>
+                            {isSwapping && (
+                                <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Swap for another {ex.category}:</div>
+                                    <select 
+                                        onChange={(e) => {
+                                            if (e.target.value) {
+                                                swapExercise(workoutDay, group.originalBaseKey, e.target.value);
+                                                setIsSwapping(false);
+                                            }
+                                        }}
+                                        style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', marginBottom: 8 }}
+                                        value=""
+                                    >
+                                        <option value="" disabled>Select alternative...</option>
+                                        {group.alternatives?.map(alt => (
+                                            <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                        ))}
+                                    </select>
+                                    <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Or Custom Swap:</div>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <input 
+                                            value={customSwap}
+                                            onChange={e => setCustomSwap(e.target.value)}
+                                            placeholder="Enter custom name"
+                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white' }}
+                                        />
+                                        <button 
+                                            className="btn-success"
+                                            onClick={() => {
+                                                if (customSwap.trim()) {
+                                                    swapExercise(workoutDay, group.originalBaseKey, customSwap.trim());
+                                                    setIsSwapping(false);
+                                                    setCustomSwap("");
+                                                }
+                                            }}
+                                        >
+                                            CONFIRM
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                         <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1 }}>LOG SET</button>
                         <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1 }}>HISTORY</button>
@@ -189,36 +290,13 @@ export default function ExerciseCard({ group }) {
                                 const key = person.toLowerCase();
                                 const input = logInputs[key] || {};
                                 return (
-                                    <div key={person} style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 8 }}>{person.toUpperCase()}</div>
-                                        <div style={{ display: 'flex', gap: 8 }}>
-                                            {ex.timed ? (
-                                                <input 
-                                                    placeholder="mm:ss" 
-                                                    value={input.duration || ""} 
-                                                    onChange={e => updateLogInput(key, "duration", e.target.value)}
-                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
-                                                />
-                                            ) : (
-                                                <>
-                                                    <input 
-                                                        placeholder="Reps" 
-                                                        type="number"
-                                                        value={input.reps || ""} 
-                                                        onChange={e => updateLogInput(key, "reps", e.target.value)}
-                                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
-                                                    />
-                                                    <input 
-                                                        placeholder="Lbs" 
-                                                        type="number"
-                                                        value={input.weight || ""} 
-                                                        onChange={e => updateLogInput(key, "weight", e.target.value)}
-                                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
-                                                    />
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
+                                    <PersonLogSection 
+                                        key={person} 
+                                        person={person} 
+                                        ex={ex} 
+                                        input={input} 
+                                        updateLogInput={updateLogInput} 
+                                    />
                                 );
                             })}
                             <button className="btn-success" style={{ width: '100%', marginTop: 8 }} onClick={handleSaveSet} disabled={isSaving}>
@@ -241,7 +319,7 @@ export default function ExerciseCard({ group }) {
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ fontSize: 12, fontWeight: 700 }}>
-                                                {ex.timed ? `${h.reps} ${h.weight ? `· ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
                                             </div>
                                         </div>
                                     </div>

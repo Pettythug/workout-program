@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 
 export default function PlanView() {
-    const { exercises, workoutDay, updateWorkoutDay, loading } = useAppContext();
+    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
@@ -44,12 +44,38 @@ export default function PlanView() {
 
         const availableGroups = Object.values(grouped);
 
+        const daySwaps = dailySwaps[workoutDay] || {};
+
         const pick = (categories) => {
             const subset = availableGroups.filter(g => categories.includes(g.category));
             if (subset.length === 0) return null;
             // Deterministic pick based on workoutDay to keep it stable
             const idx = workoutDay % subset.length;
-            return subset[idx];
+            const originalPick = subset[idx];
+            const originalBaseKey = originalPick.baseName.toLowerCase();
+            
+            let finalPick = originalPick;
+            if (daySwaps[originalBaseKey]) {
+                const swappedKey = daySwaps[originalBaseKey].toLowerCase();
+                if (grouped[swappedKey]) {
+                    finalPick = grouped[swappedKey];
+                } else {
+                    // Custom exercise
+                    finalPick = {
+                        baseName: daySwaps[originalBaseKey],
+                        category: originalPick.category,
+                        variations: {
+                            "Standard": { name: daySwaps[originalBaseKey], category: originalPick.category, history: [] }
+                        }
+                    };
+                }
+            }
+
+            return {
+                ...finalPick,
+                originalBaseKey,
+                alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
+            };
         };
 
         const pickedGroups = workoutType === 'Push' ? [
@@ -59,7 +85,7 @@ export default function PlanView() {
         ];
 
         return pickedGroups.filter(Boolean);
-    }, [exercises, workoutDay, workoutType]);
+    }, [exercises, workoutDay, workoutType, dailySwaps]);
 
     if (loading) {
         return (
@@ -75,7 +101,7 @@ export default function PlanView() {
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: 'var(--accent)' }}>PLAN</h1>
                     <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 2, fontFamily: 'var(--mono)', marginTop: 3 }}>
-                        #{workoutDay} · {workoutType} Day
+                        #{workoutDay} | {workoutType} Day
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
