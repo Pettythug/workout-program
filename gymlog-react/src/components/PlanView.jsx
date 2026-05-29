@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
+import AccessoryBlock from './AccessoryBlock';
 
 export default function PlanView() {
     const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps } = useAppContext();
@@ -141,6 +142,8 @@ export default function PlanView() {
                     ))
                 )}
             </div>
+
+            <AccessoryBlock />
 
             <button 
                 className="complete-btn" 
