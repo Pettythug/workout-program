@@ -4,8 +4,8 @@ import { useGymAPI } from '../hooks/useGymAPI';
 import CircuitCard from './CircuitCard';
 
 export default function CircuitView() {
-    const { logSet } = useGymAPI();
-    const { exercises, people, activePeople, loading, addSetToLocalHistory } = useAppContext();
+    const { logSet, deleteHistory } = useGymAPI();
+    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
     
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
     
@@ -194,6 +194,111 @@ export default function CircuitView() {
         updateCircuitState(circuit, newMap);
     };
 
+    const handleDeleteSet = async (exName, setIdx) => {
+        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+        if (pin === null) return;
+        if (pin !== "5050") {
+            alert("Incorrect Admin PIN.");
+            return;
+        }
+
+        const currentData = completedMap[exName];
+        if (!currentData || typeof currentData === 'string') return;
+        
+        const sets = currentData.sets || [];
+        const setEntries = sets[setIdx];
+        if (!setEntries) return;
+
+        try {
+            for (const entry of setEntries) {
+                await deleteHistory({ ...entry, exercise: exName }, pin);
+                deleteSetFromLocalHistory(exName, entry);
+            }
+
+            const updatedSets = sets.filter((_, idx) => idx !== setIdx);
+            const newMap = {
+                ...completedMap,
+                [exName]: {
+                    ...currentData,
+                    sets: updatedSets
+                }
+            };
+            updateCircuitState(circuit, newMap);
+        } catch (e) {
+            console.error("Error deleting set:", e);
+            alert("Failed to delete set: " + e.message);
+        }
+    };
+
+    const handleDeleteHistoryEntry = async (entry) => {
+        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+        if (pin === null) return;
+        if (pin !== "5050") {
+            alert("Incorrect Admin PIN.");
+            return;
+        }
+
+        const exName = entry.exercise;
+        if (!exName) {
+            alert("Exercise name is missing in history entry.");
+            return;
+        }
+
+        try {
+            await deleteHistory(entry, pin);
+            deleteSetFromLocalHistory(exName, entry);
+
+            const todayStr = new Date().toLocaleDateString('en-US');
+            if (entry.date === todayStr) {
+                const currentData = completedMap[exName];
+                if (currentData && typeof currentData !== 'string') {
+                    const sets = currentData.sets || [];
+                    let setIdxToRemove = -1;
+                    let entryIdxToRemove = -1;
+                    
+                    for (let sIdx = 0; sIdx < sets.length; sIdx++) {
+                        const setEntries = sets[sIdx];
+                        const foundIdx = setEntries.findIndex(e => 
+                            e.person === entry.person && 
+                            e.reps === entry.reps && 
+                            e.weight === entry.weight &&
+                            e.date === entry.date
+                        );
+                        if (foundIdx !== -1) {
+                            setIdxToRemove = sIdx;
+                            entryIdxToRemove = foundIdx;
+                            break;
+                        }
+                    }
+
+                    if (setIdxToRemove !== -1) {
+                        const currentSet = sets[setIdxToRemove];
+                        const updatedSet = currentSet.filter((_, idx) => idx !== entryIdxToRemove);
+                        
+                        let updatedSets;
+                        if (updatedSet.length === 0) {
+                            updatedSets = sets.filter((_, idx) => idx !== setIdxToRemove);
+                        } else {
+                            updatedSets = sets.map((s, idx) => idx === setIdxToRemove ? updatedSet : s);
+                        }
+
+                        const newMap = {
+                            ...completedMap,
+                            [exName]: {
+                                ...currentData,
+                                sets: updatedSets
+                            }
+                        };
+                        updateCircuitState(circuit, newMap);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error deleting history entry:", e);
+            alert("Failed to delete history entry: " + e.message);
+        }
+    };
+
     if (loading) {
         return <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>Loading...</div>;
     }
@@ -246,12 +351,12 @@ export default function CircuitView() {
                     <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', marginTop: 16, marginBottom: 8, letterSpacing: 1 }}>Select Circuit Mode</div>
                     
                     <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left' }} onClick={startFullBodyCircuit}>
-                        <div>⚡ Full Body Circuit</div>
+                        <div>🤖 Full Body Circuit</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'normal', marginTop: 4 }}>Randomly picks 1 machine for each category</div>
                     </button>
                     
                     <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left' }} onClick={() => setView('mimic-setup')}>
-                        <div>🎯 Plan Exercise Mimic</div>
+                        <div>🎭 Plan Exercise Mimic</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'normal', marginTop: 4 }}>Select categories and randomly generate</div>
                     </button>
 
@@ -307,19 +412,24 @@ export default function CircuitView() {
                         </button>
                     </div>
 
-                    {circuit.map((ex, idx) => (
-                        <CircuitCard 
-                            key={`${ex.name}-${idx}`} 
-                            ex={ex} 
-                            index={idx} 
-                            completedStatus={completedMap[ex.name]} 
-                            activePeople={circuitPeople} 
-                            onLogSet={handleLogSet} 
-                            onExplicitDone={handleExplicitDone} 
-                            onSkip={handleSkip} 
-                            onUndo={handleUndo} 
-                        />
-                    ))}
+                    {circuit.map((ex, idx) => {
+                        const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
+                        return (
+                            <CircuitCard 
+                                key={`${ex.name}-${idx}`} 
+                                ex={upToDateEx} 
+                                index={idx} 
+                                completedStatus={completedMap[ex.name]} 
+                                activePeople={circuitPeople} 
+                                onLogSet={handleLogSet} 
+                                onExplicitDone={handleExplicitDone} 
+                                onSkip={handleSkip} 
+                                onUndo={handleUndo} 
+                                onDeleteSet={handleDeleteSet}
+                                onDeleteHistoryEntry={handleDeleteHistoryEntry}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </div>

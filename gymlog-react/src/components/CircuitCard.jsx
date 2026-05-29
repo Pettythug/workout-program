@@ -51,12 +51,14 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
     );
 };
 
-export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo }) {
+export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
     const sets = typeof completedStatus === 'object' ? (completedStatus?.sets || []) : [];
 
     const isDone = status === 'done';
     const isSkipped = status === 'skipped';
+
+    const [activeTab, setActiveTab] = useState("LOG");
 
     const [inputs, setInputs] = useState(() => {
         const initial = {};
@@ -132,37 +134,115 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                 </div>
             ) : (
                 <div style={{ marginTop: 16 }}>
-                    {activePeople.map(p => (
-                        <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} />
-                    ))}
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                        <button 
+                            className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} 
+                            onClick={() => setActiveTab("LOG")} 
+                            style={{ flex: 1, padding: '8px' }}
+                        >
+                            LOG SET
+                        </button>
+                        <button 
+                            className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} 
+                            onClick={() => setActiveTab("HISTORY")} 
+                            style={{ flex: 1, padding: '8px' }}
+                        >
+                            HISTORY
+                        </button>
+                    </div>
 
-                    <div style={{ marginTop: 12, marginBottom: 12 }}>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="checkbox" checked={note.includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
-                                Single Leg
-                            </label>
-                            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <input type="checkbox" checked={note.includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                                Alternating
-                            </label>
+                    {activeTab === "LOG" && (
+                        <div>
+                            {activePeople.map(p => (
+                                <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} />
+                            ))}
+
+                            <div style={{ marginTop: 12, marginBottom: 12 }}>
+                                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <input type="checkbox" checked={note.includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
+                                        Single Leg
+                                    </label>
+                                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <input type="checkbox" checked={note.includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                                        Alternating
+                                    </label>
+                                </div>
+                                <input 
+                                    placeholder="Notes..." 
+                                    value={note}
+                                    onChange={(e) => setNote(e.target.value)}
+                                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white' }}
+                                />
+                            </div>
+
+                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>
+                                {isSaving ? "SAVING..." : `LOG SET ${sets.length + 1}`}
+                            </button>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn-secondary" style={{ flex: 1, padding: 8 }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
+                                <button className="btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
+                            </div>
                         </div>
-                        <input 
-                            placeholder="Notes..." 
-                            value={note}
-                            onChange={(e) => setNote(e.target.value)}
-                            style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white' }}
-                        />
-                    </div>
+                    )}
 
-                    <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>
-                        {isSaving ? "SAVING..." : `LOG SET ${sets.length + 1}`}
-                    </button>
+                    {activeTab === "HISTORY" && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>LOGGED SETS</div>
+                                {sets.length === 0 ? (
+                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No logged sets in this session</div>
+                                ) : (
+                                    sets.map((setEntries, sIdx) => {
+                                        const summary = setEntries.map(e => `${e.person[0].toUpperCase()}:${ex.timed ? e.reps : e.reps + '@' + (e.weight || 0)}`).join('   ');
+                                        return (
+                                            <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                                    <span style={{ color: 'var(--accent)' }}>L{sIdx + 1}:</span> <span style={{ color: 'white' }}>{summary}</span>
+                                                </div>
+                                                <button 
+                                                    onClick={() => onDeleteSet(ex.name, sIdx)}
+                                                    style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                    title="Delete Set"
+                                                >
+                                                    🗑
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
 
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn-secondary" style={{ flex: 1, padding: 8 }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
-                        <button className="btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
-                    </div>
+                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
+                                {(!ex.history || ex.history.length === 0) ? (
+                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
+                                ) : (
+                                    ex.history.slice(0, 5).map((h, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                            <div>
+                                                <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                                                    {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                </div>
+                                                <button 
+                                                    onClick={() => onDeleteHistoryEntry({ ...h, exercise: ex.name })}
+                                                    style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                    title="Delete History Entry"
+                                                >
+                                                    🗑
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
