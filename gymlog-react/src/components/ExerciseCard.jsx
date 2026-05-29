@@ -61,7 +61,7 @@ const REP_RANGES = [
 ];
 
 export default function ExerciseCard({ group }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, workoutDay, swapExercise } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise } = useAppContext();
     const { logSet, deleteHistory } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -164,6 +164,25 @@ export default function ExerciseCard({ group }) {
         } finally {
             setIsSaving(false);
             initLogInputs(); // Clear inputs
+        }
+    };
+
+    const handleDeleteHistory = async (entry) => {
+        const pin = prompt("Admin PIN required:");
+        if (pin === "5050") {
+            try {
+                await deleteHistory({ exercise: ex.name, ...entry }, pin);
+                deleteSetFromLocalHistory(ex.name, entry);
+                setToast("Entry deleted!");
+                setTimeout(() => setToast(""), 2000);
+            } catch (e) {
+                console.error(e);
+                setToast("Error deleting");
+                setTimeout(() => setToast(""), 2000);
+            }
+        } else if (pin !== null) {
+            setToast("Invalid PIN");
+            setTimeout(() => setToast(""), 2000);
         }
     };
 
@@ -302,7 +321,20 @@ export default function ExerciseCard({ group }) {
                                     />
                                 );
                             })}
-                            <button className="btn-success" style={{ width: '100%', marginTop: 8 }} onClick={handleSaveSet} disabled={isSaving}>
+                            <button 
+                                className="btn-ghost" 
+                                style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
+                                onClick={() => {
+                                    const note = prompt("Suggest difficulty/adjustment for next time:");
+                                    if (note) {
+                                        setToast(`Note logged: ${note}`);
+                                        setTimeout(() => setToast(""), 2000);
+                                    }
+                                }}
+                            >
+                                + SUGGEST DIFF
+                            </button>
+                            <button className="btn-success" style={{ width: '100%' }} onClick={handleSaveSet} disabled={isSaving}>
                                 {isSaving ? "SAVING..." : "SAVE SET"}
                             </button>
                         </div>
@@ -315,16 +347,26 @@ export default function ExerciseCard({ group }) {
                                 <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                             ) : (
                                 ex.history.slice(0, 5).map((h, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                                        <div>
-                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 12, fontWeight: 700 }}>
-                                                {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                    <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ fontSize: 12, fontWeight: 700 }}>
+                                                    {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                </div>
+                                                <button className="btn-ghost" onClick={() => handleDeleteHistory(h)} style={{ padding: '0 4px', fontSize: 12, color: 'var(--skip)' }}>
+                                                    🗑
+                                                </button>
                                             </div>
                                         </div>
+                                        {h.note && (
+                                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                "{h.note}"
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}
