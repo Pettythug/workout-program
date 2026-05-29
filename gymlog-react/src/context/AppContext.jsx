@@ -106,6 +106,15 @@ export function AppProvider({ children }) {
         });
     };
 
+    const resetExerciseStatus = (exName) => {
+        setExerciseStatus(prev => {
+            const next = { ...prev };
+            delete next[exName];
+            localStorage.setItem('gymlog_exerciseStatus', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const addSetToLocalHistory = (exName, entries) => {
         setExercises(prev => {
             const next = prev.map(ex => {
@@ -202,6 +211,7 @@ export function AppProvider({ children }) {
         togglePersonActive,
         setExerciseDone,
         setExerciseSkipped,
+        resetExerciseStatus,
         addSetToLocalHistory,
         deleteSetFromLocalHistory,
         swapExercise,

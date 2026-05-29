@@ -151,6 +151,9 @@
     .app-card:nth-of-type(7) .card-title { color: #888888; }
     .app-card:nth-of-type(8) .card-title { color: #888888; }
 
+    .app-card.react-card::before { background: #61dafb; }
+    .react-card .card-title { color: #61dafb; }
+
     .new-badge {
       display: inline-block;
       font-size: 8px;
@@ -199,6 +202,12 @@
     </header>
 
     <div class="card-container">
+      <a href="http://localhost:5173/" class="app-card react-card">
+        <div class="card-title">REACT SPA <span class="new-badge" style="background:#61dafb;color:#000">DEV</span></div>
+        <div class="card-desc">Local development server for the new React GymLog SPA.</div>
+        <div class="card-icon">⚛️</div>
+      </a>
+
       <!-- PRODUCTION / ULTIMATE -->
       <a href="gymlog-ultimate.html" class="app-card">
         <div class="card-title">GYMLOG ULTIMATE <span class="new-badge" style="background:#f97316;color:#000">NEW</span></div>

@@ -61,7 +61,7 @@ const REP_RANGES = [
 ];
 
 export default function ExerciseCard({ group }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, addSetToLocalHistory, workoutDay, swapExercise } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, workoutDay, swapExercise } = useAppContext();
     const { logSet, deleteHistory } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -194,8 +194,11 @@ export default function ExerciseCard({ group }) {
                         </>
                     )}
                     {(isDone || isSkipped) && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: isDone ? 'var(--success)' : 'var(--muted)' }}>
-                            {isDone ? 'COMPLETED' : 'SKIPPED'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: isDone ? 'var(--success)' : 'var(--muted)' }}>
+                                {isDone ? 'COMPLETED' : 'SKIPPED'}
+                            </div>
+                            <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
                         </div>
                     )}
                     <div onClick={handleOpen} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--muted)', padding: '0 8px' }}>
