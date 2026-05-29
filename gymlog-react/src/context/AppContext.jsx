@@ -5,7 +5,7 @@ import { mergeFromSheets } from './dataMerge';
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-    const { syncAll } = useGymAPI();
+    const { syncAll, syncMeta, saveExercise } = useGymAPI();
     
     // Core state variables
     const [workoutDay, setWorkoutDay] = useState(() => {
@@ -145,6 +145,51 @@ export function AppProvider({ children }) {
         });
     };
 
+    const addPersonToRoster = (newName) => {
+        setPeople(prev => {
+            const next = [...prev, newName];
+            localStorage.setItem('gymlog_people', JSON.stringify(next));
+            const currentLocs = JSON.parse(localStorage.getItem('gymlog_locations') || '[]');
+            syncMeta(next, currentLocs, []);
+            return next;
+        });
+    };
+
+    const addLocationToRoster = (newLoc) => {
+        const currentLocs = JSON.parse(localStorage.getItem('gymlog_locations') || '[]');
+        const updatedLocs = [...currentLocs, newLoc];
+        localStorage.setItem('gymlog_locations', JSON.stringify(updatedLocs));
+        syncMeta(people, updatedLocs, []);
+    };
+
+    const createExerciseMeta = async (exerciseData) => {
+        const { baseName, createSingle, createAlt, category, location, timed } = exerciseData;
+        
+        const variationsToCreate = [
+            { name: baseName, category, location, timed }
+        ];
+
+        if (createSingle) variationsToCreate.push({ name: `${baseName} (Single)`, category, location, timed });
+        if (createAlt) variationsToCreate.push({ name: `${baseName} (Alt)`, category, location, timed });
+
+        // Save each via API 
+        for (const meta of variationsToCreate) {
+            await saveExercise(meta);
+        }
+
+        // Append to local state
+        setExercises(prev => {
+            const next = [...prev];
+            for (const meta of variationsToCreate) {
+                if (!next.find(e => e.name === meta.name)) {
+                    next.push({ ...meta, history: [], best: {} });
+                }
+            }
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const contextValue = {
         workoutDay,
         people,
@@ -159,7 +204,10 @@ export function AppProvider({ children }) {
         setExerciseSkipped,
         addSetToLocalHistory,
         deleteSetFromLocalHistory,
-        swapExercise
+        swapExercise,
+        addPersonToRoster,
+        addLocationToRoster,
+        createExerciseMeta
     };
 
     return (

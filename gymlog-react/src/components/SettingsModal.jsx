@@ -1,11 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 export default function SettingsModal({ isOpen, onClose, locations, setLocations }) {
-    const { people } = useAppContext();
+    const { people, exercises, addPersonToRoster, addLocationToRoster, createExerciseMeta } = useAppContext();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('gym_api_url') || '');
+
+    const [exName, setExName] = useState('');
+    const [exTimed, setExTimed] = useState(false);
+    const [exCategory, setExCategory] = useState('');
+    const [exLocation, setExLocation] = useState('Anywhere');
+    const [exCreateSingle, setExCreateSingle] = useState(false);
+    const [exCreateAlt, setExCreateAlt] = useState(false);
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+    const uniqueCategories = useMemo(() => {
+        return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
+    }, [exercises]);
 
     if (!isOpen) return null;
 
@@ -19,21 +31,53 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
 
     const handleAddPerson = () => {
         if (!newPerson.trim()) return;
-        const updated = [...people, newPerson.trim()];
-        // Note: Full save logic would involve AppContext/GymAPI. 
-        // We'll update local storage and notify context if implemented, 
-        // but for now we write directly to the local storage used by AppContext.
-        localStorage.setItem('gymlog_people', JSON.stringify(updated));
+        const newName = newPerson.trim();
+        addPersonToRoster(newName);
         setNewPerson('');
-        alert(`${newPerson.trim()} added. Refresh to see changes.`);
+        alert(`${newName} added and syncing to backend.`);
     };
 
     const handleAddLocation = () => {
         if (!newLocation.trim()) return;
-        const updated = [...locations, newLocation.trim()];
+        const newLoc = newLocation.trim();
+        addLocationToRoster(newLoc);
+        const updated = [...locations, newLoc];
         setLocations(updated);
-        localStorage.setItem('gymlog_locations', JSON.stringify(updated));
         setNewLocation('');
+        alert(`${newLoc} added and syncing to backend.`);
+    };
+
+    const handleCategoryChange = (e) => {
+        if (e.target.value === "ADD_NEW") {
+            const newCat = prompt("Enter new category name:");
+            if (newCat) {
+                setExCategory(newCat);
+            }
+        } else {
+            setExCategory(e.target.value);
+        }
+    };
+
+    const handleCreateExercise = async () => {
+        if (!exName.trim()) {
+            alert("Please enter an exercise name.");
+            return;
+        }
+        await createExerciseMeta({
+            baseName: exName.trim(),
+            timed: exTimed,
+            category: exCategory,
+            location: exLocation,
+            createSingle: exCreateSingle,
+            createAlt: exCreateAlt
+        });
+        alert("Exercise(s) created and syncing to backend.");
+        setExName('');
+        setExTimed(false);
+        setExCategory('');
+        setExLocation('Anywhere');
+        setExCreateSingle(false);
+        setExCreateAlt(false);
     };
 
     return (
@@ -80,7 +124,71 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
                     </div>
                 </div>
 
-                <div style={{ marginBottom: 24 }}>
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <div 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setIsCreateOpen(!isCreateOpen)}
+                    >
+                        <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', margin: 0, cursor: 'pointer' }}>
+                            CREATE EXERCISE
+                        </label>
+                        <span style={{ color: 'var(--muted)' }}>{isCreateOpen ? '▲' : '▼'}</span>
+                    </div>
+                    
+                    {isCreateOpen && (
+                        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <input 
+                                placeholder="Base Exercise Name..." 
+                                value={exName} 
+                                onChange={e => setExName(e.target.value)}
+                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                            />
+                            
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <select 
+                                    value={exCategory}
+                                    onChange={handleCategoryChange}
+                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                >
+                                    <option value="">Select Category...</option>
+                                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {exCategory && !uniqueCategories.includes(exCategory) && <option value={exCategory}>{exCategory}</option>}
+                                    <option value="ADD_NEW">+ Add new category...</option>
+                                </select>
+
+                                <select 
+                                    value={exLocation}
+                                    onChange={e => setExLocation(e.target.value)}
+                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                >
+                                    <option value="Anywhere">Anywhere</option>
+                                    {locations.filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <input type="checkbox" checked={exTimed} onChange={e => setExTimed(e.target.checked)} />
+                                    Timed
+                                </label>
+                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <input type="checkbox" checked={exCreateSingle} onChange={e => setExCreateSingle(e.target.checked)} />
+                                    Create (Single)
+                                </label>
+                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <input type="checkbox" checked={exCreateAlt} onChange={e => setExCreateAlt(e.target.checked)} />
+                                    Create (Alt)
+                                </label>
+                            </div>
+
+                            <button className="btn-success" onClick={handleCreateExercise} style={{ marginTop: 8, width: '100%' }}>
+                                CREATE & SYNC
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>API SYNC URL</label>
                     <input 
                         placeholder="https://script.google.com/.../exec" 
