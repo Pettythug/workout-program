@@ -157,12 +157,26 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Delete an exercise by name using the generic exec macro.
+     * @param {string} name 
+     * @returns {Promise<any>}
+     */
+    const deleteExercise = useCallback(async (name) => {
+        return sheetsPost({
+            action: "exec",
+            args: ["deleteExercise", name],
+            pin: "5050"
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
         deleteHistory,
         saveExercise,
         syncMeta,
-        sheetsPost
+        sheetsPost,
+        deleteExercise
     };
 }
