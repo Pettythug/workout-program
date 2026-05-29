@@ -50,5 +50,5 @@
 *Recommended Model: Gemini 3.1 Pro (High)*
 - [x] **Story 5.1**: Scaffold Circuit Tracker routing and view structure in the React SPA.
 - [x] **Story 5.2**: Port circuit selection, deck tracking, and card state sequence.
-- [ ] **Story 5.3**: Implement the multi-set logging list and DONE completion triggers, integrating sheets sync.
+- [x] **Story 5.3**: Implement the multi-set logging list and DONE completion triggers, integrating sheets sync.
 - [ ] **Story 5.4**: Port history viewing and inline session deletion UI.

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { useGymAPI } from '../hooks/useGymAPI';
+import CircuitCard from './CircuitCard';
 
 export default function CircuitView() {
-    const { exercises, people, activePeople, loading } = useAppContext();
+    const { logSet } = useGymAPI();
+    const { exercises, people, activePeople, loading, addSetToLocalHistory } = useAppContext();
     
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
     
@@ -100,6 +103,95 @@ export default function CircuitView() {
             if (prev.includes(person)) return prev.filter(p => p !== person);
             return [...prev, person];
         });
+    };
+
+    const handleLogSet = async (ex, logs) => {
+        const entries = [];
+        for (const person of circuitPeople) {
+            const key = person.toLowerCase();
+            const input = logs[key];
+            if (!input) continue;
+            
+            if (ex.timed) {
+                if (input.duration) {
+                    entries.push({
+                        date: new Date().toLocaleDateString('en-US'),
+                        person: key,
+                        reps: input.duration,
+                        weight: input.weight || "",
+                        range: "r13_plus",
+                        timed: true,
+                        note: input.note || ""
+                    });
+                }
+            } else {
+                if (input.reps) {
+                    const r = parseInt(input.reps);
+                    let range = "r13_plus";
+                    if (r <= 3) range = "r1_3";
+                    else if (r <= 6) range = "r4_6";
+                    else if (r <= 9) range = "r7_9";
+                    else if (r <= 12) range = "r10_12";
+
+                    entries.push({
+                        date: new Date().toLocaleDateString('en-US'),
+                        person: key,
+                        reps: input.reps,
+                        weight: input.weight || "",
+                        range: range,
+                        timed: false,
+                        note: input.note || ""
+                    });
+                }
+            }
+        }
+
+        if (entries.length > 0) {
+            try {
+                await logSet(ex.name, entries);
+                addSetToLocalHistory(ex.name, entries);
+                
+                const newMap = { ...completedMap };
+                const currentData = newMap[ex.name] || { status: 'active', sets: [] };
+                const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+                
+                newMap[ex.name] = {
+                    status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
+                    sets: [...currentSets, entries]
+                };
+                updateCircuitState(circuit, newMap);
+                return true;
+            } catch (e) {
+                console.error("Error logging set:", e);
+                alert("Failed to log set: " + e.message);
+                return false;
+            }
+        }
+        return false;
+    };
+
+    const handleExplicitDone = (exName) => {
+        const newMap = { ...completedMap };
+        const currentData = newMap[exName] || { status: 'active', sets: [] };
+        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+        newMap[exName] = { status: 'done', sets };
+        updateCircuitState(circuit, newMap);
+    };
+
+    const handleSkip = (exName) => {
+        const newMap = { ...completedMap };
+        const currentData = newMap[exName] || { status: 'active', sets: [] };
+        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+        newMap[exName] = { status: 'skipped', sets };
+        updateCircuitState(circuit, newMap);
+    };
+
+    const handleUndo = (exName) => {
+        const newMap = { ...completedMap };
+        const currentData = newMap[exName] || { status: 'active', sets: [] };
+        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+        newMap[exName] = { status: 'active', sets };
+        updateCircuitState(circuit, newMap);
     };
 
     if (loading) {
@@ -203,7 +295,11 @@ export default function CircuitView() {
                         <div>
                             <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Remaining</div>
                             <div style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>
-                                {circuit.length - Object.keys(completedMap).length} / {circuit.length}
+                                {circuit.length - Object.keys(completedMap).filter(k => {
+                                    const s = completedMap[k];
+                                    const status = typeof s === 'string' ? s : s?.status;
+                                    return status === 'done' || status === 'skipped';
+                                }).length} / {circuit.length}
                             </div>
                         </div>
                         <button className="btn-ghost" style={{ color: 'var(--skip)', borderColor: 'var(--skip)' }} onClick={endCircuit}>
@@ -211,32 +307,19 @@ export default function CircuitView() {
                         </button>
                     </div>
 
-                    {circuit.map((ex, idx) => {
-                        const isDone = completedMap[ex.name] === 'done';
-                        const isSkipped = completedMap[ex.name] === 'skipped';
-                        
-                        return (
-                            <div key={idx} style={{ 
-                                background: '#111', 
-                                border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--border)'}`, 
-                                borderRadius: 12, 
-                                padding: 16,
-                                opacity: isDone || isSkipped ? 0.6 : 1
-                            }}>
-                                <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>
-                                    {ex.category || 'Uncategorized'}
-                                </div>
-                                <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
-                                
-                                <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                                    {/* Placeholder for Story 5.3 Inputs */}
-                                    <div style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>
-                                        (Inputs and Sync to be implemented in Story 5.3)
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {circuit.map((ex, idx) => (
+                        <CircuitCard 
+                            key={`${ex.name}-${idx}`} 
+                            ex={ex} 
+                            index={idx} 
+                            completedStatus={completedMap[ex.name]} 
+                            activePeople={circuitPeople} 
+                            onLogSet={handleLogSet} 
+                            onExplicitDone={handleExplicitDone} 
+                            onSkip={handleSkip} 
+                            onUndo={handleUndo} 
+                        />
+                    ))}
                 </div>
             )}
         </div>
