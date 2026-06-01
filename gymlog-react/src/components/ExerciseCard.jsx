@@ -54,9 +54,8 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
 
 const REP_RANGES = [
     { key: "r1_3", label: "1-3 reps" },
-    { key: "r4_6", label: "4-6 reps" },
-    { key: "r7_9", label: "7-9 reps" },
-    { key: "r10_12", label: "10-12 reps" },
+    { key: "r4_7", label: "4-7 reps" },
+    { key: "r8_12", label: "8-12 reps" },
     { key: "r13_plus", label: "13+ reps" }
 ];
 
@@ -129,13 +128,12 @@ export default function ExerciseCard({ group }) {
                     }
                 } else {
                     if (input.reps) {
-                        // Very simple range finder
+                        // Match spreadsheet schema exactly
                         const r = parseInt(input.reps);
                         let range = "r13_plus";
                         if (r <= 3) range = "r1_3";
-                        else if (r <= 6) range = "r4_6";
-                        else if (r <= 9) range = "r7_9";
-                        else if (r <= 12) range = "r10_12";
+                        else if (r <= 7) range = "r4_7";
+                        else if (r <= 12) range = "r8_12";
 
                         entries.push({
                             date: new Date().toLocaleDateString('en-US'),

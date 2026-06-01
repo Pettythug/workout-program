@@ -142,9 +142,8 @@ export default function CircuitView() {
                     const r = parseInt(input.reps);
                     let range = "r13_plus";
                     if (r <= 3) range = "r1_3";
-                    else if (r <= 6) range = "r4_6";
-                    else if (r <= 9) range = "r7_9";
-                    else if (r <= 12) range = "r10_12";
+                    else if (r <= 7) range = "r4_7";
+                    else if (r <= 12) range = "r8_12";
 
                     entries.push({
                         date: new Date().toLocaleDateString('en-US'),
