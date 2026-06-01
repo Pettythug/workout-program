@@ -41,15 +41,19 @@ export default function CircuitView() {
         });
     };
 
-    const uniqueCategories = useMemo(() => {
-        return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
+    const machines = useMemo(() => {
+        return (exercises || []).filter(ex => ex.manufacturer || ex.fileReference || ex.baseExercise);
     }, [exercises]);
+
+    const uniqueCategories = useMemo(() => {
+        return [...new Set(machines.map(e => e.category).filter(Boolean))].sort();
+    }, [machines]);
 
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
     const startFullBodyCircuit = () => {
         const grouped = {};
-        exercises.forEach(ex => {
+        machines.forEach(ex => {
             if (!ex.category) return;
             if (!grouped[ex.category]) grouped[ex.category] = [];
             grouped[ex.category].push(ex);
@@ -65,7 +69,7 @@ export default function CircuitView() {
     };
 
     const startHitEveryMachine = () => {
-        updateCircuitState([...exercises], {});
+        updateCircuitState([...machines], {});
         setView('tracker');
     };
 
@@ -75,7 +79,7 @@ export default function CircuitView() {
 
     const startMimicCircuit = () => {
         const grouped = {};
-        exercises.forEach(ex => {
+        machines.forEach(ex => {
             if (!ex.category) return;
             if (!grouped[ex.category]) grouped[ex.category] = [];
             grouped[ex.category].push(ex);
