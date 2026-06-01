@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function SettingsModal({ isOpen, onClose }) {
-    const { people, exercises, locations, hiddenPeople, activePeople, addPersonToRoster, addLocationToRoster, togglePersonHidden, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+    const { people, exercises, locations, activePeople, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -116,7 +116,6 @@ export default function SettingsModal({ isOpen, onClose }) {
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>ROSTER (PEOPLE)</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {people.map(p => {
-                            const isHidden = hiddenPeople.includes(p);
                             const isActive = activePeople.includes(p);
                             return (
                                 <div 
@@ -129,8 +128,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         padding: '6px 10px', 
                                         borderRadius: 6, 
                                         fontSize: 12, 
-                                        opacity: isHidden ? 0.5 : 1,
-                                        border: isHidden ? '1px solid #333' : '1px solid transparent'
+                                        border: '1px solid transparent'
                                     }}
                                 >
                                     <input 
@@ -140,13 +138,20 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         style={{ cursor: 'pointer' }}
                                         title="Toggle Active for Workout"
                                     />
-                                    <span
-                                        onClick={() => togglePersonHidden(p)}
-                                        style={{ cursor: 'pointer', textDecoration: isHidden ? 'line-through' : 'none' }}
-                                        title="Click to hide/show from roster"
-                                    >
+                                    <span style={{ flex: 1 }}>
                                         {p}
                                     </span>
+                                    <button 
+                                        onClick={() => {
+                                            if(window.confirm(`Are you sure you want to permanently delete ${p} from the roster?`)) {
+                                                removePersonFromRoster(p);
+                                            }
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
+                                        title="Delete Person"
+                                    >
+                                        ✕
+                                    </button>
                                 </div>
                             );
                         })}

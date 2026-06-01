@@ -39,10 +39,6 @@ export function AppProvider({ children }) {
     const [activeLocation, setActiveLocation] = useState(() => {
         return localStorage.getItem('gymlog_activeLocation') || "Anywhere";
     });
-    const [hiddenPeople, setHiddenPeople] = useState(() => {
-        const cached = localStorage.getItem('gymlog_hiddenPeople');
-        return cached ? JSON.parse(cached) : [];
-    });
     const [loading, setLoading] = useState(true);
 
     // Initial Load
@@ -95,13 +91,12 @@ export function AppProvider({ children }) {
     };
 
     const togglePersonActive = (person) => {
-        setActivePeople(prevActive => {
-            const isActive = prevActive.includes(person);
-            const newActive = isActive 
-                ? prevActive.filter(p => p !== person)
-                : [...prevActive, person];
-            localStorage.setItem('gymlog_activePeople', JSON.stringify(newActive));
-            return newActive;
+        setActivePeople(prev => {
+            const next = prev.includes(person)
+                ? prev.filter(p => p !== person)
+                : [...prev, person];
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
+            return next;
         });
     };
 
@@ -178,6 +173,20 @@ export function AppProvider({ children }) {
         });
     };
 
+    const removePersonFromRoster = (name) => {
+        setPeople(prev => {
+            const next = prev.filter(p => p !== name);
+            localStorage.setItem('gymlog_people', JSON.stringify(next));
+            syncMeta(next, locations, []);
+            return next;
+        });
+        setActivePeople(prev => {
+            const next = prev.filter(p => p !== name);
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const addLocationToRoster = (newLoc) => {
         setLocations(prev => {
             const next = [...prev, newLoc];
@@ -190,15 +199,6 @@ export function AppProvider({ children }) {
     const updateActiveLocation = (loc) => {
         setActiveLocation(loc);
         localStorage.setItem('gymlog_activeLocation', loc);
-    };
-
-    const togglePersonHidden = (person) => {
-        setHiddenPeople(prev => {
-            const isHidden = prev.includes(person);
-            const next = isHidden ? prev.filter(p => p !== person) : [...prev, person];
-            localStorage.setItem('gymlog_hiddenPeople', JSON.stringify(next));
-            return next;
-        });
     };
 
     const createExerciseMeta = async (exerciseData) => {
@@ -253,10 +253,8 @@ export function AppProvider({ children }) {
         loading,
         locations,
         activeLocation,
-        hiddenPeople,
         updateWorkoutDay,
         updateActiveLocation,
-        togglePersonHidden,
         togglePersonActive,
         setExerciseDone,
         setExerciseSkipped,
@@ -265,6 +263,7 @@ export function AppProvider({ children }) {
         deleteSetFromLocalHistory,
         swapExercise,
         addPersonToRoster,
+        removePersonFromRoster,
         addLocationToRoster,
         createExerciseMeta,
         removeExerciseFromLocalState

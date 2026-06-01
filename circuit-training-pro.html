@@ -519,6 +519,32 @@
                 setHiddenPeople(next);
                 localStorage.setItem('gym-hidden-people', JSON.stringify(next));
             };
+
+            const handleDeletePerson = async (person) => {
+                if (!confirm(`Are you sure you want to permanently delete ${person} from the roster?`)) return;
+                try {
+                    const newPeople = data.people.filter(p => p !== person);
+                    setData({ ...data, people: newPeople });
+                    
+                    const payload = {
+                        action: "syncMeta",
+                        people: newPeople,
+                        locations: data.locations || ["Anywhere", "Home", "Gym"],
+                        exercises: []
+                    };
+                    
+                    const url = localStorage.getItem('gym_api_url') || "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+                    
+                    await fetch(url, {
+                        method: "POST",
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    alert(`${person} deleted.`);
+                } catch (e) {
+                    alert("Error deleting person: " + e.message);
+                }
+            };
             
             const [mimicCategories, setMimicCategories] = useState({});
 
@@ -922,10 +948,13 @@
                                         <button onClick={() => setIsSettingsOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 16 }}>✕</button>
                                     </div>
                                     {data.people.map(p => (
-                                        <label key={p} style={{ display: "flex", alignItems: "center", padding: "12px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 8, cursor: "pointer" }}>
-                                            <input type="checkbox" checked={!hiddenPeople.includes(p)} onChange={() => togglePerson(p)} style={{ width: 18, height: 18, marginRight: 12, accentColor: "#f97316" }} />
-                                            <span style={{ fontSize: 14 }}>{p}</span>
-                                        </label>
+                                        <div key={p} style={{ display: "flex", alignItems: "center", padding: "12px", background: "#111", border: "1px solid #1a1a1a", borderRadius: 8, marginBottom: 8 }}>
+                                            <label style={{ display: "flex", alignItems: "center", cursor: "pointer", flex: 1 }}>
+                                                <input type="checkbox" checked={!hiddenPeople.includes(p)} onChange={() => togglePerson(p)} style={{ width: 18, height: 18, marginRight: 12, accentColor: "#f97316" }} />
+                                                <span style={{ fontSize: 14 }}>{p}</span>
+                                            </label>
+                                            <button onClick={() => handleDeletePerson(p)} style={{ background: "none", border: "none", color: "#ff4444", fontSize: 14, fontWeight: "bold", padding: "0 8px", cursor: "pointer" }}>✕</button>
+                                        </div>
                                     ))}
                                     <button onClick={() => setIsSettingsOpen(false)} style={{ width: "100%", background: "var(--accent)", color: "#000", border: "none", padding: 12, borderRadius: 8, fontWeight: 700, marginTop: 12 }}>SAVE</button>
                                 </div>
