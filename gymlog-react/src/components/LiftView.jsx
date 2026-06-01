@@ -5,19 +5,12 @@ import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
 export default function LiftView() {
-    const { exercises, loading } = useAppContext();
+    const { exercises, loading, locations, activeLocation, updateActiveLocation } = useAppContext();
     const [search, setSearch] = useState("");
-    const [locationFilter, setLocationFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("");
     
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
-    
-    // Manage locations local state initialized from localStorage
-    const [locations, setLocations] = useState(() => {
-        const cached = localStorage.getItem('gymlog_locations');
-        return cached ? JSON.parse(cached) : ["Anywhere", "Home", "Gym"];
-    });
 
     const getBaseName = (name) => {
         return name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
@@ -35,10 +28,10 @@ export default function LiftView() {
         const filtered = exercises.filter(e => {
             const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
             const catMatch = !categoryFilter || e.category === categoryFilter;
-            const locMatch = locationFilter === "all" 
+            const locMatch = activeLocation === "all" 
                 || e.location === "Anywhere" 
                 || !e.location 
-                || e.location === locationFilter;
+                || e.location === activeLocation;
             return nameMatch && catMatch && locMatch;
         });
 
@@ -51,7 +44,7 @@ export default function LiftView() {
         });
 
         return Object.values(grouped).sort((a, b) => a.baseName.localeCompare(b.baseName));
-    }, [exercises, search, locationFilter, categoryFilter]);
+    }, [exercises, search, activeLocation, categoryFilter]);
 
     const categories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -94,8 +87,8 @@ export default function LiftView() {
 
             <div style={{ display: 'flex', gap: 8, paddingBottom: 16 }}>
                 <select 
-                    value={locationFilter} 
-                    onChange={e => setLocationFilter(e.target.value)}
+                    value={activeLocation} 
+                    onChange={e => updateActiveLocation(e.target.value)}
                     style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'var(--muted)', fontSize: 10, fontFamily: 'var(--mono)' }}
                 >
                     <option value="all">ANYWHERE / ALL</option>
@@ -125,8 +118,6 @@ export default function LiftView() {
             <SettingsModal 
                 isOpen={isSettingsOpen} 
                 onClose={() => setIsSettingsOpen(false)} 
-                locations={locations}
-                setLocations={setLocations}
             />
 
             <HelpDrawer 

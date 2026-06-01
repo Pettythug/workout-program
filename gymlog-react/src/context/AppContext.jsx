@@ -32,6 +32,17 @@ export function AppProvider({ children }) {
         const cached = localStorage.getItem('gymlog_dailySwaps');
         return cached ? JSON.parse(cached) : {};
     });
+    const [locations, setLocations] = useState(() => {
+        const cached = localStorage.getItem('gymlog_locations');
+        return cached ? JSON.parse(cached) : ["Anywhere", "Home", "Gym"];
+    });
+    const [activeLocation, setActiveLocation] = useState(() => {
+        return localStorage.getItem('gymlog_activeLocation') || "Anywhere";
+    });
+    const [hiddenPeople, setHiddenPeople] = useState(() => {
+        const cached = localStorage.getItem('gymlog_hiddenPeople');
+        return cached ? JSON.parse(cached) : [];
+    });
     const [loading, setLoading] = useState(true);
 
     // Initial Load
@@ -40,6 +51,7 @@ export function AppProvider({ children }) {
             // Cache check
             const cachedExercises = localStorage.getItem('gymlog_exercises');
             const cachedPeople = localStorage.getItem('gymlog_people');
+            const cachedLocations = localStorage.getItem('gymlog_locations');
             
             if (cachedExercises && cachedPeople) {
                 setLoading(false); // Instant load UI from cache
@@ -54,14 +66,17 @@ export function AppProvider({ children }) {
                 // Merge data
                 const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
                 const currentLocalPeople = cachedPeople ? JSON.parse(cachedPeople) : [];
-                const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople);
+                const currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "Gym"];
+                const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople, currentLocalLocations);
                 
                 setExercises(mergedData.exercises);
                 setPeople(mergedData.people);
+                setLocations(mergedData.locations);
 
                 // Update cache
                 localStorage.setItem('gymlog_exercises', JSON.stringify(mergedData.exercises));
                 localStorage.setItem('gymlog_people', JSON.stringify(mergedData.people));
+                localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
 
             } catch (error) {
                 console.error("Error loading initial data:", error);
@@ -158,17 +173,32 @@ export function AppProvider({ children }) {
         setPeople(prev => {
             const next = [...prev, newName];
             localStorage.setItem('gymlog_people', JSON.stringify(next));
-            const currentLocs = JSON.parse(localStorage.getItem('gymlog_locations') || '[]');
-            syncMeta(next, currentLocs, []);
+            syncMeta(next, locations, []);
             return next;
         });
     };
 
     const addLocationToRoster = (newLoc) => {
-        const currentLocs = JSON.parse(localStorage.getItem('gymlog_locations') || '[]');
-        const updatedLocs = [...currentLocs, newLoc];
-        localStorage.setItem('gymlog_locations', JSON.stringify(updatedLocs));
-        syncMeta(people, updatedLocs, []);
+        setLocations(prev => {
+            const next = [...prev, newLoc];
+            localStorage.setItem('gymlog_locations', JSON.stringify(next));
+            syncMeta(people, next, []);
+            return next;
+        });
+    };
+
+    const updateActiveLocation = (loc) => {
+        setActiveLocation(loc);
+        localStorage.setItem('gymlog_activeLocation', loc);
+    };
+
+    const togglePersonHidden = (person) => {
+        setHiddenPeople(prev => {
+            const isHidden = prev.includes(person);
+            const next = isHidden ? prev.filter(p => p !== person) : [...prev, person];
+            localStorage.setItem('gymlog_hiddenPeople', JSON.stringify(next));
+            return next;
+        });
     };
 
     const createExerciseMeta = async (exerciseData) => {
@@ -221,7 +251,12 @@ export function AppProvider({ children }) {
         exerciseStatus,
         dailySwaps,
         loading,
+        locations,
+        activeLocation,
+        hiddenPeople,
         updateWorkoutDay,
+        updateActiveLocation,
+        togglePersonHidden,
         togglePersonActive,
         setExerciseDone,
         setExerciseSkipped,

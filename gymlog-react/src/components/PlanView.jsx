@@ -2,12 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
+import SettingsModal from './SettingsModal';
+import HelpDrawer from './HelpDrawer';
 
 export default function PlanView() {
-    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps } = useAppContext();
+    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
 
     const toggleWorkoutType = () => {
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
@@ -15,6 +19,13 @@ export default function PlanView() {
             setWorkoutType(newType);
             localStorage.setItem('gymlog_workoutType', newType);
         }
+    };
+
+    const completeWorkout = () => {
+        const newType = workoutType === 'Push' ? 'Pull' : 'Push';
+        setWorkoutType(newType);
+        localStorage.setItem('gymlog_workoutType', newType);
+        updateWorkoutDay(workoutDay + 1);
     };
 
     const getRepRange = (day) => {
@@ -48,7 +59,11 @@ export default function PlanView() {
         const daySwaps = dailySwaps[workoutDay] || {};
 
         const pick = (categories) => {
-            const subset = availableGroups.filter(g => categories.includes(g.category));
+            const subset = availableGroups.filter(g => {
+                const ex = g.variations["Standard"] || Object.values(g.variations)[0];
+                const locMatch = activeLocation === "all" || ex.location === "Anywhere" || !ex.location || ex.location === activeLocation;
+                return categories.includes(g.category) && locMatch;
+            });
             if (subset.length === 0) return null;
             // Deterministic pick based on workoutDay to keep it stable
             const idx = workoutDay % subset.length;
@@ -86,7 +101,7 @@ export default function PlanView() {
         ];
 
         return pickedGroups.filter(Boolean);
-    }, [exercises, workoutDay, workoutType, dailySwaps]);
+    }, [exercises, workoutDay, workoutType, dailySwaps, activeLocation]);
 
     if (loading) {
         return (
@@ -113,7 +128,20 @@ export default function PlanView() {
                     >
                         {workoutType}
                     </button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsHelpOpen(true)}>❓</button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsSettingsOpen(true)}>⚙️</button>
                 </div>
+            </div>
+
+            <div style={{ paddingBottom: 16 }}>
+                <select 
+                    value={activeLocation} 
+                    onChange={e => updateActiveLocation(e.target.value)}
+                    style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'var(--muted)', fontSize: 10, fontFamily: 'var(--mono)' }}
+                >
+                    <option value="all">ANYWHERE / ALL</option>
+                    {locations.filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+                </select>
             </div>
 
             <div className="info-bar" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
@@ -147,11 +175,21 @@ export default function PlanView() {
 
             <button 
                 className="complete-btn" 
-                onClick={() => updateWorkoutDay(workoutDay + 1)}
+                onClick={completeWorkout}
                 style={{ width: '100%', background: 'rgba(249, 115, 22, 0.1)', color: 'var(--accent)', border: '2px solid var(--accent)', borderRadius: 'var(--radius)', padding: 16, fontWeight: 700, cursor: 'pointer', marginTop: 16, letterSpacing: 1, textTransform: 'uppercase' }}
             >
                 Complete Workout
             </button>
+
+            <SettingsModal 
+                isOpen={isSettingsOpen} 
+                onClose={() => setIsSettingsOpen(false)} 
+            />
+
+            <HelpDrawer 
+                showHelp={isHelpOpen} 
+                setShowHelp={setIsHelpOpen} 
+            />
         </div>
     );
 }

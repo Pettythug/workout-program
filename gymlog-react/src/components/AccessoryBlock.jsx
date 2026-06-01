@@ -3,12 +3,16 @@ import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 
 export default function AccessoryBlock() {
-    const { exercises } = useAppContext();
+    const { exercises, activeLocation } = useAppContext();
     const [selectedAccessory, setSelectedAccessory] = useState(null);
 
     const handleGenerate = () => {
         if (!exercises) return;
-        const accessories = exercises.filter(ex => ex.category && ex.category.toLowerCase().includes('accessory'));
+        const accessories = exercises.filter(ex => {
+            const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
+            const locMatch = activeLocation === "all" || ex.location === "Anywhere" || !ex.location || ex.location === activeLocation;
+            return isAcc && locMatch;
+        });
         if (accessories.length === 0) return;
 
         const randomIdx = Math.floor(Math.random() * accessories.length);

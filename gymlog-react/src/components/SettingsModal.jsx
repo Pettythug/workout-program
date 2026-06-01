@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
-export default function SettingsModal({ isOpen, onClose, locations, setLocations }) {
-    const { people, exercises, addPersonToRoster, addLocationToRoster, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+export default function SettingsModal({ isOpen, onClose }) {
+    const { people, exercises, locations, hiddenPeople, activePeople, addPersonToRoster, addLocationToRoster, togglePersonHidden, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -46,8 +46,6 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
         if (!newLocation.trim()) return;
         const newLoc = newLocation.trim();
         addLocationToRoster(newLoc);
-        const updated = [...locations, newLoc];
-        setLocations(updated);
         setNewLocation('');
         alert(`${newLoc} added and syncing to backend.`);
     };
@@ -117,9 +115,41 @@ export default function SettingsModal({ isOpen, onClose, locations, setLocations
                 <div style={{ marginBottom: 24 }}>
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>ROSTER (PEOPLE)</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                        {people.map(p => (
-                            <div key={p} style={{ background: '#1a1a1a', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>{p}</div>
-                        ))}
+                        {people.map(p => {
+                            const isHidden = hiddenPeople.includes(p);
+                            const isActive = activePeople.includes(p);
+                            return (
+                                <div 
+                                    key={p} 
+                                    style={{ 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        background: '#1a1a1a', 
+                                        padding: '6px 10px', 
+                                        borderRadius: 6, 
+                                        fontSize: 12, 
+                                        opacity: isHidden ? 0.5 : 1,
+                                        border: isHidden ? '1px solid #333' : '1px solid transparent'
+                                    }}
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isActive}
+                                        onChange={() => togglePersonActive(p)}
+                                        style={{ cursor: 'pointer' }}
+                                        title="Toggle Active for Workout"
+                                    />
+                                    <span
+                                        onClick={() => togglePersonHidden(p)}
+                                        style={{ cursor: 'pointer', textDecoration: isHidden ? 'line-through' : 'none' }}
+                                        title="Click to hide/show from roster"
+                                    >
+                                        {p}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                         <input 

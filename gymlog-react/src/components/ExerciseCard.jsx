@@ -62,7 +62,7 @@ const REP_RANGES = [
 
 export default function ExerciseCard({ group }) {
     const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise } = useAppContext();
-    const { logSet, deleteHistory } = useGymAPI();
+    const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
     const [isOpen, setIsOpen] = useState(false);
@@ -113,8 +113,7 @@ export default function ExerciseCard({ group }) {
             const entries = [];
             for (const person of activePeople) {
                 const key = person.toLowerCase();
-                const input = logInputs[key];
-                if (!input) continue;
+                const input = logInputs[key] || {};
                 
                 if (ex.timed) {
                     if (input.duration) {
@@ -167,6 +166,44 @@ export default function ExerciseCard({ group }) {
         }
     };
 
+    const handleEditMetadata = async (type) => {
+        const pin = prompt("Admin PIN required:");
+        if (pin !== "5050") {
+            if (pin !== null) {
+                setToast("Invalid PIN");
+                setTimeout(() => setToast(""), 2000);
+            }
+            return;
+        }
+
+        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location };
+
+        if (type === 'rename') {
+            const newName = prompt(`Rename ${ex.name} to:`, ex.name);
+            if (!newName || newName === ex.name) return;
+            payload.newName = newName;
+        } else if (type === 'category') {
+            const newCat = prompt(`Change category (current: ${ex.category || 'none'}):`, ex.category || '');
+            if (!newCat || newCat === ex.category) return;
+            payload.category = newCat;
+        } else if (type === 'location') {
+            const newLoc = prompt(`Change location (current: ${ex.location || 'none'}):`, ex.location || '');
+            if (!newLoc || newLoc === ex.location) return;
+            payload.location = newLoc;
+        }
+
+        try {
+            setToast("Updating metadata...");
+            await saveExercise(payload);
+            setToast("Updated! Reload to see changes.");
+            setTimeout(() => setToast(""), 3000);
+        } catch (e) {
+            console.error(e);
+            setToast("Error updating");
+            setTimeout(() => setToast(""), 2000);
+        }
+    };
+
     const handleDeleteHistory = async (entry) => {
         const pin = prompt("Admin PIN required:");
         if (pin === "5050") {
@@ -199,7 +236,7 @@ export default function ExerciseCard({ group }) {
         <div className={`exercise-card ${isDone ? "cardDone" : isSkipped ? "cardSkipped" : ""}`} style={{ borderColor: isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--accent)', opacity: isDone || isSkipped ? 0.6 : 1 }}>
             <div className="exercise-header" style={{ padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
                 <div onClick={handleOpen} style={{ flex: 1 }}>
-                    {ex.category && <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{ex.category}</div>}
+                    {ex.category && <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{ex.category}</div>}
                     <div style={{ fontSize: 15, fontWeight: 500 }}>{group.baseName}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
                         Best: <span style={{ color: 'var(--accent)' }}>{activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
@@ -254,9 +291,14 @@ export default function ExerciseCard({ group }) {
 
                     {group.originalBaseKey && (
                         <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ textAlign: 'left', fontSize: 11, padding: 0 }}>
-                                {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
-                            </button>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
+                                    {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
+                                </button>
+                                <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
+                                    METADATA ▼
+                                </button>
+                            </div>
                             {isSwapping && (
                                 <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
                                     <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Swap for another {ex.category}:</div>
@@ -271,7 +313,7 @@ export default function ExerciseCard({ group }) {
                                         value=""
                                     >
                                         <option value="" disabled>Select alternative...</option>
-                                        {group.alternatives?.map(alt => (
+                                        {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
                                             <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
                                         ))}
                                     </select>
@@ -298,6 +340,11 @@ export default function ExerciseCard({ group }) {
                                     </div>
                                 </div>
                             )}
+                            <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('rename')}>RENAME</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('category')}>CATEGORY</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('location')}>LOCATION</button>
+                            </div>
                         </div>
                     )}
 
@@ -321,19 +368,6 @@ export default function ExerciseCard({ group }) {
                                     />
                                 );
                             })}
-                            <button 
-                                className="btn-ghost" 
-                                style={{ width: '100%', marginBottom: 8, fontSize: 10 }}
-                                onClick={() => {
-                                    const note = prompt("Suggest difficulty/adjustment for next time:");
-                                    if (note) {
-                                        setToast(`Note logged: ${note}`);
-                                        setTimeout(() => setToast(""), 2000);
-                                    }
-                                }}
-                            >
-                                + SUGGEST DIFF
-                            </button>
                             <button className="btn-success" style={{ width: '100%' }} onClick={handleSaveSet} disabled={isSaving}>
                                 {isSaving ? "SAVING..." : "SAVE SET"}
                             </button>

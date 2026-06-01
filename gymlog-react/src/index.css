@@ -178,3 +178,69 @@ body {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* Help Drawer */
+.help-drawer {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 85%;
+    max-width: 400px;
+    height: 100vh;
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    z-index: 2000;
+    padding: 20px;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: -4px 0 16px rgba(0,0,0,0.8);
+    overflow-y: auto;
+}
+.help-drawer.open {
+    right: 0;
+}
+.help-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+.help-drawer-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text);
+}
+.help-drawer-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    cursor: pointer;
+}
+.help-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+.help-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: var(--accent);
+}
+.help-card p {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text);
+}
+
+/* Hide number input spinners */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+

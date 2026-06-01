@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import CircuitCard from './CircuitCard';
+import SettingsModal from './SettingsModal';
+import HelpDrawer from './HelpDrawer';
 
 export default function CircuitView() {
     const { logSet, deleteHistory } = useGymAPI();
     const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
     
+    const navigate = useNavigate();
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
     
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isHelpOpen, setIsHelpOpen] = useState(false);
+
     // Circuit states synced to 'gym-circuit-active'
     const [circuitState, setCircuitState] = useState(() => {
         const cached = localStorage.getItem('gym-circuit-active');
@@ -17,9 +24,8 @@ export default function CircuitView() {
     const circuit = circuitState.circuit || [];
     const completedMap = circuitState.completedMap || {};
 
-    // Roster state
-    const [showRosterModal, setShowRosterModal] = useState(false);
-    const [circuitPeople, setCircuitPeople] = useState(activePeople);
+    // Accordion state
+    const [openCardIndex, setOpenCardIndex] = useState(0);
 
     // Mimic setup state
     const [selectedCategories, setSelectedCategories] = useState({});
@@ -98,16 +104,23 @@ export default function CircuitView() {
         }
     };
 
-    const toggleCircuitPerson = (person) => {
-        setCircuitPeople(prev => {
-            if (prev.includes(person)) return prev.filter(p => p !== person);
-            return [...prev, person];
-        });
+    const handleSwap = (index, targetEx) => {
+        const oldName = circuit[index].name;
+        const newCircuit = [...circuit];
+        newCircuit[index] = targetEx;
+        
+        const newMap = { ...completedMap };
+        if (newMap[oldName]) {
+            newMap[targetEx.name] = newMap[oldName];
+            delete newMap[oldName];
+        }
+        
+        updateCircuitState(newCircuit, newMap);
     };
 
     const handleLogSet = async (ex, logs) => {
         const entries = [];
-        for (const person of circuitPeople) {
+        for (const person of activePeople) {
             const key = person.toLowerCase();
             const input = logs[key];
             if (!input) continue;
@@ -308,36 +321,11 @@ export default function CircuitView() {
             {/* Header / Modal toggle */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h2 style={{ margin: 0, fontSize: 20, color: 'var(--accent)' }}>Circuit Training</h2>
-                <button className="btn-ghost" style={{ fontSize: 12, padding: '6px 12px' }} onClick={() => setShowRosterModal(true)}>
-                    ROSTER ({circuitPeople.length})
-                </button>
-            </div>
-
-            {/* Roster Modal */}
-            {showRosterModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-                    <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 350, padding: 24, border: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h3 style={{ margin: 0, fontSize: 16, color: 'var(--accent)' }}>CIRCUIT ROSTER</h3>
-                            <button onClick={() => setShowRosterModal(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>&#x2715;</button>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {people.map(p => (
-                                <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 16 }}>
-                                    <input 
-                                        type="checkbox" 
-                                        style={{ width: 20, height: 20 }}
-                                        checked={circuitPeople.includes(p)} 
-                                        onChange={() => toggleCircuitPerson(p)} 
-                                    />
-                                    {p}
-                                </label>
-                            ))}
-                        </div>
-                        <button className="btn-success" style={{ width: '100%', marginTop: 24 }} onClick={() => setShowRosterModal(false)}>DONE</button>
-                    </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsHelpOpen(true)}>❓</button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsSettingsOpen(true)}>⚙️</button>
                 </div>
-            )}
+            </div>
 
             {/* View Switching */}
             {view === 'planner' && (
@@ -350,17 +338,17 @@ export default function CircuitView() {
                     
                     <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', marginTop: 16, marginBottom: 8, letterSpacing: 1 }}>Select Circuit Mode</div>
                     
-                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left' }} onClick={startFullBodyCircuit}>
+                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} onClick={startFullBodyCircuit}>
                         <div>🤖 Full Body Circuit</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'normal', marginTop: 4 }}>Randomly picks 1 machine for each category</div>
                     </button>
                     
-                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left' }} onClick={() => setView('mimic-setup')}>
+                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} onClick={() => setView('mimic-setup')}>
                         <div>🎭 Plan Exercise Mimic</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'normal', marginTop: 4 }}>Select categories and randomly generate</div>
                     </button>
 
-                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left' }} onClick={startHitEveryMachine}>
+                    <button className="btn-secondary" style={{ padding: 16, fontSize: 16, textAlign: 'left', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }} onClick={startHitEveryMachine}>
                         <div>🔥 Hit Every Machine</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 'normal', marginTop: 4 }}>All machines in current order</div>
                     </button>
@@ -396,6 +384,9 @@ export default function CircuitView() {
 
             {view === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <button className="btn-secondary" onClick={() => setView('planner')} style={{ padding: 12, fontSize: 14 }}>
+                        &larr; BACK TO CIRCUIT PLANNER
+                    </button>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
                         <div>
                             <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Remaining</div>
@@ -415,23 +406,37 @@ export default function CircuitView() {
                     {circuit.map((ex, idx) => {
                         const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
                         return (
-                            <CircuitCard 
-                                key={`${ex.name}-${idx}`} 
-                                ex={upToDateEx} 
-                                index={idx} 
-                                completedStatus={completedMap[ex.name]} 
-                                activePeople={circuitPeople} 
-                                onLogSet={handleLogSet} 
-                                onExplicitDone={handleExplicitDone} 
-                                onSkip={handleSkip} 
-                                onUndo={handleUndo} 
-                                onDeleteSet={handleDeleteSet}
-                                onDeleteHistoryEntry={handleDeleteHistoryEntry}
-                            />
+                                <CircuitCard 
+                                    key={`${ex.name}-${idx}`} 
+                                    ex={upToDateEx} 
+                                    index={idx} 
+                                    completedStatus={completedMap[ex.name]} 
+                                    activePeople={activePeople} 
+                                    onLogSet={handleLogSet} 
+                                    onExplicitDone={handleExplicitDone} 
+                                    onSkip={handleSkip} 
+                                    onUndo={handleUndo} 
+                                    onDeleteSet={handleDeleteSet}
+                                    onDeleteHistoryEntry={handleDeleteHistoryEntry}
+                                    isOpen={openCardIndex === idx}
+                                    onToggle={() => setOpenCardIndex(openCardIndex === idx ? -1 : idx)}
+                                    onSwap={handleSwap}
+                                    allExercises={exercises}
+                                />
                         );
                     })}
                 </div>
             )}
+
+            <SettingsModal 
+                isOpen={isSettingsOpen} 
+                onClose={() => setIsSettingsOpen(false)} 
+            />
+
+            <HelpDrawer 
+                showHelp={isHelpOpen} 
+                setShowHelp={setIsHelpOpen} 
+            />
         </div>
     );
 }

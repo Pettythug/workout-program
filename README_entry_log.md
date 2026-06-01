@@ -1,4 +1,4 @@
-﻿What's up everyone! This log tracks what we're building and where all the files live.
+What's up everyone! This log tracks what we're building and where all the files live.
 
 Here is the quick breakdown of what just happened with the Gym Log:
 We completely upgraded the Gym Log so that two people can use it at exactly the same time. Instead of an entire card collapsing and eating your inputs, each person now gets their own dropdown row. It perfectly saves your reps and weight while the other person logs theirs, and we even added a dynamic "Target Lock" that highlights the exact personal record you need to break today in bright orange!
@@ -12,7 +12,7 @@ Files & Current Status:
 * gymlog-variation-beta.html -> This is our testing ground. We test crazy ideas here before they ever touch production.
 * circuit-training-pro-beta.html -> This is our beta testing ground for the circuit training engine.
 * docs/architecture_sop.md -> This is a strict rulebook for any developers touching the code, explaining exactly how the Vanilla JS and React code play nicely together in one file.
+* docs/migration_backlog.md -> The active backlog tracking Epics and stories for the React migration.
+* gymlog-react/ -> The new React SPA migration project directory. Currently in Phase 2 Development (Epic 10: UI/UX Parity and Stabilization). See `gymlog-react/README_entry_log.md` for the component status.
 
 Stay disciplined, and keep lifting!
-
-

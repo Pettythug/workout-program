@@ -51,7 +51,7 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
     );
 };
 
-export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry }) {
+export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
     const sets = typeof completedStatus === 'object' ? (completedStatus?.sets || []) : [];
 
@@ -59,6 +59,10 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const isSkipped = status === 'skipped';
 
     const [activeTab, setActiveTab] = useState("LOG");
+
+    // Swap State
+    const [swapMode, setSwapMode] = useState(null);
+    const [customSwapState, setCustomSwapState] = useState(null);
 
     const [inputs, setInputs] = useState(() => {
         const initial = {};
@@ -108,31 +112,86 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         setIsSaving(false);
     };
 
+    const baseName = ex.name.replace(" (Single)", "").replace(" (Alt)", "");
+    const hasSingle = (allExercises || []).some(e => e.name === `${baseName} (Single)`);
+    const hasAlt = (allExercises || []).some(e => e.name === `${baseName} (Alt)`);
+    const currentMode = ex.name.includes("(Single)") ? "single" : ex.name.includes("(Alt)") ? "alt" : "std";
+
+    const switchVariation = (targetMode) => {
+        let targetName = baseName;
+        if (targetMode === 'single') targetName = `${baseName} (Single)`;
+        if (targetMode === 'alt') targetName = `${baseName} (Alt)`;
+        const targetEx = (allExercises || []).find(e => e.name === targetName) || { ...ex, name: targetName };
+        onSwap(index, targetEx);
+    };
+
+    const executeSwap = (swapPayload) => {
+        const isCustom = typeof swapPayload === 'object';
+        const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
+        if (!stdName) return alert("Exercise name cannot be blank.");
+        
+        let targetEx = (allExercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        if (!targetEx) {
+            targetEx = { 
+                name: stdName, 
+                category: isCustom ? swapPayload.category : (ex.category || "General"),
+                muscle: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
+                baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+                timed: false, history: []
+            };
+        }
+        
+        onSwap(index, targetEx);
+        setSwapMode(null);
+        setCustomSwapState(null);
+    };
+
+    // Calculate generic selections for custom swap
+    const allCategories = [...new Set((allExercises || []).map(e => e.category).filter(Boolean))].sort();
+    const allManufacturers = [...new Set((allExercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
+    const allMuscles = [...new Set((allExercises || []).map(e => e.muscle).filter(Boolean))].sort();
+
     return (
         <div style={{ 
             background: '#111', 
-            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--border)'}`, 
+            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 12, 
-            padding: 16,
-            opacity: isDone || isSkipped ? 0.6 : 1
+            opacity: isDone || isSkipped ? 0.6 : 1,
+            overflow: 'hidden'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 4 }}>
-                        {index + 1}. {ex.category || 'Uncategorized'}
+            <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, cursor: 'pointer', background: isOpen ? '#1a1a1a' : 'transparent' }}
+                onClick={onToggle}
+            >
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
+                            {index + 1}. {ex.category || 'Uncategorized'}
+                        </div>
+                        {(hasSingle || hasAlt) && (
+                            <div style={{ display: "flex", gap: 4 }}>
+                                <button onClick={(e) => { e.stopPropagation(); switchVariation('std'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='std' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='std' ? 'white' : 'var(--muted)' }}>STD</button>
+                                {hasSingle && <button onClick={(e) => { e.stopPropagation(); switchVariation('single'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='single' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='single' ? 'white' : 'var(--muted)' }}>SINGLE</button>}
+                                {hasAlt && <button onClick={(e) => { e.stopPropagation(); switchVariation('alt'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='alt' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='alt' ? 'white' : 'var(--muted)' }}>ALT</button>}
+                            </div>
+                        )}
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
                 </div>
             </div>
 
-            {(isDone || isSkipped) ? (
-                <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a1a', padding: 12, borderRadius: 8 }}>
-                    <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
-                        {isDone ? 'COMPLETED' : 'SKIPPED'}
-                    </div>
-                    <button className="btn-ghost" onClick={() => onUndo(ex.name)}>UNDO</button>
-                </div>
-            ) : (
+            {isOpen && (
+                <div style={{ padding: '0 16px 16px 16px', borderTop: '1px solid #222' }}>
+                    {(isDone || isSkipped) ? (
+                        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a1a', padding: 12, borderRadius: 8 }}>
+                            <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
+                                {isDone ? 'COMPLETED' : 'SKIPPED'}
+                            </div>
+                            <button className="btn-ghost" onClick={() => onUndo(ex.name)}>UNDO</button>
+                        </div>
+                    ) : (
                 <div style={{ marginTop: 16 }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                         <button 
@@ -183,6 +242,66 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button className="btn-secondary" style={{ flex: 1, padding: 8 }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
                                 <button className="btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
+                            </div>
+
+                            {/* Swap UI */}
+                            <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 16 }}>
+                                {swapMode === ex.name ? (
+                                    <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+                                        <select 
+                                            onChange={(e) => {
+                                                if (e.target.value === "custom") {
+                                                    setCustomSwapState({
+                                                        name: "",
+                                                        category: ex.category || "General",
+                                                        manufacturer: "",
+                                                        baseExercise: "",
+                                                        muscle: ""
+                                                    });
+                                                } else if (e.target.value) {
+                                                    executeSwap(e.target.value);
+                                                }
+                                            }}
+                                            style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
+                                        >
+                                            <option value="">-- Select Exercise --</option>
+                                            <option value="custom">-- New Custom Exercise --</option>
+                                            {(allExercises || []).filter(e => e.category === ex.category).map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
+                                        </select>
+
+                                        {customSwapState && (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
+                                                <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
+                                                <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
+                                                
+                                                <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+
+                                                <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                <button 
+                                                    onClick={() => executeSwap(customSwapState)}
+                                                    className="btn-success"
+                                                    style={{ padding: "12px", marginTop: 4 }}
+                                                >SAVE & SWAP</button>
+                                            </div>
+                                        )}
+                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setSwapMode(ex.name)}
+                                        className="btn-ghost"
+                                        style={{ width: "100%", padding: 12, fontSize: 12 }}
+                                    >
+                                        🔄 SWAP EXERCISE
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
@@ -245,18 +364,6 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                     )}
                 </div>
             )}
-
-            {sets.length > 0 && (
-                <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8 }}>LOGGED SETS</div>
-                    {sets.map((setEntries, sIdx) => {
-                        const summary = setEntries.map(e => `${e.person[0].toUpperCase()}:${ex.timed ? e.reps : e.reps + '@' + (e.weight || 0)}`).join('   ');
-                        return (
-                            <div key={sIdx} style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>
-                                <span style={{ color: 'var(--accent)' }}>L{sIdx + 1}:</span> <span style={{ color: 'white' }}>{summary}</span>
-                            </div>
-                        );
-                    })}
                 </div>
             )}
         </div>

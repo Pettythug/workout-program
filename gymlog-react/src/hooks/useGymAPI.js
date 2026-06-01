@@ -170,6 +170,32 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Save application settings using the generic exec macro.
+     * @param {Object} data 
+     * @returns {Promise<any>}
+     */
+    const saveSettings = useCallback(async (data) => {
+        return sheetsPost({
+            action: "exec",
+            args: ["saveSettings", data],
+            pin: "5050"
+        });
+    }, [sheetsPost]);
+
+    /**
+     * Save an exercise note using the generic exec macro.
+     * @param {Object} data 
+     * @returns {Promise<any>}
+     */
+    const saveExerciseNote = useCallback(async (data) => {
+        return sheetsPost({
+            action: "exec",
+            args: ["saveExerciseNote", data],
+            pin: "5050"
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
@@ -177,6 +203,8 @@ export function useGymAPI() {
         saveExercise,
         syncMeta,
         sheetsPost,
-        deleteExercise
+        deleteExercise,
+        saveSettings,
+        saveExerciseNote
     };
 }
