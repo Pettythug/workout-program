@@ -20,29 +20,29 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
                     </React.Fragment>
                 ))}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                 {ex.timed ? (
                     <input 
                         placeholder="mm:ss" 
                         value={input.duration || ""} 
                         onChange={e => updateLogInput(key, "duration", e.target.value)}
-                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                        style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 80, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                     />
                 ) : (
                     <>
                         <input 
-                            placeholder="Reps" 
+                            placeholder="reps" 
                             type="number"
                             value={input.reps || ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
-                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
-                            placeholder="Lbs" 
+                            placeholder="lbs" 
                             type="number"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
-                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                     </>
                 )}

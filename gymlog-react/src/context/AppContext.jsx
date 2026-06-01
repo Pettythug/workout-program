@@ -246,7 +246,7 @@ export function AppProvider({ children }) {
     const contextValue = {
         workoutDay,
         people,
-        activePeople,
+        activePeople: activePeople.filter(p => people.includes(p)),
         exercises,
         exerciseStatus,
         dailySwaps,
