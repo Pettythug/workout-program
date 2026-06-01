@@ -119,6 +119,7 @@ export default function CircuitView() {
     };
 
     const handleLogSet = async (ex, logs) => {
+        console.log("handleLogSet CALLED", {ex, logs});
         const entries = [];
         for (const person of activePeople) {
             const key = person.toLowerCase();
@@ -148,7 +149,7 @@ export default function CircuitView() {
                     entries.push({
                         date: new Date().toLocaleDateString('en-US'),
                         person: key,
-                        reps: input.reps,
+                        reps: r,
                         weight: input.weight || "",
                         range: range,
                         timed: false,
@@ -158,6 +159,7 @@ export default function CircuitView() {
             }
         }
 
+        console.log("ENTRIES:", entries);
         if (entries.length > 0) {
             try {
                 await logSet(ex.name, entries);

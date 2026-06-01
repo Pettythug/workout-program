@@ -138,7 +138,7 @@ export default function ExerciseCard({ group }) {
                         entries.push({
                             date: new Date().toLocaleDateString('en-US'),
                             person: key,
-                            reps: input.reps,
+                            reps: r,
                             weight: input.weight || "",
                             range: range,
                             timed: false,
