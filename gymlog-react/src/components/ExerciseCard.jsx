@@ -109,6 +109,19 @@ export default function ExerciseCard({ group }) {
         setIsSaving(true);
         
         try {
+            const todayStr = new Date().toLocaleDateString('en-US');
+            let nextSetNum = 1;
+            if (ex.history && ex.history.length > 0) {
+                const todaysEntries = ex.history.filter(h => h.date === todayStr);
+                if (todaysEntries.length > 0) {
+                    const maxSetNum = todaysEntries.reduce((max, h) => {
+                        const num = parseInt(h.setNum) || 0;
+                        return num > max ? num : max;
+                    }, 0);
+                    nextSetNum = maxSetNum + 1;
+                }
+            }
+
             const entries = [];
             for (const person of activePeople) {
                 const key = person.toLowerCase();
@@ -123,7 +136,8 @@ export default function ExerciseCard({ group }) {
                             weight: input.weight || "",
                             range: "r13_plus",
                             timed: true,
-                            note: input.note || ""
+                            note: input.note || "",
+                            setNum: nextSetNum
                         });
                     }
                 } else {
@@ -142,7 +156,8 @@ export default function ExerciseCard({ group }) {
                             weight: input.weight || "",
                             range: range,
                             timed: false,
-                            note: input.note || ""
+                            note: input.note || "",
+                            setNum: nextSetNum
                         });
                     }
                 }

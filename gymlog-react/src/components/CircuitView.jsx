@@ -120,6 +120,12 @@ export default function CircuitView() {
 
     const handleLogSet = async (ex, logs) => {
         console.log("handleLogSet CALLED", {ex, logs});
+
+        const newMap = { ...completedMap };
+        const currentData = newMap[ex.name] || { status: 'active', sets: [] };
+        const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+        const nextSetNum = currentSets.length + 1;
+
         const entries = [];
         for (const person of activePeople) {
             const key = person.toLowerCase();
@@ -135,7 +141,8 @@ export default function CircuitView() {
                         weight: input.weight || "",
                         range: "r13_plus",
                         timed: true,
-                        note: input.note || ""
+                        note: input.note || "",
+                        setNum: nextSetNum
                     });
                 }
             } else {
@@ -153,7 +160,8 @@ export default function CircuitView() {
                         weight: input.weight || "",
                         range: range,
                         timed: false,
-                        note: input.note || ""
+                        note: input.note || "",
+                        setNum: nextSetNum
                     });
                 }
             }
