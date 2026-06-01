@@ -30,10 +30,20 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Prepare combined deployment
+        working-directory: ${{ github.workspace }}
+        run: |
+          mkdir -p _site
+          # Copy all root html and js files
+          cp *.html *.js _site/ 2>/dev/null || true
+          # Create react subfolder and copy React build into it
+          mkdir -p _site/react
+          cp -r gymlog-react/dist/* _site/react/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./gymlog-react/dist
+          path: ./_site
 
   deploy:
     needs: build
