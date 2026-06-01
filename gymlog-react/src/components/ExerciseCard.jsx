@@ -222,11 +222,10 @@ export default function ExerciseCard({ group }) {
     };
 
     const getBest = (personKey) => {
-        // Just return the first best for display simplicity or "No data"
         if (!ex.best || !ex.best[personKey]) return "No data";
-        const keys = Object.keys(ex.best[personKey]);
-        if (keys.length === 0) return "No data";
-        const b = ex.best[personKey][keys[0]];
+        const validKeys = Object.keys(ex.best[personKey]).filter(k => ex.best[personKey][k] !== null);
+        if (validKeys.length === 0) return "No data";
+        const b = ex.best[personKey][validKeys[0]];
         return ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
     };
 
