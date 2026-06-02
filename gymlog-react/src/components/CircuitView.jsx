@@ -42,7 +42,7 @@ export default function CircuitView() {
     };
 
     const machines = useMemo(() => {
-        return (exercises || []).filter(ex => ex.manufacturer || ex.fileReference || ex.baseExercise || ex.isCircuit);
+        return (exercises || []).filter(ex => ex.isCircuit);
     }, [exercises]);
 
     const uniqueCategories = useMemo(() => {

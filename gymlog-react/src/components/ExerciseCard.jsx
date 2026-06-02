@@ -60,7 +60,7 @@ const REP_RANGES = [
 ];
 
 export default function ExerciseCard({ group }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -71,6 +71,12 @@ export default function ExerciseCard({ group }) {
     const [toast, setToast] = useState("");
     const [isSwapping, setIsSwapping] = useState(false);
     const [customSwap, setCustomSwap] = useState("");
+    const [editMode, setEditMode] = useState(null);
+    const [editValue, setEditValue] = useState("");
+
+    const uniqueCategories = useMemo(() => {
+        return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
+    }, [exercises]);
 
     // Fallback to "Standard" if not provided
     const variations = group.variations || {};
@@ -179,8 +185,49 @@ export default function ExerciseCard({ group }) {
         }
     };
 
-    const handleEditMetadata = async (type) => {
-        const pin = prompt("Admin PIN required:");
+    const handleOpenEdit = (type) => {
+        if (type === 'circuit') {
+            handleSaveInlineEdit('circuit');
+            return;
+        }
+        setEditMode(type);
+        if (type === 'rename') setEditValue(ex.name);
+        else if (type === 'category') setEditValue(ex.category || '');
+        else if (type === 'location') setEditValue(ex.location || 'Anywhere');
+    };
+
+    const handleSaveInlineEdit = async (explicitType = null) => {
+        const typeToSave = explicitType || editMode;
+        if (!typeToSave) return;
+
+        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
+        let finalValue = editValue;
+
+        if (typeToSave === 'circuit') {
+            const confirmMsg = ex.isCircuit 
+                ? `Remove '${ex.name}' from Circuit Generator?`
+                : `Add '${ex.name}' to Circuit Generator?`;
+            if (!window.confirm(confirmMsg)) return;
+            payload.isCircuit = !ex.isCircuit;
+        } else {
+            if (finalValue === "ADD_NEW") {
+                finalValue = prompt(`Enter new ${typeToSave} name:`);
+                if (!finalValue) return;
+            }
+
+            if (typeToSave === 'rename') {
+                if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
+                payload.newName = finalValue;
+            } else if (typeToSave === 'category') {
+                if (finalValue === ex.category) { setEditMode(null); return; }
+                payload.category = finalValue;
+            } else if (typeToSave === 'location') {
+                if (finalValue === ex.location) { setEditMode(null); return; }
+                payload.location = finalValue;
+            }
+        }
+
+        const pin = prompt("Admin PIN required to save:");
         if (pin !== "5050") {
             if (pin !== null) {
                 setToast("Invalid PIN");
@@ -189,30 +236,9 @@ export default function ExerciseCard({ group }) {
             return;
         }
 
-        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
-
-        if (type === 'rename') {
-            const newName = prompt(`Rename ${ex.name} to:`, ex.name);
-            if (!newName || newName === ex.name) return;
-            payload.newName = newName;
-        } else if (type === 'category') {
-            const newCat = prompt(`Change category (current: ${ex.category || 'none'}):`, ex.category || '');
-            if (!newCat || newCat === ex.category) return;
-            payload.category = newCat;
-        } else if (type === 'location') {
-            const newLoc = prompt(`Change location (current: ${ex.location || 'none'}):`, ex.location || '');
-            if (!newLoc || newLoc === ex.location) return;
-            payload.location = newLoc;
-        } else if (type === 'circuit') {
-            const confirmMsg = ex.isCircuit 
-                ? `Remove '${ex.name}' from Circuit Generator?`
-                : `Add '${ex.name}' to Circuit Generator?`;
-            if (!window.confirm(confirmMsg)) return;
-            payload.isCircuit = !ex.isCircuit;
-        }
-
         try {
             setToast("Updating metadata...");
+            setEditMode(null);
             await saveExercise(payload);
             setToast("Updated! Reload to see changes.");
             setTimeout(() => setToast(""), 3000);
@@ -362,12 +388,48 @@ export default function ExerciseCard({ group }) {
                     )}
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
-                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('rename')}>RENAME</button>
-                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('category')}>CATEGORY</button>
-                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('location')}>LOCATION</button>
-                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? 'var(--accent)' : 'var(--muted)' }} onClick={() => handleEditMetadata('circuit')}>
-                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                        </button>
+                        {editMode ? (
+                            <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                {editMode === 'rename' && (
+                                    <input 
+                                        value={editValue} onChange={e => setEditValue(e.target.value)} 
+                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                        autoFocus
+                                    />
+                                )}
+                                {editMode === 'category' && (
+                                    <select 
+                                        value={editValue} onChange={e => setEditValue(e.target.value)}
+                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                    >
+                                        <option value="">Select Category...</option>
+                                        {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                        <option value="ADD_NEW">+ Add new...</option>
+                                    </select>
+                                )}
+                                {editMode === 'location' && (
+                                    <select 
+                                        value={editValue} onChange={e => setEditValue(e.target.value)}
+                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                    >
+                                        <option value="Anywhere">Anywhere</option>
+                                        {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                        <option value="ADD_NEW">+ Add new...</option>
+                                    </select>
+                                )}
+                                <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+                                <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                            </div>
+                        ) : (
+                            <>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? 'var(--accent)' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                    {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                </button>
+                            </>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
