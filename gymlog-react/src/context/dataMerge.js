@@ -15,11 +15,12 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
         const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
         return {
             ...ex,
-            timed:    sheetExInfo?.timed    ?? ex.timed    ?? false,
-            category: sheetExInfo?.category ?? ex.category ?? "",
-            location: sheetExInfo?.location ?? ex.location ?? "Anywhere",
-            history:  sheetHistory,
-            best:     sheetBest || makeBest(),
+            timed:     sheetExInfo?.timed     ?? ex.timed     ?? false,
+            category:  sheetExInfo?.category  ?? ex.category  ?? "",
+            location:  sheetExInfo?.location  ?? ex.location  ?? "Anywhere",
+            isCircuit: sheetExInfo?.isCircuit ?? ex.isCircuit ?? false,
+            history:   sheetHistory,
+            best:      sheetBest || makeBest(),
         };
     });
 
