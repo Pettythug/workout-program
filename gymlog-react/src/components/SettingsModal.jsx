@@ -15,6 +15,7 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exLocation, setExLocation] = useState('Anywhere');
     const [exCreateSingle, setExCreateSingle] = useState(false);
     const [exCreateAlt, setExCreateAlt] = useState(false);
+    const [exIsCircuit, setExIsCircuit] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     const [deleteExName, setDeleteExName] = useState('');
@@ -72,7 +73,8 @@ export default function SettingsModal({ isOpen, onClose }) {
             category: exCategory,
             location: exLocation,
             createSingle: exCreateSingle,
-            createAlt: exCreateAlt
+            createAlt: exCreateAlt,
+            isCircuit: exIsCircuit
         });
         alert("Exercise(s) created and syncing to backend.");
         setExName('');
@@ -81,6 +83,7 @@ export default function SettingsModal({ isOpen, onClose }) {
         setExLocation('Anywhere');
         setExCreateSingle(false);
         setExCreateAlt(false);
+        setExIsCircuit(false);
     };
 
     const handleDeleteExercise = async () => {
@@ -227,7 +230,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 </select>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                                 <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input type="checkbox" checked={exTimed} onChange={e => setExTimed(e.target.checked)} />
                                     Timed
@@ -239,6 +242,10 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input type="checkbox" checked={exCreateAlt} onChange={e => setExCreateAlt(e.target.checked)} />
                                     Create (Alt)
+                                </label>
+                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <input type="checkbox" checked={exIsCircuit} onChange={e => setExIsCircuit(e.target.checked)} />
+                                    Circuit Eligible
                                 </label>
                             </div>
 

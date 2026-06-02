@@ -35,7 +35,7 @@ const EXERCISES_TAB = "GymLog_Exercises"; // exercise metadata: timed flag + cat
 const HISTORY_HEADERS   = ["Date", "Person", "Exercise", "Reps", "Weight", "Rep Range", "Note", "Set #"];
 const BEST_HEADERS      = ["Exercise", "Person", "r1_3", "r4_7", "r8_12", "r13_plus"];
 const PEOPLE_HEADERS    = ["Name"];
-const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note", "Manufacturer", "Model Series", "Base Exercise", "Muscle Groups", "File Reference"];
+const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note", "Manufacturer", "Model Series", "Base Exercise", "Muscle Groups", "File Reference", "Circuit Eligible"];
 const SETTINGS_TAB      = "GymLog_Settings";
 const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
@@ -255,6 +255,7 @@ function gymlog_doGet() {
       baseExercise: String(r[7] || "").trim(),
       muscleGroups: String(r[8] || "").trim(),
       fileReference:String(r[9] || "").trim(),
+      isCircuit:    r[10] === true || String(r[10]).toLowerCase() === "true"
     })).filter(e => e.name);
 
     // Derive unique non-default locations from exercises for the frontend location picker
@@ -487,7 +488,8 @@ function gymlog_handleSaveExercise(payload) {
     payload.modelSeries || "", 
     payload.baseExercise || "", 
     payload.muscleGroups || "", 
-    payload.fileReference || ""
+    payload.fileReference || "",
+    payload.isCircuit ? true : false
   ];
   if (rowIndex > 0) {
     exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).setValues([row]);

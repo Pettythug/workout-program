@@ -189,7 +189,7 @@ export default function ExerciseCard({ group }) {
             return;
         }
 
-        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location };
+        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
 
         if (type === 'rename') {
             const newName = prompt(`Rename ${ex.name} to:`, ex.name);
@@ -203,6 +203,12 @@ export default function ExerciseCard({ group }) {
             const newLoc = prompt(`Change location (current: ${ex.location || 'none'}):`, ex.location || '');
             if (!newLoc || newLoc === ex.location) return;
             payload.location = newLoc;
+        } else if (type === 'circuit') {
+            const confirmMsg = ex.isCircuit 
+                ? `Remove '${ex.name}' from Circuit Generator?`
+                : `Add '${ex.name}' to Circuit Generator?`;
+            if (!window.confirm(confirmMsg)) return;
+            payload.isCircuit = !ex.isCircuit;
         }
 
         try {
@@ -352,10 +358,13 @@ export default function ExerciseCard({ group }) {
                                     </div>
                                 </div>
                             )}
-                            <div style={{ display: 'flex', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
                                 <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('rename')}>RENAME</button>
                                 <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('category')}>CATEGORY</button>
                                 <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('location')}>LOCATION</button>
+                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? 'var(--accent)' : 'var(--muted)' }} onClick={() => handleEditMetadata('circuit')}>
+                                    {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                </button>
                             </div>
                         </div>
                     )}

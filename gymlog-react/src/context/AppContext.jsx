@@ -202,14 +202,14 @@ export function AppProvider({ children }) {
     };
 
     const createExerciseMeta = async (exerciseData) => {
-        const { baseName, createSingle, createAlt, category, location, timed } = exerciseData;
+        const { baseName, createSingle, createAlt, category, location, timed, isCircuit } = exerciseData;
         
         const variationsToCreate = [
-            { name: baseName, category, location, timed }
+            { name: baseName, category, location, timed, isCircuit }
         ];
 
-        if (createSingle) variationsToCreate.push({ name: `${baseName} (Single)`, category, location, timed });
-        if (createAlt) variationsToCreate.push({ name: `${baseName} (Alt)`, category, location, timed });
+        if (createSingle) variationsToCreate.push({ name: `${baseName} (Single)`, category, location, timed, isCircuit });
+        if (createAlt) variationsToCreate.push({ name: `${baseName} (Alt)`, category, location, timed, isCircuit });
 
         // Save each via API 
         for (const meta of variationsToCreate) {
