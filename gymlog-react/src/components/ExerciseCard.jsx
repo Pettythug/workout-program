@@ -358,16 +358,17 @@ export default function ExerciseCard({ group }) {
                                     </div>
                                 </div>
                             )}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('rename')}>RENAME</button>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('category')}>CATEGORY</button>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('location')}>LOCATION</button>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? 'var(--accent)' : 'var(--muted)' }} onClick={() => handleEditMetadata('circuit')}>
-                                    {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                                </button>
-                            </div>
                         </div>
                     )}
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
+                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('rename')}>RENAME</button>
+                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('category')}>CATEGORY</button>
+                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleEditMetadata('location')}>LOCATION</button>
+                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? 'var(--accent)' : 'var(--muted)' }} onClick={() => handleEditMetadata('circuit')}>
+                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                        </button>
+                    </div>
 
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                         <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1 }}>LOG SET</button>
