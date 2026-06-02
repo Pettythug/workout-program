@@ -37,7 +37,7 @@ export function AppProvider({ children }) {
         return cached ? JSON.parse(cached) : ["Anywhere", "Home", "Gym"];
     });
     const [activeLocation, setActiveLocation] = useState(() => {
-        return localStorage.getItem('gymlog_activeLocation') || "Anywhere";
+        return localStorage.getItem('gymlog_activeLocation') || "all";
     });
     const [loading, setLoading] = useState(true);
 

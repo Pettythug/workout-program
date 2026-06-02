@@ -139,8 +139,8 @@ export default function PlanView() {
                     onChange={e => updateActiveLocation(e.target.value)}
                     style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'var(--muted)', fontSize: 10, fontFamily: 'var(--mono)' }}
                 >
-                    <option value="all">ANYWHERE / ALL</option>
-                    {locations.filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+                    <option value="all">ALL LOCATIONS</option>
+                    {locations.map(l => <option key={l} value={l}>{l.toUpperCase()}</option>)}
                 </select>
             </div>
 
