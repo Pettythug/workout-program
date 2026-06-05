@@ -131,7 +131,9 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         if (!stdName) return alert("Exercise name cannot be blank.");
         
         let targetEx = (allExercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        let isNew = false;
         if (!targetEx) {
+            isNew = true;
             targetEx = { 
                 name: stdName, 
                 category: isCustom ? swapPayload.category : (ex.category || "General"),
@@ -139,11 +141,12 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                 muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
                 manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
                 baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
-                timed: false, history: []
+                timed: false, history: [],
+                isCircuit: true
             };
         }
         
-        onSwap(index, targetEx);
+        onSwap(index, targetEx, isNew);
         setSwapMode(null);
         setCustomSwapState(null);
     };
@@ -267,7 +270,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         >
                                             <option value="">-- Select Exercise --</option>
                                             <option value="custom">-- New Custom Exercise --</option>
-                                            {(allExercises || []).filter(e => e.category === ex.category).map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
+                                            {(allExercises || []).filter(e => e.category === ex.category && e.isCircuit).map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
                                         </select>
 
                                         {customSwapState && (

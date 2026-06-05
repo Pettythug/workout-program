@@ -7,7 +7,7 @@ import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
 export default function CircuitView() {
-    const { logSet, deleteHistory } = useGymAPI();
+    const { logSet, deleteHistory, saveExercise } = useGymAPI();
     const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
     
     const navigate = useNavigate();
@@ -108,7 +108,7 @@ export default function CircuitView() {
         }
     };
 
-    const handleSwap = (index, targetEx) => {
+    const handleSwap = async (index, targetEx, isNew) => {
         const oldName = circuit[index].name;
         const newCircuit = [...circuit];
         newCircuit[index] = targetEx;
@@ -120,6 +120,14 @@ export default function CircuitView() {
         }
         
         updateCircuitState(newCircuit, newMap);
+
+        if (isNew) {
+            try {
+                await saveExercise(targetEx);
+            } catch (e) {
+                console.error("Error saving new swap exercise to backend", e);
+            }
+        }
     };
 
     const handleLogSet = async (ex, logs) => {
