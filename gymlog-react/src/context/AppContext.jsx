@@ -39,6 +39,9 @@ export function AppProvider({ children }) {
     const [activeLocation, setActiveLocation] = useState(() => {
         return localStorage.getItem('gymlog_activeLocation') || "all";
     });
+    const [deviceOwner, setDeviceOwner] = useState(() => {
+        return localStorage.getItem('builder_primary_user') || "Brian";
+    });
     const [loading, setLoading] = useState(true);
 
     // Initial Load
@@ -91,12 +94,30 @@ export function AppProvider({ children }) {
     };
 
     const togglePersonActive = (person) => {
+        if (person === deviceOwner && activePeople.includes(person)) {
+            // Do not allow the device owner to be deactivated
+            return;
+        }
         setActivePeople(prev => {
             const next = prev.includes(person)
                 ? prev.filter(p => p !== person)
                 : [...prev, person];
             localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
             return next;
+        });
+    };
+
+    const updateDeviceOwner = (newOwner) => {
+        setDeviceOwner(newOwner);
+        localStorage.setItem('builder_primary_user', newOwner);
+        // Force them into active roster if not already there
+        setActivePeople(prev => {
+            if (!prev.includes(newOwner)) {
+                const next = [...prev, newOwner];
+                localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
+                return next;
+            }
+            return prev;
         });
     };
 
@@ -247,6 +268,8 @@ export function AppProvider({ children }) {
         workoutDay,
         people,
         activePeople: activePeople.filter(p => people.includes(p)),
+        deviceOwner,
+        updateDeviceOwner,
         exercises,
         exerciseStatus,
         dailySwaps,

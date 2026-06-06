@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function SettingsModal({ isOpen, onClose }) {
-    const { people, exercises, locations, activePeople, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -116,10 +116,23 @@ export default function SettingsModal({ isOpen, onClose }) {
                 </div>
 
                 <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>DEVICE OWNER</label>
+                    <select 
+                        value={deviceOwner}
+                        onChange={e => updateDeviceOwner(e.target.value)}
+                        style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                    >
+                        {people.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8 }}>The device owner is locked as an active participant.</p>
+                </div>
+
+                <div style={{ marginBottom: 24 }}>
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>ROSTER (PEOPLE)</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {people.map(p => {
                             const isActive = activePeople.includes(p);
+                            const isOwner = p === deviceOwner;
                             return (
                                 <div 
                                     key={p} 
@@ -138,23 +151,26 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         type="checkbox" 
                                         checked={isActive}
                                         onChange={() => togglePersonActive(p)}
-                                        style={{ cursor: 'pointer' }}
-                                        title="Toggle Active for Workout"
+                                        disabled={isOwner}
+                                        style={{ cursor: isOwner ? 'not-allowed' : 'pointer', opacity: isOwner ? 0.5 : 1 }}
+                                        title={isOwner ? "Device owner must be active" : "Toggle Active for Workout"}
                                     />
-                                    <span style={{ flex: 1 }}>
-                                        {p}
+                                    <span style={{ flex: 1, opacity: isOwner ? 0.8 : 1 }}>
+                                        {p} {isOwner && <span style={{fontSize: 10, color:'var(--accent)', marginLeft: 4}}>(Owner)</span>}
                                     </span>
-                                    <button 
-                                        onClick={() => {
-                                            if(window.confirm(`Are you sure you want to permanently delete ${p} from the roster?`)) {
-                                                removePersonFromRoster(p);
-                                            }
-                                        }}
-                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
-                                        title="Delete Person"
-                                    >
-                                        ✕
-                                    </button>
+                                    {!isOwner && (
+                                        <button 
+                                            onClick={() => {
+                                                if(window.confirm(`Are you sure you want to permanently delete ${p} from the roster?`)) {
+                                                    removePersonFromRoster(p);
+                                                }
+                                            }}
+                                            style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
+                                            title="Delete Person"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}
