@@ -338,10 +338,10 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
 
                             <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
                                 <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
-                                {(!ex.history || ex.history.length === 0) ? (
+                                {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
                                     <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                                 ) : (
-                                    ex.history.slice(0, 5).map((h, i) => (
+                                    ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
                                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                             <div>
                                                 <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>

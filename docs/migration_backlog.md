@@ -19,7 +19,7 @@ Epic 3: Quality Assurance & Production Prep
 - [ ] Story 3.1: Audit React state across input rows to verify we have zero loss of active focus or typed values during background operations.
 - [ ] Story 3.2: Verify final build compilation and run a manual device viewport sweep to ensure mobile parity.
 - [x] Story 3.3: Implement checkboxes in SettingsModal to toggle active people, syncing to local storage keys and backend sheets.
-- [ ] Story 3.4: Implement the Device Owner selection dropdown in SettingsModal to set the builder_primary_user.
+- [x] Story 3.4: Implement the Device Owner selection dropdown in SettingsModal to set the builder_primary_user.
 
 ---
 

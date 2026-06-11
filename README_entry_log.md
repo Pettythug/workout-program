@@ -3,6 +3,8 @@ What's up everyone! This log tracks what we're building and where all the files 
 Here is the quick breakdown of what just happened with the Gym Log:
 We completely upgraded the Gym Log so that two people can use it at exactly the same time. Instead of an entire card collapsing and eating your inputs, each person now gets their own dropdown row. It perfectly saves your reps and weight while the other person logs theirs, and we even added a dynamic "Target Lock" that highlights the exact personal record you need to break today in bright orange!
 
+We also just implemented a local Device Owner settings configuration. Selecting a primary owner automatically pins them to the active workout roster and locks their status so they cannot be accidentally deselected or left out of the session.
+
 Because this is a huge upgrade, we've formalized the structure so it scales nicely in the future.
 
 Files & Current Status:
