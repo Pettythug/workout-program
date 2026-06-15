@@ -115,10 +115,13 @@ export default function ExerciseCard({ group }) {
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
+    const safeName = (ex.name || "").replace(/\//g, " ");
     const isDriveId = ex.fileReference && !ex.fileReference.includes('.jpg');
+    // Google Drive blocks direct image embedding due to CORS/Workspace policies.
+    // Since we have all images perfectly synced locally, we will use the local fallback.
     const imgSrc = isDriveId 
-        ? `https://drive.google.com/thumbnail?id=${ex.fileReference}&sz=w1000` 
-        : `${import.meta.env.BASE_URL}images/${ex.fileReference}`;
+        ? `${import.meta.env.BASE_URL}images/${safeName}.jpg` 
+        : `${import.meta.env.BASE_URL}images/${ex.fileReference || 'placeholder.jpg'}`;
 
     // Initialize log inputs if empty
     const initLogInputs = () => {

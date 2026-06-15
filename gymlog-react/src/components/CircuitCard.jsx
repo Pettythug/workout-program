@@ -172,9 +172,12 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const allManufacturers = [...new Set((allExercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
     const allMuscles = [...new Set((allExercises || []).map(e => e.muscle).filter(Boolean))].sort();
 
+    const safeName = (ex.name || "").replace(/\//g, " ");
     const isDriveId = ex.fileReference && !ex.fileReference.includes('.jpg');
+    // Google Drive blocks direct image embedding due to CORS/Workspace policies.
+    // Since we have all images perfectly synced locally, we will use the local fallback.
     const imgSrc = isDriveId 
-        ? `https://drive.google.com/thumbnail?id=${ex.fileReference}&sz=w1000` 
+        ? `${import.meta.env.BASE_URL}images/${safeName}.jpg` 
         : `${import.meta.env.BASE_URL}images/${ex.fileReference || 'placeholder.jpg'}`;
 
     return (

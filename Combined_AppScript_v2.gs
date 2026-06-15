@@ -1060,33 +1060,55 @@ function migrateTestingExercises() {
 // =============================================================================
 // ONE-TIME SCRIPT: Map Google Drive Images to File Reference Column
 // =============================================================================
-function mapDriveImagesToSheet() {
-  // TODO: Paste the Folder ID of your new "GymLog Images" folder here
-  const TARGET_FOLDER_ID = "1nOc1oLanQ99cpPyOH1bGHKHW3E1Faubc"; 
-  
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("GymLog_Exercises");
-  if (!sheet) return;
-  
-  const folder = DriveApp.getFolderById(TARGET_FOLDER_ID);
-  const files = folder.getFiles();
-  const driveFilesMap = {}; 
-  
-  while (files.hasNext()) {
-    const file = files.next();
-    driveFilesMap[file.getName()] = file.getId();
+function mapDriveImagesToSheet() { 
+  // TODO: Paste the Folder ID of your new "GymLog Images" folder here 
+  const TARGET_FOLDER_ID = "1nOc1oLanQ99cpPyOH1bGHKHW3E1Faubc";  
+   
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("GymLog_Exercises"); 
+  if (!sheet) {
+    Logger.log("Error: GymLog_Exercises tab not found!");
+    return; 
   }
-  
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return;
-  
-  const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
-  
-  for (let i = 0; i < data.length; i++) {
-    const exerciseName = data[i][0];
-    const expectedFilename = exerciseName + ".jpg";
-    
-    if (driveFilesMap[expectedFilename]) {
-      sheet.getRange(i + 2, 10).setValue(driveFilesMap[expectedFilename]); 
-    }
-  }
+   
+  Logger.log("Accessing Google Drive folder...");
+  const folder = DriveApp.getFolderById(TARGET_FOLDER_ID); 
+  const files = folder.getFiles(); 
+  const driveFilesMap = {};  
+   
+  let fileCount = 0;
+  while (files.hasNext()) { 
+    const file = files.next(); 
+    // Store in lowercase for case-insensitive matching
+    driveFilesMap[file.getName().toLowerCase()] = file.getId(); 
+    fileCount++;
+  } 
+  Logger.log(`Found ${fileCount} files in Google Drive folder.`);
+   
+  const lastRow = sheet.getLastRow(); 
+  if (lastRow <= 1) return; 
+   
+  const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues(); 
+  let updatedCount = 0;
+   
+  for (let i = 0; i < data.length; i++) { 
+    const exerciseName = data[i][0]; 
+    if (!exerciseName) continue;
+     
+    // Windows forbids slashes, so the image in Drive won't have the slash. 
+    // Replace all slashes with spaces to match the Drive filename correctly. 
+    const sanitizedName = String(exerciseName).trim().replace(/\//g, " "); 
+    const expectedFilename = (sanitizedName + ".jpg").toLowerCase(); 
+     
+    if (driveFilesMap[expectedFilename]) { 
+      const existingValue = sheet.getRange(i + 2, 10).getValue();
+      const newId = driveFilesMap[expectedFilename];
+      if (existingValue !== newId) {
+        sheet.getRange(i + 2, 10).setValue(newId);  
+        updatedCount++;
+        Logger.log(`Mapped ID for: ${exerciseName}`);
+      }
+    } 
+  } 
+  Logger.log(`SUCCESS: Updated ${updatedCount} rows in the spreadsheet!`);
 }
+
