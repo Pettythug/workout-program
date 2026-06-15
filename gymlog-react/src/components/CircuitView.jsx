@@ -34,6 +34,31 @@ export default function CircuitView() {
         localStorage.setItem('gym-circuit-active', JSON.stringify(circuitState));
     }, [circuitState]);
 
+    useEffect(() => {
+        if (circuit.length === 0) return;
+        
+        let allDoneOrSkipped = true;
+        let hasSkipped = false;
+        
+        circuit.forEach(ex => {
+            const currentData = completedMap[ex.name];
+            const status = typeof currentData === 'string' ? currentData : currentData?.status;
+            
+            if (status !== 'done' && status !== 'skipped') allDoneOrSkipped = false;
+            if (status === 'skipped') hasSkipped = true;
+        });
+
+        if (allDoneOrSkipped && hasSkipped) {
+            const newMap = { ...completedMap };
+            Object.keys(newMap).forEach(key => {
+                if (newMap[key]?.status === 'skipped') {
+                    newMap[key].status = 'active';
+                }
+            });
+            updateCircuitState(circuit, newMap);
+        }
+    }, [circuit, completedMap]);
+
     const updateCircuitState = (newCircuit, newCompletedMap) => {
         setCircuitState({
             circuit: newCircuit,
