@@ -22,6 +22,14 @@ export default function PlanView() {
     };
 
     const completeWorkout = () => {
+        // Increment the counters for the groups we just used so they rotate next time
+        plannedExercises.forEach(ex => {
+            if (ex && ex.rotationKey) {
+                const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
+                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, currentIdx + 1);
+            }
+        });
+
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
         setWorkoutType(newType);
         localStorage.setItem('gymlog_workoutType', newType);
@@ -65,9 +73,12 @@ export default function PlanView() {
                 return categories.includes(g.category) && locMatch;
             });
             if (subset.length === 0) return null;
-            // Deterministic pick based on workoutDay to keep it stable
-            const idx = workoutDay % subset.length;
-            const originalPick = subset[idx];
+            
+            // Smart tracking: use a unique counter for each category block instead of workoutDay
+            const rotationKey = categories.join('_').replace(/\s/g, '');
+            const idx = parseInt(localStorage.getItem('gymlog_rotation_' + rotationKey) || '0', 10);
+            
+            const originalPick = subset[idx % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             
             let finalPick = originalPick;
@@ -90,6 +101,7 @@ export default function PlanView() {
             return {
                 ...finalPick,
                 originalBaseKey,
+                rotationKey, // Pass this out so we can increment it when the workout completes
                 alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
             };
         };
@@ -101,7 +113,7 @@ export default function PlanView() {
         ];
 
         return pickedGroups.filter(Boolean);
-    }, [exercises, workoutDay, workoutType, dailySwaps, activeLocation]);
+    }, [exercises, workoutType, dailySwaps, activeLocation]);
 
     if (loading) {
         return (
