@@ -1056,3 +1056,37 @@ function migrateTestingExercises() {
   Logger.log("Merged (updated) existing items: " + mergedCount);
   Logger.log("Added new items: " + addedCount);
 }
+
+// =============================================================================
+// ONE-TIME SCRIPT: Map Google Drive Images to File Reference Column
+// =============================================================================
+function mapDriveImagesToSheet() {
+  // TODO: Paste the Folder ID of your new "GymLog Images" folder here
+  const TARGET_FOLDER_ID = "YOUR_FOLDER_ID_HERE"; 
+  
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("GymLog_Exercises");
+  if (!sheet) return;
+  
+  const folder = DriveApp.getFolderById(TARGET_FOLDER_ID);
+  const files = folder.getFiles();
+  const driveFilesMap = {}; 
+  
+  while (files.hasNext()) {
+    const file = files.next();
+    driveFilesMap[file.getName()] = file.getId();
+  }
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return;
+  
+  const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+  
+  for (let i = 0; i < data.length; i++) {
+    const exerciseName = data[i][0];
+    const expectedFilename = exerciseName + ".jpg";
+    
+    if (driveFilesMap[expectedFilename]) {
+      sheet.getRange(i + 2, 10).setValue(driveFilesMap[expectedFilename]); 
+    }
+  }
+}

@@ -390,12 +390,14 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                             <button className="btn-ghost" onClick={() => setShowImage(false)} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
                         </div>
                         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-                            <img 
-                                src={`${import.meta.env.BASE_URL}images/${baseName}.jpg`} 
-                                alt={baseName} 
-                                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
-                                onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
-                            />
+                            {ex.fileReference ? (
+                                <img 
+                                    src={`https://drive.google.com/uc?export=view&id=${ex.fileReference}`} 
+                                    alt={baseName} 
+                                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
+                                    onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
+                                />
+                            ) : null}
                         </div>
                     </div>
                 </div>
