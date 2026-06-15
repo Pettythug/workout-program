@@ -115,6 +115,11 @@ export default function ExerciseCard({ group }) {
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
+    const isDriveId = ex.fileReference && !ex.fileReference.includes('.jpg');
+    const imgSrc = isDriveId 
+        ? `https://drive.google.com/thumbnail?id=${ex.fileReference}&sz=w1000` 
+        : `${import.meta.env.BASE_URL}images/${ex.fileReference}`;
+
     // Initialize log inputs if empty
     const initLogInputs = () => {
         if (Object.keys(logInputs).length === 0) {
@@ -536,7 +541,7 @@ export default function ExerciseCard({ group }) {
                         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
                             {ex.fileReference ? (
                                 <img 
-                                    src={`https://drive.google.com/uc?export=view&id=${ex.fileReference}`} 
+                                    src={imgSrc} 
                                     alt={group.baseName} 
                                     style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
                                     onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
