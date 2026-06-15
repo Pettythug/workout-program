@@ -209,6 +209,14 @@ export default function CircuitView() {
         const currentData = newMap[exName] || { status: 'active', sets: [] };
         const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
         newMap[exName] = { status: 'done', sets };
+
+        // Flip any previously skipped exercises back to active
+        Object.keys(newMap).forEach(key => {
+            if (newMap[key]?.status === 'skipped') {
+                newMap[key].status = 'active';
+            }
+        });
+
         updateCircuitState(circuit, newMap);
     };
 
@@ -456,17 +464,7 @@ export default function CircuitView() {
                         };
 
                         const wrappedHandleSkip = () => {
-                            // Swap with next in line instead of marking as "skipped"
-                            if (activeIdx < circuit.length - 1) {
-                                const newCircuit = [...circuit];
-                                const temp = newCircuit[activeIdx];
-                                newCircuit[activeIdx] = newCircuit[activeIdx + 1];
-                                newCircuit[activeIdx + 1] = temp;
-                                updateCircuitState(newCircuit, completedMap);
-                            } else {
-                                // If it's the last one, just mark it skipped or leave it
-                                alert("This is the last exercise in the circuit. You can end the circuit or log it.");
-                            }
+                            handleSkip(ex.name);
                         };
 
                         return (
