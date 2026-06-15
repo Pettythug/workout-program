@@ -7,6 +7,15 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
+    const toggleNotePhrase = (phrase) => {
+        let prev = input.note || "";
+        if (prev.includes(phrase)) {
+            updateLogInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
+        } else {
+            updateLogInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
+        }
+    };
+
     return (
         <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>{person.toUpperCase()}</div>
@@ -46,6 +55,24 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
                         />
                     </>
                 )}
+            </div>
+            <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
+                        Single Leg
+                    </label>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                        Alternating
+                    </label>
+                </div>
+                <input 
+                    placeholder="Notes..." 
+                    value={input.note || ""}
+                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
+                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+                />
             </div>
         </div>
     );

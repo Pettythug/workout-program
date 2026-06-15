@@ -5,6 +5,15 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
+    const toggleNotePhrase = (phrase) => {
+        let prev = input.note || "";
+        if (prev.includes(phrase)) {
+            updateInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
+        } else {
+            updateInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
+        }
+    };
+
     return (
         <div style={{ background: '#1a1a1a', padding: 8, borderRadius: 8, marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -47,6 +56,24 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
                     </>
                 )}
             </div>
+            <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
+                        Single Leg
+                    </label>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                        Alternating
+                    </label>
+                </div>
+                <input 
+                    placeholder="Notes..." 
+                    value={input.note || ""}
+                    onChange={(e) => updateInput(key, "note", e.target.value)}
+                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+                />
+            </div>
         </div>
     );
 };
@@ -67,12 +94,11 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const [inputs, setInputs] = useState(() => {
         const initial = {};
         activePeople.forEach(p => {
-            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "" };
+            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
         });
         return initial;
     });
 
-    const [note, setNote] = useState("");
     const [isSaving, setIsSaving] = useState(false);
 
     const updateInput = (personKey, field, value) => {
@@ -82,32 +108,21 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         }));
     };
 
-    const toggleNotePhrase = (phrase) => {
-        setNote(prev => {
-            if (prev.includes(phrase)) {
-                return prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim();
-            } else {
-                return prev ? `${prev}, ${phrase}` : phrase;
-            }
-        });
-    };
-
     const handleSave = async () => {
         setIsSaving(true);
         const logData = {};
         activePeople.forEach(p => {
             const key = p.toLowerCase();
-            logData[key] = { ...inputs[key], note };
+            logData[key] = { ...inputs[key] };
         });
 
         const success = await onLogSet(ex, logData);
         if (success) {
             const cleared = {};
             activePeople.forEach(p => {
-                cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "" };
+                cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
             });
             setInputs(cleared);
-            setNote("");
         }
         setIsSaving(false);
     };
@@ -219,26 +234,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                 <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} />
                             ))}
 
-                            <div style={{ marginTop: 12, marginBottom: 12 }}>
-                                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <input type="checkbox" checked={note.includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
-                                        Single Leg
-                                    </label>
-                                    <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <input type="checkbox" checked={note.includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                                        Alternating
-                                    </label>
-                                </div>
-                                <input 
-                                    placeholder="Notes..." 
-                                    value={note}
-                                    onChange={(e) => setNote(e.target.value)}
-                                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white' }}
-                                />
-                            </div>
-
-                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>
+                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>
                                 {isSaving ? "SAVING..." : `LOG SET ${sets.length + 1}`}
                             </button>
 
@@ -360,6 +356,11 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                 </button>
                                             </div>
                                         </div>
+                                        {h.note && (
+                                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                "{h.note}"
+                                            </div>
+                                        )}
                                     ))
                                 )}
                             </div>
