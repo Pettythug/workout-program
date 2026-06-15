@@ -244,7 +244,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
 
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <button className="btn-secondary" style={{ flex: 1, padding: 8 }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
-                                <button className="btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
+                                <button className="btn-danger" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
                             </div>
 
                             {/* Swap UI */}
