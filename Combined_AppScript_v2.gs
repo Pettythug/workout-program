@@ -1062,7 +1062,7 @@ function migrateTestingExercises() {
 // =============================================================================
 function mapDriveImagesToSheet() {
   // TODO: Paste the Folder ID of your new "GymLog Images" folder here
-  const TARGET_FOLDER_ID = "YOUR_FOLDER_ID_HERE"; 
+  const TARGET_FOLDER_ID = "1nOc1oLanQ99cpPyOH1bGHKHW3E1Faubc"; 
   
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("GymLog_Exercises");
   if (!sheet) return;
