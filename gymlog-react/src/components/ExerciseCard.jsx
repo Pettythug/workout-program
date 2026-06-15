@@ -100,6 +100,7 @@ export default function ExerciseCard({ group }) {
     const [customSwap, setCustomSwap] = useState("");
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
+    const [showImage, setShowImage] = useState(false);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -366,6 +367,9 @@ export default function ExerciseCard({ group }) {
                                 <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
                                     {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
                                 </button>
+                                <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
+                                    📸 IMAGE
+                                </button>
                                 <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
                                     METADATA ▼
                                 </button>
@@ -519,6 +523,25 @@ export default function ExerciseCard({ group }) {
                     )}
                     
                     {toast && <div style={{ color: 'var(--success)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>{toast}</div>}
+                </div>
+            )}
+
+            {showImage && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={() => setShowImage(false)}>
+                    <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <div style={{ fontSize: 16, fontWeight: 700 }}>{group.baseName}</div>
+                            <button className="btn-ghost" onClick={() => setShowImage(false)} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+                            <img 
+                                src={`/images/${group.baseName}.jpg`} 
+                                alt={group.baseName} 
+                                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

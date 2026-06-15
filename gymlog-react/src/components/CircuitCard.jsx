@@ -90,6 +90,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     // Swap State
     const [swapMode, setSwapMode] = useState(null);
     const [customSwapState, setCustomSwapState] = useState(null);
+    const [showImage, setShowImage] = useState(false);
 
     const [inputs, setInputs] = useState(() => {
         const initial = {};
@@ -293,13 +294,22 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
                                     </div>
                                 ) : (
-                                    <button 
-                                        onClick={() => setSwapMode(ex.name)}
-                                        className="btn-ghost"
-                                        style={{ width: "100%", padding: 12, fontSize: 12 }}
-                                    >
-                                        🔄 SWAP EXERCISE
-                                    </button>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button 
+                                            onClick={() => setSwapMode(ex.name)}
+                                            className="btn-ghost"
+                                            style={{ flex: 1, padding: 12, fontSize: 12 }}
+                                        >
+                                            🔄 SWAP EXERCISE
+                                        </button>
+                                        <button 
+                                            onClick={() => setShowImage(true)}
+                                            className="btn-ghost"
+                                            style={{ flex: 1, padding: 12, fontSize: 12 }}
+                                        >
+                                            📸 IMAGE
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -338,29 +348,31 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                                 ) : (
                                     ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
-                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                                            <div>
-                                                <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
-                                                    {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
                                                 </div>
-                                                <button 
-                                                    onClick={() => onDeleteHistoryEntry({ ...h, exercise: ex.name })}
-                                                    style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
-                                                    title="Delete History Entry"
-                                                >
-                                                    🗑
-                                                </button>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                                                        {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => onDeleteHistoryEntry({ ...h, exercise: ex.name })}
+                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                        title="Delete History Entry"
+                                                    >
+                                                        🗑
+                                                    </button>
+                                                </div>
                                             </div>
+                                            {h.note && (
+                                                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                    "{h.note}"
+                                                </div>
+                                            )}
                                         </div>
-                                        {h.note && (
-                                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-                                                "{h.note}"
-                                            </div>
-                                        )}
                                     ))
                                 )}
                             </div>
@@ -368,6 +380,24 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                     )}
                 </div>
             )}
+                </div>
+            )}
+            {showImage && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={() => setShowImage(false)}>
+                    <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <div style={{ fontSize: 16, fontWeight: 700 }}>{baseName}</div>
+                            <button className="btn-ghost" onClick={() => setShowImage(false)} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
+                        </div>
+                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
+                            <img 
+                                src={`/images/${baseName}.jpg`} 
+                                alt={baseName} 
+                                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
