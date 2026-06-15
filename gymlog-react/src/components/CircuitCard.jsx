@@ -173,12 +173,12 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const allMuscles = [...new Set((allExercises || []).map(e => e.muscle).filter(Boolean))].sort();
 
     const safeName = (ex.name || "").replace(/\//g, " ");
-    const isDriveId = ex.fileReference && !ex.fileReference.includes('.jpg');
-    // Google Drive blocks direct image embedding due to CORS/Workspace policies.
-    // Since we have all images perfectly synced locally, we will use the local fallback.
-    const imgSrc = isDriveId 
+    // Always use the physical local file based on the exercise name.
+    // This completely bypasses both Google Drive CORS blocks AND stale browser cache 
+    // that might still have old camera filenames (like 1000024457.jpg).
+    const imgSrc = ex.fileReference 
         ? `${import.meta.env.BASE_URL}images/${safeName}.jpg` 
-        : `${import.meta.env.BASE_URL}images/${ex.fileReference || 'placeholder.jpg'}`;
+        : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
 
     return (
         <div style={{ 
