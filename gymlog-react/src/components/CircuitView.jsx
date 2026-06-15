@@ -405,12 +405,9 @@ export default function CircuitView() {
 
             {view === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <button className="btn-secondary" onClick={() => setView('planner')} style={{ padding: 12, fontSize: 14 }}>
-                        &larr; BACK TO CIRCUIT PLANNER
-                    </button>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
                         <div>
-                            <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Remaining</div>
+                            <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Active Circuit</div>
                             <div style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>
                                 {circuit.length - Object.keys(completedMap).filter(k => {
                                     const s = completedMap[k];
@@ -419,31 +416,124 @@ export default function CircuitView() {
                                 }).length} / {circuit.length}
                             </div>
                         </div>
-                        <button className="btn-ghost" style={{ color: 'var(--skip)', borderColor: 'var(--skip)' }} onClick={endCircuit}>
-                            END CIRCUIT
-                        </button>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn-ghost" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
+                                📋 FULL LIST
+                            </button>
+                        </div>
                     </div>
 
-                    {circuit.map((ex, idx) => {
+                    {(() => {
+                        let activeIdx = 0;
+                        while (activeIdx < circuit.length) {
+                            const ex = circuit[activeIdx];
+                            const s = completedMap[ex.name];
+                            const status = typeof s === 'string' ? s : s?.status;
+                            if (status !== 'done' && status !== 'skipped') break;
+                            activeIdx++;
+                        }
+
+                        if (activeIdx >= circuit.length) {
+                            return (
+                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)' }}>
+                                    <h2>🎉 Circuit Complete!</h2>
+                                    <p>Great job finishing the workout.</p>
+                                    <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12 }}>Finish</button>
+                                </div>
+                            );
+                        }
+
+                        const ex = circuit[activeIdx];
                         const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
+
+                        const wrappedHandleLogSet = async (exObj, logs) => {
+                            const success = await handleLogSet(exObj, logs);
+                            if (success) {
+                                // Find the actual DOM log set button and blur it to close keyboard
+                                document.activeElement?.blur();
+                            }
+                            return success;
+                        };
+
+                        const wrappedHandleSkip = () => {
+                            // Swap with next in line instead of marking as "skipped"
+                            if (activeIdx < circuit.length - 1) {
+                                const newCircuit = [...circuit];
+                                const temp = newCircuit[activeIdx];
+                                newCircuit[activeIdx] = newCircuit[activeIdx + 1];
+                                newCircuit[activeIdx + 1] = temp;
+                                updateCircuitState(newCircuit, completedMap);
+                            } else {
+                                // If it's the last one, just mark it skipped or leave it
+                                alert("This is the last exercise in the circuit. You can end the circuit or log it.");
+                            }
+                        };
+
                         return (
+                            <>
                                 <CircuitCard 
-                                    key={`${ex.name}-${idx}`} 
+                                    key={`${ex.name}-${activeIdx}`} 
                                     ex={upToDateEx} 
-                                    index={idx} 
+                                    index={activeIdx} 
                                     completedStatus={completedMap[ex.name]} 
                                     activePeople={activePeople} 
-                                    onLogSet={handleLogSet} 
+                                    onLogSet={wrappedHandleLogSet} 
                                     onExplicitDone={handleExplicitDone} 
-                                    onSkip={handleSkip} 
+                                    onSkip={wrappedHandleSkip} 
                                     onUndo={handleUndo} 
                                     onDeleteSet={handleDeleteSet}
                                     onDeleteHistoryEntry={handleDeleteHistoryEntry}
-                                    isOpen={openCardIndex === idx}
-                                    onToggle={() => setOpenCardIndex(openCardIndex === idx ? -1 : idx)}
+                                    isOpen={true}
+                                    onToggle={() => {}}
                                     onSwap={handleSwap}
                                     allExercises={exercises}
                                 />
+                                
+                                <button 
+                                    className="complete-btn" 
+                                    onClick={endCircuit}
+                                    style={{ width: '100%', background: 'var(--skip)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16, letterSpacing: 1.5, textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
+                                >
+                                    End Circuit
+                                </button>
+                            </>
+                        );
+                    })()}
+                </div>
+            )}
+
+            {view === 'full-list' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <button className="btn-secondary" onClick={() => setView('tracker')} style={{ padding: 12, fontSize: 14 }}>
+                        &larr; BACK TO ACTIVE CARD
+                    </button>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 4 }}>Full Circuit Order</div>
+                    {circuit.map((ex, idx) => {
+                        const s = completedMap[ex.name];
+                        const status = typeof s === 'string' ? s : s?.status;
+                        const isCompletedOrSkipped = status === 'done' || status === 'skipped';
+                        
+                        return (
+                            <div key={idx} style={{ padding: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: isCompletedOrSkipped ? 0.6 : 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {ex.name}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ fontSize: 11, color: status === 'done' ? 'var(--success)' : status === 'skipped' ? 'var(--skip)' : 'var(--muted)', fontWeight: 'bold' }}>
+                                        {status === 'done' ? 'DONE' : status === 'skipped' ? 'SKIPPED' : 'PENDING'}
+                                    </div>
+                                    {isCompletedOrSkipped && (
+                                        <button 
+                                            className="btn-ghost" 
+                                            style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
+                                            onClick={() => { 
+                                                handleUndo(ex.name); 
+                                                setView('tracker'); 
+                                            }}
+                                        >
+                                            UNDO
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         );
                     })}
                 </div>
