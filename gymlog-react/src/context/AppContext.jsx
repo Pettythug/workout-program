@@ -22,7 +22,11 @@ export function AppProvider({ children }) {
     });
     const [exercises, setExercises] = useState(() => {
         const cached = localStorage.getItem('gymlog_exercises');
-        return cached ? JSON.parse(cached) : [];
+        if (!cached) return [];
+        const parsed = JSON.parse(cached);
+        // Run through mergeFromSheets just to apply data fixes (like fileReference cleanup)
+        const mergedData = mergeFromSheets(parsed, {}, [], []);
+        return mergedData.exercises;
     });
     const [exerciseStatus, setExerciseStatus] = useState(() => {
         const cached = localStorage.getItem('gymlog_exerciseStatus');

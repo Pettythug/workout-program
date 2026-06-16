@@ -172,12 +172,8 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const allManufacturers = [...new Set((allExercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
     const allMuscles = [...new Set((allExercises || []).map(e => e.muscle).filter(Boolean))].sort();
 
-    const safeName = (ex.name || "").replace(/\//g, " ");
-    // Always use the physical local file based on the exercise name.
-    // This completely bypasses both Google Drive CORS blocks AND stale browser cache 
-    // that might still have old camera filenames (like 1000024457.jpg).
     const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${safeName}.jpg` 
+        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
 
     return (
@@ -403,7 +399,16 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     src={imgSrc} 
                                     alt={baseName} 
                                     style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
-                                    onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
+                                    onError={(e) => { 
+                                        if (!e.target.dataset.retried) {
+                                            e.target.dataset.retried = true;
+                                            const safeName = (ex.name || "").replace(/\s*\/\s*/g, " ");
+                                            e.target.src = `${import.meta.env.BASE_URL}images/${safeName}.jpg`;
+                                        } else {
+                                            e.target.style.display = 'none'; 
+                                            e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); 
+                                        }
+                                    }}
                                 />
                             ) : null}
                         </div>

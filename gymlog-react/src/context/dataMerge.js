@@ -1,3 +1,5 @@
+import { MACHINE_IMAGE_MAP } from '../utils/imageMapping';
+
 export function mergeFromSheets(localExercises, sheetsData, localPeople = [], localLocations = []) {
     const { history: allHistory = [], best: allBest = {}, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
     const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
@@ -13,8 +15,18 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
         const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
         const sheetBest    = allBest[ex.name];
         const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
+        
+        let fileReference = MACHINE_IMAGE_MAP[ex.name] || MACHINE_IMAGE_MAP[sheetExInfo?.name];
+        if (!fileReference) {
+            fileReference = sheetExInfo?.fileReference ?? ex.fileReference;
+            if (!fileReference && ex.name) {
+                fileReference = `${ex.name.replace(/\//g, '_')}.jpg`;
+            }
+        }
+
         return {
             ...ex,
+            fileReference,
             timed:     sheetExInfo?.timed     ?? ex.timed     ?? false,
             category:  sheetExInfo?.category  ?? ex.category  ?? "",
             location:  sheetExInfo?.location  ?? ex.location  ?? "Anywhere",
@@ -31,8 +43,18 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
             if (!localExNames.has(sheetEx.name)) {
                 const sheetHistory = allHistory.filter(h => h.exercise === sheetEx.name);
                 const sheetBest    = allBest[sheetEx.name];
+                
+                let fileReference = MACHINE_IMAGE_MAP[sheetEx.name];
+                if (!fileReference) {
+                    fileReference = sheetEx.fileReference;
+                    if (!fileReference && sheetEx.name) {
+                        fileReference = `${sheetEx.name.replace(/\//g, '_')}.jpg`;
+                    }
+                }
+
                 merged.push({
                     ...sheetEx,
+                    fileReference,
                     timed: sheetEx.timed ?? false,
                     category: sheetEx.category ?? "",
                     location: sheetEx.location ?? "Anywhere",

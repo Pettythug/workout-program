@@ -115,12 +115,8 @@ export default function ExerciseCard({ group }) {
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
-    const safeName = (ex.name || "").replace(/\//g, " ");
-    // Always use the physical local file based on the exercise name.
-    // This completely bypasses both Google Drive CORS blocks AND stale browser cache 
-    // that might still have old camera filenames (like 1000024457.jpg).
     const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${safeName}.jpg` 
+        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
 
     // Initialize log inputs if empty
@@ -375,9 +371,6 @@ export default function ExerciseCard({ group }) {
                                 <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
                                     {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
                                 </button>
-                                <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
-                                    📸 IMAGE
-                                </button>
                                 <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
                                     METADATA ▼
                                 </button>
@@ -474,6 +467,7 @@ export default function ExerciseCard({ group }) {
                     <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                         <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1 }}>LOG SET</button>
                         <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1 }}>HISTORY</button>
+                        <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1 }}>📸 IMAGE</button>
                     </div>
 
                     {activeTab === "LOG" && (
@@ -547,7 +541,16 @@ export default function ExerciseCard({ group }) {
                                     src={imgSrc} 
                                     alt={group.baseName} 
                                     style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
-                                    onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); }}
+                                    onError={(e) => { 
+                                        if (!e.target.dataset.retried) {
+                                            e.target.dataset.retried = true;
+                                            const safeName = (ex.name || "").replace(/\s*\/\s*/g, " ");
+                                            e.target.src = `${import.meta.env.BASE_URL}images/${safeName}.jpg`;
+                                        } else {
+                                            e.target.style.display = 'none'; 
+                                            e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); 
+                                        }
+                                    }}
                                 />
                             ) : null}
                         </div>

@@ -244,19 +244,27 @@ function gymlog_doGet() {
     const exRaw     = exSheet.getLastRow() > 1
       ? exSheet.getRange(2, 1, exSheet.getLastRow() - 1, EXERCISES_HEADERS.length).getValues()
       : [];
-    const exercisesMeta = exRaw.map(r => ({
-      name:         String(r[0]).trim(),
-      timed:        r[1] === true || String(r[1]).toLowerCase() === "true",
-      category:     String(r[2] || "").trim(),
-      location:     String(r[3] || "Anywhere").trim() || "Anywhere",
-      note:         String(r[4] || "").trim(),
-      manufacturer: String(r[5] || "").trim(),
-      modelSeries:  String(r[6] || "").trim(),
-      baseExercise: String(r[7] || "").trim(),
-      muscleGroups: String(r[8] || "").trim(),
-      fileReference:String(r[9] || "").trim(),
-      isCircuit:    r[10] === true || String(r[10]).toLowerCase() === "true"
-    })).filter(e => e.name);
+    const exercisesMeta = exRaw.map(r => {
+      const name = String(r[0]).trim();
+      const safeName = name.replace(/\//g, " ");
+      let fileRef = String(r[9] || "").trim();
+      if (fileRef && !fileRef.includes('.jpg')) {
+          fileRef = `${safeName}.jpg`;
+      }
+      return {
+        name:         name,
+        timed:        r[1] === true || String(r[1]).toLowerCase() === "true",
+        category:     String(r[2] || "").trim(),
+        location:     String(r[3] || "Anywhere").trim() || "Anywhere",
+        note:         String(r[4] || "").trim(),
+        manufacturer: String(r[5] || "").trim(),
+        modelSeries:  String(r[6] || "").trim(),
+        baseExercise: String(r[7] || "").trim(),
+        muscleGroups: String(r[8] || "").trim(),
+        fileReference: fileRef,
+        isCircuit:    r[10] === true || String(r[10]).toLowerCase() === "true"
+      };
+    }).filter(e => e.name);
 
     // Derive unique non-default locations from exercises for the frontend location picker
     const derivedLocations = [...new Set(
@@ -1005,7 +1013,11 @@ function migrateTestingExercises() {
     const baseExercise  = String(tRow[4]).trim();
     const muscleGroups  = String(tRow[5]).trim();
     const movementRaw   = String(tRow[6]).trim();
-    const fileReference = String(tRow[7]).trim();
+    let fileReference = String(tRow[7]).trim();
+    if (fileReference && !fileReference.includes('.jpg')) {
+        const safeName = machineName.replace(/\//g, " ");
+        fileReference = `${safeName}.jpg`;
+    }
     
     const category = normalizeCategory(movementRaw);
     
