@@ -203,7 +203,7 @@ function gymlog_doGet() {
       : [];
 
     const history = histRaw.map(r => ({
-      date:     r[0] ? Utilities.formatDate(new Date(r[0]), Session.getScriptTimeZone(), "MMM d, yyyy") : "",
+      date:     r[0] ? Utilities.formatDate(new Date(r[0]), Session.getScriptTimeZone(), "MMM d, yyyy, h:mm a") : "",
       person:   String(r[1]),
       exercise: String(r[2]),
       reps:     String(r[3]),
@@ -410,6 +410,9 @@ function gymlog_handleSyncMeta(payload) {
 // =============================================================================
 
 function gymlog_handleSyncAll(payload) {
+  if (payload.pin !== ADMIN_PIN) {
+    return err("syncAll requires Admin PIN. Legacy web clients are not authorized to overwrite history.");
+  }
   const { exercises, people: payloadPeople } = payload;
 
   const histSheet   = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);

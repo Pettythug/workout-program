@@ -172,7 +172,7 @@ export default function CircuitView() {
             if (ex.timed) {
                 if (input.duration) {
                     entries.push({
-                        date: new Date().toLocaleDateString('en-US'),
+                        date: new Date().toLocaleString('en-US'),
                         person: key,
                         reps: input.duration,
                         weight: input.weight || "",
@@ -191,7 +191,7 @@ export default function CircuitView() {
                     else if (r <= 12) range = "r8_12";
 
                     entries.push({
-                        date: new Date().toLocaleDateString('en-US'),
+                        date: new Date().toLocaleString('en-US'),
                         person: key,
                         reps: r,
                         weight: input.weight || "",
@@ -315,8 +315,7 @@ export default function CircuitView() {
             await deleteHistory(entry, pin);
             deleteSetFromLocalHistory(exName, entry);
 
-            const todayStr = new Date().toLocaleDateString('en-US');
-            if (entry.date === todayStr) {
+            if (entry.date && new Date(entry.date).toDateString() === new Date().toDateString()) {
                 const currentData = completedMap[exName];
                 if (currentData && typeof currentData !== 'string') {
                     const sets = currentData.sets || [];

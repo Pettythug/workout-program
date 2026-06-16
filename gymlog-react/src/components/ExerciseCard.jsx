@@ -144,10 +144,10 @@ export default function ExerciseCard({ group }) {
         setIsSaving(true);
         
         try {
-            const todayStr = new Date().toLocaleDateString('en-US');
+            const todayStr = new Date().toLocaleString('en-US');
             let nextSetNum = 1;
             if (ex.history && ex.history.length > 0) {
-                const todaysEntries = ex.history.filter(h => h.date === todayStr);
+                const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
                 if (todaysEntries.length > 0) {
                     const maxSetNum = todaysEntries.reduce((max, h) => {
                         const num = parseInt(h.setNum) || 0;
@@ -165,7 +165,7 @@ export default function ExerciseCard({ group }) {
                 if (ex.timed) {
                     if (input.duration) {
                         entries.push({
-                            date: new Date().toLocaleDateString('en-US'),
+                            date: new Date().toLocaleString('en-US'),
                             person: key,
                             reps: input.duration,
                             weight: input.weight || "",
@@ -185,7 +185,7 @@ export default function ExerciseCard({ group }) {
                         else if (r <= 12) range = "r8_12";
 
                         entries.push({
-                            date: new Date().toLocaleDateString('en-US'),
+                            date: new Date().toLocaleString('en-US'),
                             person: key,
                             reps: r,
                             weight: input.weight || "",
