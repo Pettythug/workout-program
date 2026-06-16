@@ -2,7 +2,7 @@ Here is the backlog of Epics and stories we need to tackle to get the React app 
 
 Epic 1: Plan View Parity & Features
 - [ ] Story 1.1: Standardize the header, info bar, and layout styling so it matches gymlog-ultimate.html perfectly.
-- [ ] Story 1.2: Add location-based exercise filtering. Right now, both the main plan selection and the accessory generator suggest exercises regardless of location. We need to respect the active location.
+- [x] Story 1.2: [DUPLICATE of 1.6] Add location-based exercise filtering. Right now, both the main plan selection and the accessory generator suggest exercises regardless of location. We need to respect the active location.
 - [ ] Story 1.3: Expand the exercise swapping mechanism. We need to support custom swaps and make sure swapping an exercise writes categories correctly back to sheets.
 - [ ] Story 1.4: Port the "+ Add new category" UI and backend sheetsPost sync from the legacy codebase.
 - [x] Story 1.5: Move the locations list and active location states to AppContext.jsx so they're globally accessible.
