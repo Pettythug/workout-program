@@ -302,14 +302,14 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         <button 
                                             onClick={() => setSwapMode(ex.name)}
                                             className="btn-ghost"
-                                            style={{ flex: 1, minWidth: '75px', padding: 12, fontSize: 11 }}
+                                            style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11 }}
                                         >
                                             🔄 SWAP EXERCISE
                                         </button>
                                         <button 
                                             onClick={() => setShowImage(true)}
                                             className="btn-ghost"
-                                            style={{ flex: 1, minWidth: '75px', padding: 12, fontSize: 11 }}
+                                            style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11 }}
                                         >
                                             📸 IMAGE
                                         </button>
