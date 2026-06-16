@@ -1,9 +1,9 @@
 Here is the backlog of Epics and stories we need to tackle to get the React app at 100% parity with our live production code.
 
 Epic 1: Plan View Parity & Features
-- [ ] Story 1.1: Standardize the header, info bar, and layout styling so it matches gymlog-ultimate.html perfectly.
+- [x] Story 1.1: Unify ExerciseCard UI. Ensure the Plan View exactly matches the styling, fonts, PersonRow layout, and variation button placements of the polished CircuitCard.
 - [x] Story 1.2: [DUPLICATE of 1.6] Add location-based exercise filtering. Right now, both the main plan selection and the accessory generator suggest exercises regardless of location. We need to respect the active location.
-- [ ] Story 1.3: Expand the exercise swapping mechanism. We need to support custom swaps and make sure swapping an exercise writes categories correctly back to sheets.
+- [x] Story 1.3: Expand the exercise swapping mechanism. Port the CircuitCard "New Custom Swap" UI form into ExerciseCard and ensure swapping an exercise writes metadata correctly back to Google Sheets.
 - [ ] Story 1.4: Port the "+ Add new category" UI and backend sheetsPost sync from the legacy codebase.
 - [x] Story 1.5: Move the locations list and active location states to AppContext.jsx so they're globally accessible.
 - [x] Story 1.6: Render the location select dropdown in the Plan header and filter planner exercise picks and accessory generation by the active location.
