@@ -271,7 +271,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         >
                                             <option value="">-- Select Exercise --</option>
                                             <option value="custom">-- New Custom Exercise --</option>
-                                            {(allExercises || []).filter(e => e.category === ex.category).map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
+                                            {(allExercises || []).filter(e => e.category === ex.category && e.isCircuit === true).map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
                                         </select>
 
                                         {customSwapState && (
