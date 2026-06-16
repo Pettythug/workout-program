@@ -30,7 +30,3 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 - **Strict Isolation:** Never migrate, merge, or overwrite "live" or production files with code from beta variations. All development must be validated in the beta environment/sandbox first.
 - **Promotion Rule:** "Promotion to Production" must be treated as a separate, explicitly requested task requiring direct user approval.
 
-## 7. SQL Coding & Header Standards
-- **Headers:** Every `.sql` file must have the multi-line block comment header with Author: **Brian Wance**.
-- **Formatting & Logic:** Use leading commas in lists. Use explicit field names (e.g., `GROUP BY business_unit`), not numbers. Avoid correlated subqueries.
-- **Sourcing:** Source tables must use the Insight Layer (`insight_gaf_peoplesoft`) with lowercase view names. Final output columns must be lowercase.
