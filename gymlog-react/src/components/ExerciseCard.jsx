@@ -17,17 +17,19 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     };
 
     return (
-        <div style={{ background: '#111', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>{person.toUpperCase()}</div>
-            <div style={{ display: 'flex', gap: 4, fontSize: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-                {targetRanges.map((tr, idx) => (
-                    <React.Fragment key={tr.key}>
-                        <span style={tr.isActive ? { color: 'var(--accent)', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
-                            {tr.label} ({tr.bestValue})
-                        </span>
-                        {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
-                    </React.Fragment>
-                ))}
+        <div style={{ background: '#1a1a1a', padding: 8, borderRadius: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--accent)' }}>{person.toUpperCase()}</span>
+                <div style={{ display: 'flex', gap: 4, fontSize: 10 }}>
+                    {targetRanges.map((tr, idx) => (
+                        <React.Fragment key={tr.key}>
+                            <span style={tr.isActive ? { color: '#ff8c00', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
+                                {tr.label} ({tr.bestValue})
+                            </span>
+                            {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
+                        </React.Fragment>
+                    ))}
+                </div>
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                 {ex.timed ? (
@@ -78,14 +80,6 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     );
 };
 
-
-const REP_RANGES = [
-    { key: "r1_3", label: "1-3 reps" },
-    { key: "r4_7", label: "4-7 reps" },
-    { key: "r8_12", label: "8-12 reps" },
-    { key: "r13_plus", label: "13+ reps" }
-];
-
 export default function ExerciseCard({ group }) {
     const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
@@ -96,8 +90,11 @@ export default function ExerciseCard({ group }) {
     const [logInputs, setLogInputs] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [toast, setToast] = useState("");
-    const [isSwapping, setIsSwapping] = useState(false);
-    const [customSwap, setCustomSwap] = useState("");
+    
+    // Swap State
+    const [swapMode, setSwapMode] = useState(null);
+    const [customSwapState, setCustomSwapState] = useState(null);
+
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
     const [showImage, setShowImage] = useState(false);
@@ -308,112 +305,158 @@ export default function ExerciseCard({ group }) {
         return ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
     };
 
+    const executeSwap = async (swapPayload) => {
+        const isCustom = typeof swapPayload === 'object';
+        const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
+        if (!stdName) return alert("Exercise name cannot be blank.");
+        
+        let targetEx = (exercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        
+        if (!targetEx) {
+            targetEx = { 
+                name: stdName, 
+                category: isCustom ? swapPayload.category : (ex.category || "General"),
+                muscle: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
+                baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+                timed: false, history: [],
+                isCircuit: false
+            };
+            try {
+                await saveExercise(targetEx);
+            } catch (e) {
+                console.error("Error saving new swap exercise to backend", e);
+            }
+        }
+        
+        swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
+        setSwapMode(null);
+        setCustomSwapState(null);
+    };
+
+    const allCategories = [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
+    const allManufacturers = [...new Set((exercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
+    const allMuscles = [...new Set((exercises || []).map(e => e.muscle).filter(Boolean))].sort();
+
     return (
-        <div className={`exercise-card ${isDone ? "cardDone" : isSkipped ? "cardSkipped" : ""}`} style={{ borderColor: isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--accent)', opacity: isDone || isSkipped ? 0.6 : 1 }}>
-            <div className="exercise-header" style={{ padding: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
-                <div onClick={handleOpen} style={{ flex: 1 }}>
-                    {ex.category && <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{ex.category}</div>}
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>{group.baseName}</div>
+        <div style={{ 
+            background: '#111', 
+            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
+            borderRadius: 12, 
+            opacity: isDone || isSkipped ? 0.6 : 1,
+            overflow: 'hidden',
+            marginBottom: 16
+        }}>
+            <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, cursor: 'pointer', background: isOpen ? '#1a1a1a' : 'transparent' }}
+                onClick={handleOpen}
+            >
+                <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
+                            {ex.category || 'Uncategorized'}
+                        </div>
+                        {hasVariations && (
+                            <div style={{ display: "flex", gap: 4 }}>
+                                {Object.keys(variations).map(v => (
+                                    <button 
+                                        key={v}
+                                        onClick={(e) => { e.stopPropagation(); setMode(v); }}
+                                        className="btn-ghost" 
+                                        style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${mode===v ? 'var(--accent)' : 'transparent'}`, color: mode===v ? 'white' : 'var(--muted)' }}
+                                    >
+                                        {v.toUpperCase()}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
                         Best: <span style={{ color: 'var(--accent)' }}>{activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {!isDone && !isSkipped && (
-                        <>
-                            <button className="btn-success" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); setExerciseDone(ex.name); }}>DONE</button>
-                            <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); setExerciseSkipped(ex.name); }}>SKIP</button>
-                        </>
-                    )}
-                    {(isDone || isSkipped) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: isDone ? 'var(--success)' : 'var(--muted)' }}>
-                                {isDone ? 'COMPLETED' : 'SKIPPED'}
-                            </div>
-                            <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: 10 }} onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
-                        </div>
-                    )}
-                    <div onClick={handleOpen} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--muted)', padding: '0 8px' }}>
-                        ▼
                     </div>
                 </div>
             </div>
 
             {isOpen && (
-                <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                    {hasVariations && (
-                        <div style={{ display: 'flex', background: '#111', borderRadius: 8, padding: 4, marginBottom: 16 }}>
-                            {Object.keys(variations).map(v => (
-                                <button 
-                                    key={v}
-                                    onClick={() => setMode(v)}
-                                    style={{ 
-                                        flex: 1, 
-                                        background: mode === v ? '#1a1a1a' : 'none', 
-                                        border: 'none', 
-                                        color: mode === v ? 'var(--accent)' : 'var(--muted)', 
-                                        padding: '6px', 
-                                        borderRadius: 6,
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    {v}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                <div style={{ padding: '0 16px 16px 16px', borderTop: '1px solid #222' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, marginTop: 16 }}>
+                        {!isDone && !isSkipped && (
+                            <>
+                                <button className="btn-success" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setExerciseDone(ex.name); }}>DONE</button>
+                                <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setExerciseSkipped(ex.name); }}>SKIP</button>
+                            </>
+                        )}
+                        {(isDone || isSkipped) && (
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a1a', padding: 12, borderRadius: 8 }}>
+                                <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
+                                    {isDone ? 'COMPLETED' : 'SKIPPED'}
+                                </div>
+                                <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
+                            </div>
+                        )}
+                    </div>
 
                     {group.originalBaseKey && (
                         <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
-                                    {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
-                                </button>
-                                <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
-                                    METADATA ▼
-                                </button>
-                            </div>
-                            {isSwapping && (
-                                <div style={{ background: '#111', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Swap for another {ex.category}:</div>
+                            {swapMode === ex.name ? (
+                                <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
                                     <select 
                                         onChange={(e) => {
-                                            if (e.target.value) {
-                                                swapExercise(workoutDay, group.originalBaseKey, e.target.value);
-                                                setIsSwapping(false);
+                                            if (e.target.value === "custom") {
+                                                setCustomSwapState({
+                                                    name: "",
+                                                    category: ex.category || "General",
+                                                    manufacturer: "",
+                                                    baseExercise: "",
+                                                    muscle: ""
+                                                });
+                                            } else if (e.target.value) {
+                                                executeSwap(e.target.value);
                                             }
                                         }}
-                                        style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', marginBottom: 8 }}
-                                        value=""
+                                        style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
                                     >
-                                        <option value="" disabled>Select alternative...</option>
+                                        <option value="">-- Select Exercise --</option>
+                                        <option value="custom">-- New Custom Exercise --</option>
                                         {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
                                             <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
                                         ))}
                                     </select>
-                                    <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>Or Custom Swap:</div>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                        <input 
-                                            value={customSwap}
-                                            onChange={e => setCustomSwap(e.target.value)}
-                                            placeholder="Enter custom name"
-                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white' }}
-                                        />
-                                        <button 
-                                            className="btn-success"
-                                            onClick={() => {
-                                                if (customSwap.trim()) {
-                                                    swapExercise(workoutDay, group.originalBaseKey, customSwap.trim());
-                                                    setIsSwapping(false);
-                                                    setCustomSwap("");
-                                                }
-                                            }}
-                                        >
-                                            CONFIRM
-                                        </button>
-                                    </div>
+
+                                    {customSwapState && (
+                                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
+                                            <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
+                                            <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
+                                            
+                                            <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                            <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+
+                                            <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                            <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
+
+                                            <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                            <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+
+                                            <button 
+                                                onClick={() => executeSwap(customSwapState)}
+                                                className="btn-success"
+                                                style={{ padding: "12px", marginTop: 4 }}
+                                            >SAVE & SWAP</button>
+                                        </div>
+                                    )}
+                                    <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: 12 }}>
+                                        🔄 SWAP EXERCISE
+                                    </button>
+                                    <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: 12 }}>
+                                        📸 IMAGE
+                                    </button>
                                 </div>
                             )}
                         </div>
@@ -464,10 +507,9 @@ export default function ExerciseCard({ group }) {
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, minWidth: '75px' }}>LOG SET</button>
-                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, minWidth: '75px' }}>HISTORY</button>
-                        <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1, minWidth: '75px' }}>📸 IMAGE</button>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
+                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, padding: '8px' }}>HISTORY</button>
                     </div>
 
                     {activeTab === "LOG" && (
@@ -485,42 +527,48 @@ export default function ExerciseCard({ group }) {
                                     />
                                 );
                             })}
-                            <button className="btn-success" style={{ width: '100%' }} onClick={handleSaveSet} disabled={isSaving}>
+                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
                                 {isSaving ? "SAVING..." : "SAVE SET"}
                             </button>
                         </div>
                     )}
 
                     {activeTab === "HISTORY" && (
-                        <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12 }}>RECENT HISTORY</div>
-                            {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
-                                <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
-                            ) : (
-                                ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
-                                    <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div>
-                                                <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <div style={{ fontSize: 12, fontWeight: 700 }}>
-                                                    {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
+                                {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
+                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
+                                ) : (
+                                    ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
+                                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
                                                 </div>
-                                                <button className="btn-ghost" onClick={() => handleDeleteHistory(h)} style={{ padding: '0 4px', fontSize: 12, color: 'var(--skip)' }}>
-                                                    🗑
-                                                </button>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                                                        {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleDeleteHistory(h)}
+                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                        title="Delete History Entry"
+                                                    >
+                                                        🗑
+                                                    </button>
+                                                </div>
                                             </div>
+                                            {h.note && (
+                                                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                    "{h.note}"
+                                                </div>
+                                            )}
                                         </div>
-                                        {h.note && (
-                                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-                                                "{h.note}"
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     )}
                     

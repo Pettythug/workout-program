@@ -1,4 +1,4 @@
-# Task 001: Fix Missing Images for Split Combo Machines
+# [COMPLETED] Task 001: Fix Missing Images for Split Combo Machines
 
 **Model Mandate:** Gemini 3.5 Flash (High) is sufficient for this minor mapping update.
 
