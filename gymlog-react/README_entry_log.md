@@ -1,5 +1,11 @@
 Hey there! This log tracks the files and current status for the new React migration project.
-Files & Current Status:
+
+## Current Tactical State (Last Purge: 2026-06-16)
+- **Active Objective:** Epic 4: UI/UX Polish. 
+- **Pending Action:** Awaiting the Sandbox Developer (Gemini 3.5 Flash) to complete **Task 002** (fixing the CSS flexbox alignment for the Swap/Image buttons on mobile).
+- **Next Step:** Review the Developer's `git diff` output and merge it into main.
+
+## Files & Current Status:
 * package.json -> Core project dependencies and scripts.
 * vite.config.js -> Vite bundler configuration.
 * src/main.jsx -> React entrypoint.
