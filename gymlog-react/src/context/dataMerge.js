@@ -11,7 +11,12 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
         return b;
     };
 
-    const merged = (localExercises || []).map(ex => {
+    let baseExercises = localExercises || [];
+    if (sheetExercises && sheetExercises.length > 0) {
+        baseExercises = baseExercises.filter(ex => sheetExercises.some(se => se.name === ex.name));
+    }
+
+    const merged = baseExercises.map(ex => {
         const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
         const sheetBest    = allBest[ex.name];
         const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
