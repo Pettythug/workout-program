@@ -298,18 +298,18 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
                                     </div>
                                 ) : (
-                                    <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         <button 
                                             onClick={() => setSwapMode(ex.name)}
                                             className="btn-ghost"
-                                            style={{ flex: 1, padding: 12, fontSize: 12 }}
+                                            style={{ flex: 1, minWidth: '75px', padding: 12, fontSize: 11 }}
                                         >
                                             🔄 SWAP EXERCISE
                                         </button>
                                         <button 
                                             onClick={() => setShowImage(true)}
                                             className="btn-ghost"
-                                            style={{ flex: 1, padding: 12, fontSize: 12 }}
+                                            style={{ flex: 1, minWidth: '75px', padding: 12, fontSize: 11 }}
                                         >
                                             📸 IMAGE
                                         </button>
