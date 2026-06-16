@@ -367,11 +367,11 @@ export default function ExerciseCard({ group }) {
 
                     {group.originalBaseKey && (
                         <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button className="btn-ghost" onClick={() => setIsSwapping(!isSwapping)} style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '4px 0' }}>
                                     {isSwapping ? "CANCEL SWAP" : "SWAP EXERCISE"}
                                 </button>
-                                <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
+                                <button className="btn-ghost" onClick={() => {}} style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '4px 0', opacity: 0.5, pointerEvents: 'none' }}>
                                     METADATA ▼
                                 </button>
                             </div>
@@ -464,10 +464,10 @@ export default function ExerciseCard({ group }) {
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1 }}>LOG SET</button>
-                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1 }}>HISTORY</button>
-                        <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1 }}>📸 IMAGE</button>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, minWidth: '75px' }}>LOG SET</button>
+                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, minWidth: '75px' }}>HISTORY</button>
+                        <button className="btn-ghost" onClick={() => setShowImage(true)} style={{ flex: 1, minWidth: '75px' }}>📸 IMAGE</button>
                     </div>
 
                     {activeTab === "LOG" && (

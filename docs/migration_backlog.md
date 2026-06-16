@@ -22,7 +22,7 @@ Epic 3: Quality Assurance & Production Prep
 - [x] Story 3.4: Implement the Device Owner selection dropdown in SettingsModal to set the builder_primary_user.
 
 Epic 4: UI/UX Polish (Low-Hanging Fruit)
-- [ ] Story 4.1: Fix Exercise Card button alignment. The Swap Exercise and Image buttons are currently misaligned on mobile and sit slightly outside the card border.
+- [x] Story 4.1: Fix Exercise Card button alignment. The Swap Exercise and Image buttons are currently misaligned on mobile and sit slightly outside the card border.
 - [ ] Story 4.2: Fix Circuit Generator filtering. The `startFullBodyCircuit` and `startMimicCircuit` functions in `CircuitView.jsx` are currently pulling from the global `exercises` array instead of using `getCircuitEligibleExercises()`, causing non-circuit machines to be suggested.
 
 ---
