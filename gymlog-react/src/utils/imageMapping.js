@@ -107,5 +107,8 @@ export const MACHINE_IMAGE_MAP = {
     "PRIME SmartStrength Tricep Extension": "20260517_090625.jpg",
     "PRIME SmartStrength Arm Curl": "20260517_090629.jpg",
     "Life Fitness Signature Series Abdominal": "20260513_090059.jpg",
-    "Nautilus Impact Pectoral Fly": "20260513_092801.jpg"
+    "Nautilus Impact Pectoral Fly": "20260513_092801.jpg",
+    "Hammer Strength Select Pectoral Fly / Rear Deltoid": "20260513_085948.jpg",
+    "Hoist ROC-IT Selectorized Chin Assist": "20260528_082305.jpg",
+    "Hoist ROC-IT Selectorized Dip Assist": "20260528_082305.jpg"
 };
