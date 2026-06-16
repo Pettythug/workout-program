@@ -1,6 +1,6 @@
 # Task 002: Fix Exercise Card Button Alignment
 
-**Recommended Model:** Gemini 1.5 Flash
+**Recommended Model:** Gemini 3.5 Flash (Low or Medium)
 
 ## Problem Description
 The "Swap Exercise" and "Image" buttons on the `ExerciseCard` are currently misaligned on mobile viewports. The image button sits slightly outside the exercise card border. 

@@ -28,7 +28,7 @@ Epic 4: UI/UX Polish (Low-Hanging Fruit)
 
 ### Active Ticket: Epic 4 / Story 4.1: Fix Exercise Card Button Alignment
 
-**Recommended Model:** Gemini 1.5 Flash
+**Recommended Model:** Gemini 3.5 Flash (Low or Medium)
 
 **Description**
 The "Swap Exercise" and "Image" buttons on the Exercise Card are misaligned on mobile viewports. The image button sits slightly outside the exercise card border. We need to apply clean CSS fixes to ensure these action buttons are neatly contained and aligned within the card's bounding box.
