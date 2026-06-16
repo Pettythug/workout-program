@@ -21,16 +21,20 @@ Epic 3: Quality Assurance & Production Prep
 - [x] Story 3.3: Implement checkboxes in SettingsModal to toggle active people, syncing to local storage keys and backend sheets.
 - [x] Story 3.4: Implement the Device Owner selection dropdown in SettingsModal to set the builder_primary_user.
 
+Epic 4: UI/UX Polish (Low-Hanging Fruit)
+- [ ] Story 4.1: Fix Exercise Card button alignment. The Swap Exercise and Image buttons are currently misaligned on mobile and sit slightly outside the card border.
+
 ---
 
-### Active Ticket: Epic 3 / Story 3.1: Audit React State & Active Focus
+### Active Ticket: Epic 4 / Story 4.1: Fix Exercise Card Button Alignment
 
-**Recommended Model:** Gemini 3.1 Pro (High) (or Gemini 1.5 Pro)
+**Recommended Model:** Gemini 1.5 Flash
 
 **Description**
-We need to ensure that typing into inputs is completely seamless. Background operations (like syncing or saving) should never cause the UI to re-render in a way that drops the user's cursor focus or wipes out values they are currently typing into input boxes.
+The "Swap Exercise" and "Image" buttons on the Exercise Card are misaligned on mobile viewports. The image button sits slightly outside the exercise card border. We need to apply clean CSS fixes to ensure these action buttons are neatly contained and aligned within the card's bounding box.
 
 **Tasks**
-1. Audit the Reps/Weight input components. Ensure their values are fully controlled and their keys are stable so that a parent re-render doesn't unmount and remount them.
-2. Address any focus-stealing bugs during data fetches.
+1. Audit the `ExerciseCard.jsx` and/or `index.css` files to locate the container holding these buttons.
+2. Fix the flexbox, margin, or padding values so they do not overflow the card.
+3. Verify the fix looks good on mobile viewports.
 
