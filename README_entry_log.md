@@ -1,5 +1,9 @@
 What's up everyone! This log tracks what we're building and where all the files live.
 
+## Current Tactical State (Last Purge: 2026-06-16)
+- **Active Objective:** Epic 4: UI/UX Polish. 
+- **Pending Action:** Awaiting the Sandbox Developer (Gemini 3.5 Flash) to complete **Task 002** (fixing the CSS flexbox alignment for the Swap/Image buttons on mobile in `gymlog-react`).
+- **Next Step:** Review the Developer's `git diff` output and merge it into main.
 Here is the quick breakdown of what just happened with the Gym Log:
 We completely upgraded the Gym Log so that two people can use it at exactly the same time. Instead of an entire card collapsing and eating your inputs, each person now gets their own dropdown row. It perfectly saves your reps and weight while the other person logs theirs, and we even added a dynamic "Target Lock" that highlights the exact personal record you need to break today in bright orange!
 
