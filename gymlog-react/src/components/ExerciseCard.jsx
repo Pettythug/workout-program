@@ -452,7 +452,7 @@ export default function ExerciseCard({ group }) {
                             ) : (
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                     <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                        🔄 SWAP EXERCISE
+                                        🔄 SWAP
                                     </button>
                                     <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
                                         📸 IMAGE
