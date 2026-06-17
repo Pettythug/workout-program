@@ -279,8 +279,30 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                 <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
                                                 <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
                                                 
-                                                <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+                                                <select
+                                                    value={customSwapState.category}
+                                                    onChange={e => {
+                                                        const val = e.target.value;
+                                                        if (val === "ADD_NEW") {
+                                                            const newCat = window.prompt("Enter new category name:");
+                                                            if (newCat) {
+                                                                setCustomSwapState({ ...customSwapState, category: newCat });
+                                                            } else {
+                                                                setCustomSwapState({ ...customSwapState, category: val });
+                                                            }
+                                                        } else {
+                                                            setCustomSwapState({ ...customSwapState, category: val });
+                                                        }
+                                                    }}
+                                                    style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }}
+                                                >
+                                                    <option value="">Select Category...</option>
+                                                    {allCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    {customSwapState.category && !allCategories.includes(customSwapState.category) && customSwapState.category !== "ADD_NEW" && (
+                                                        <option value={customSwapState.category}>{customSwapState.category}</option>
+                                                    )}
+                                                    <option value="ADD_NEW">+ Add new...</option>
+                                                </select>
 
                                                 <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
                                                 <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>

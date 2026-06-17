@@ -1,5 +1,7 @@
 # Story 1.4: Port the "+ Add new category" UI and backend sheetsPost sync
 
+**Recommended Model:** Gemini 3.5 Flash
+
 ## Background & Context
 The legacy codebase (`gymlog-ultimate.html`) dynamically extracted available categories from the existing exercises array rather than maintaining a separate `categories` database table. To add a new category, the user would select the `+ Add new category...` option in a dropdown when editing or creating an exercise, which triggered a prompt. The custom string was then synced to the backend via the standard `saveExercise` or `renameExercise` API payload.
 
