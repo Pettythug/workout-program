@@ -1,5 +1,12 @@
 import { MACHINE_IMAGE_MAP } from '../utils/imageMapping';
 
+function getImageFile(name) {
+    if (!name) return null;
+    if (MACHINE_IMAGE_MAP[name]) return MACHINE_IMAGE_MAP[name];
+    const normalized = name.replace(/\bISO-Lateral\b/gi, "Iso-Lateral");
+    return MACHINE_IMAGE_MAP[normalized] || null;
+}
+
 export function mergeFromSheets(localExercises, sheetsData, localPeople = [], localLocations = []) {
     const { history: allHistory = [], best: allBest = {}, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
     const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
@@ -21,7 +28,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
         const sheetBest    = allBest[ex.name];
         const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
         
-        let fileReference = MACHINE_IMAGE_MAP[ex.name] || MACHINE_IMAGE_MAP[sheetExInfo?.name];
+        let fileReference = getImageFile(ex.name) || getImageFile(sheetExInfo?.name);
         if (!fileReference) {
             fileReference = sheetExInfo?.fileReference ?? ex.fileReference;
             if (!fileReference && ex.name) {
@@ -49,7 +56,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
                 const sheetHistory = allHistory.filter(h => h.exercise === sheetEx.name);
                 const sheetBest    = allBest[sheetEx.name];
                 
-                let fileReference = MACHINE_IMAGE_MAP[sheetEx.name];
+                let fileReference = getImageFile(sheetEx.name);
                 if (!fileReference) {
                     fileReference = sheetEx.fileReference;
                     if (!fileReference && sheetEx.name) {
