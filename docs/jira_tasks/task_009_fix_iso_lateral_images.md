@@ -1,4 +1,4 @@
-# Task 009: Fix ISO-Lateral Image Mapping Case-Sensitivity
+# [COMPLETED] Task 009: Fix ISO-Lateral Image Mapping Case-Sensitivity
 
 **Recommended Model:** Gemini 3.5 Flash
 
