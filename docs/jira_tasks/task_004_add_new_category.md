@@ -1,4 +1,4 @@
-# Story 1.4: Port the "+ Add new category" UI and backend sheetsPost sync
+# [COMPLETED] Story 1.4: Port the "+ Add new category" UI and backend sheetsPost sync
 
 **Recommended Model:** Gemini 3.5 Flash
 
