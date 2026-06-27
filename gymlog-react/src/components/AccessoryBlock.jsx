@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
-import ExerciseCard from './ExerciseCard';
+import WorkoutCard from './WorkoutCard';
 
 export default function AccessoryBlock() {
     const { exercises, activeLocation } = useAppContext();
@@ -54,7 +54,7 @@ export default function AccessoryBlock() {
                     <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, paddingLeft: 2 }}>
                         Bonus Accessory
                     </div>
-                    <ExerciseCard group={selectedAccessory} />
+                    <WorkoutCard group={selectedAccessory} showBestPR={true} />
                     <button 
                         onClick={handleGenerate}
                         style={{

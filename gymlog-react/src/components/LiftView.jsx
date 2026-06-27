@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import ExerciseCard from './ExerciseCard';
+import WorkoutCard from './WorkoutCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
@@ -110,7 +110,7 @@ export default function LiftView() {
                     <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>No exercises found.</div>
                 ) : (
                     filteredAndGrouped.map((group, idx) => (
-                        <ExerciseCard key={idx} group={group} />
+                        <WorkoutCard key={idx} group={group} showAdminFeatures={true} showBestPR={true} />
                     ))
                 )}
             </div>

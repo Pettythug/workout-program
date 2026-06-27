@@ -80,42 +80,69 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     );
 };
 
-export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations } = useAppContext();
-    const { logSet, deleteHistory, saveExercise } = useGymAPI();
-    
-    const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
+export default function WorkoutCard({ 
+    group, 
+    ex: propEx, 
+    index, 
+    completedStatus, 
+    isOpen: propIsOpen, 
+    onToggle, 
+    onLogSetSaved, 
+    onExplicitDone, 
+    onSkip, 
+    onUndo, 
+    onDeleteSet, 
+    onDeleteHistoryEntry, 
+    onSwap, 
+    allExercises, 
+    showAdminFeatures = false, 
+    showBestPR = false 
+}) {
+    const { people, activePeople, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, saveExercise } = useAppContext();
+    const { logSet, deleteHistory } = useGymAPI();
+
+    const [mode, setMode] = useState("Standard");
     const [isOpenState, setIsOpenState] = useState(false);
     const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
-    const [activeTab, setActiveTab] = useState("LOG"); // "LOG", "HISTORY"
+    const [activeTab, setActiveTab] = useState("LOG");
     const [logInputs, setLogInputs] = useState({});
     const [isSaving, setIsSaving] = useState(false);
     const [toast, setToast] = useState("");
-    
+
     // Swap State
     const [swapMode, setSwapMode] = useState(null);
     const [customSwapState, setCustomSwapState] = useState(null);
+    const [showImage, setShowImage] = useState(false);
 
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
-    const [showImage, setShowImage] = useState(false);
 
-    const uniqueCategories = useMemo(() => {
-        return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
-    }, [exercises]);
+    // Determine the variations and active exercise
+    const variations = group?.variations || {};
+    const hasVariations = Object.keys(variations).length > 1;
+    const ex = group ? (variations[mode] || variations["Standard"] || Object.values(variations)[0]) : propEx;
 
-    // Fallback to "Standard" if not provided
-    const variations = group.variations || {};
-    const ex = variations[mode] || variations["Standard"] || Object.values(variations)[0];
     if (!ex) return null;
 
-    const hasVariations = Object.keys(variations).length > 1;
-    const isDone = exerciseStatus[ex.name] === 'done';
-    const isSkipped = exerciseStatus[ex.name] === 'skipped';
+    const getStatusStr = () => {
+        if (!completedStatus) return 'active';
+        if (typeof completedStatus === 'string') return completedStatus;
+        if (completedStatus.status) return completedStatus.status;
+        if (completedStatus[ex.name]) return completedStatus[ex.name];
+        return 'active';
+    };
+
+    const status = getStatusStr();
+    const isDone = status === 'done';
+    const isSkipped = status === 'skipped';
 
     const imgSrc = ex.fileReference 
         ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+
+    const uniqueCategories = useMemo(() => {
+        return [...new Set((allExercises || exercises || []).map(e => e.category).filter(Boolean))].sort();
+    }, [allExercises, exercises]);
 
     const getNextSetNumber = () => {
         let nextSetNum = 1;
@@ -132,24 +159,25 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         return nextSetNum;
     };
 
-    // Initialize log inputs if empty
     const initLogInputs = () => {
         const initial = {};
-        people.forEach(p => {
+        const activeList = activePeople && activePeople.length > 0 ? activePeople : people;
+        activeList.forEach(p => {
             initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
         });
         setLogInputs(initial);
     };
 
-    // Auto-initialize when opened
     React.useEffect(() => {
         if (isOpen) {
             initLogInputs();
         }
-    }, [isOpen, people]);
+    }, [isOpen, activePeople, people]);
 
     const handleOpen = () => {
-        if (propIsOpen === undefined) {
+        if (onToggle) {
+            onToggle();
+        } else {
             setIsOpenState(!isOpenState);
         }
     };
@@ -166,21 +194,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         setIsSaving(true);
         
         try {
-            const todayStr = new Date().toLocaleString('en-US');
-            let nextSetNum = 1;
-            if (ex.history && ex.history.length > 0) {
-                const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
-                if (todaysEntries.length > 0) {
-                    const maxSetNum = todaysEntries.reduce((max, h) => {
-                        const num = parseInt(h.setNum) || 0;
-                        return num > max ? num : max;
-                    }, 0);
-                    nextSetNum = maxSetNum + 1;
-                }
-            }
-
+            const nextSetNum = getNextSetNumber();
             const entries = [];
-            for (const person of activePeople) {
+            const activeList = activePeople && activePeople.length > 0 ? activePeople : people;
+
+            for (const person of activeList) {
                 const key = person.toLowerCase();
                 const input = logInputs[key] || {};
                 
@@ -199,7 +217,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                     }
                 } else {
                     if (input.reps) {
-                        // Match spreadsheet schema exactly
                         const r = parseInt(input.reps);
                         let range = "r13_plus";
                         if (r <= 3) range = "r1_3";
@@ -225,68 +242,50 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 addSetToLocalHistory(ex.name, entries);
                 setToast("Set Saved!");
                 setTimeout(() => setToast(""), 2000);
-                if (onLogSet) {
-                    onLogSet();
-                }
+                initLogInputs(); // Reset inputs
+                if (onLogSetSaved) onLogSetSaved(entries);
             }
         } catch (e) {
-            console.error(e);
-            setToast("Error saving set");
+            console.error("Error logging set:", e);
+            setToast("Error saving");
             setTimeout(() => setToast(""), 2000);
         } finally {
             setIsSaving(false);
-            initLogInputs(); // Clear inputs
         }
     };
 
     const handleOpenEdit = (type) => {
-        if (type === 'circuit') {
-            handleSaveInlineEdit('circuit');
-            return;
-        }
         setEditMode(type);
         if (type === 'rename') setEditValue(ex.name);
         else if (type === 'category') setEditValue(ex.category || '');
         else if (type === 'location') setEditValue(ex.location || 'Anywhere');
     };
 
-    const handleSaveInlineEdit = async (explicitType = null) => {
-        const typeToSave = explicitType || editMode;
-        if (!typeToSave) return;
+    const handleSaveInlineEdit = async () => {
+        if (!editMode) return;
 
         let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
         let finalValue = editValue;
 
-        if (typeToSave === 'circuit') {
-            const confirmMsg = ex.isCircuit 
-                ? `Remove '${ex.name}' from Circuit Generator?`
-                : `Add '${ex.name}' to Circuit Generator?`;
-            if (!window.confirm(confirmMsg)) return;
-            payload.isCircuit = !ex.isCircuit;
-        } else {
-            if (finalValue === "ADD_NEW") {
-                finalValue = prompt(`Enter new ${typeToSave} name:`);
-                if (!finalValue) return;
-            }
+        if (finalValue === "ADD_NEW") {
+            finalValue = prompt(`Enter new ${editMode} name:`);
+            if (!finalValue) return;
+        }
 
-            if (typeToSave === 'rename') {
-                if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
-                payload.newName = finalValue;
-            } else if (typeToSave === 'category') {
-                if (finalValue === ex.category) { setEditMode(null); return; }
-                payload.category = finalValue;
-            } else if (typeToSave === 'location') {
-                if (finalValue === ex.location) { setEditMode(null); return; }
-                payload.location = finalValue;
-            }
+        if (editMode === 'rename') {
+            if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
+            payload.newName = finalValue;
+        } else if (editMode === 'category') {
+            if (finalValue === ex.category) { setEditMode(null); return; }
+            payload.category = finalValue;
+        } else if (editMode === 'location') {
+            if (finalValue === ex.location) { setEditMode(null); return; }
+            payload.location = finalValue;
         }
 
         const pin = prompt("Admin PIN required to save:");
         if (pin !== "5050") {
-            if (pin !== null) {
-                setToast("Invalid PIN");
-                setTimeout(() => setToast(""), 2000);
-            }
+            if (pin !== null) setToast("Invalid PIN");
             return;
         }
 
@@ -297,9 +296,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             setToast("Updated! Reload to see changes.");
             setTimeout(() => setToast(""), 3000);
         } catch (e) {
-            console.error(e);
+            console.error(ex);
             setToast("Error updating");
-            setTimeout(() => setToast(""), 2000);
         }
     };
 
@@ -309,16 +307,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             try {
                 await deleteHistory({ exercise: ex.name, ...entry }, pin);
                 deleteSetFromLocalHistory(ex.name, entry);
+                if (onDeleteHistoryEntry) onDeleteHistoryEntry(entry);
                 setToast("Entry deleted!");
                 setTimeout(() => setToast(""), 2000);
             } catch (e) {
                 console.error(e);
                 setToast("Error deleting");
-                setTimeout(() => setToast(""), 2000);
             }
-        } else if (pin !== null) {
-            setToast("Invalid PIN");
-            setTimeout(() => setToast(""), 2000);
         }
     };
 
@@ -335,7 +330,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
         
-        let targetEx = (exercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        let targetEx = (allExercises || exercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
         
         if (!targetEx) {
             targetEx = { 
@@ -355,14 +350,15 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             }
         }
         
-        swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
+        const swapKey = group ? group.originalBaseKey : ex.name;
+        if (onSwap) {
+            onSwap(swapKey, targetEx.name);
+        } else {
+            swapExercise(workoutDay, swapKey, targetEx.name);
+        }
         setSwapMode(null);
         setCustomSwapState(null);
     };
-
-    const allCategories = [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
-    const allManufacturers = [...new Set((exercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
-    const allMuscles = [...new Set((exercises || []).map(e => e.muscle).filter(Boolean))].sort();
 
     return (
         <div style={{ 
@@ -380,7 +376,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                         <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
-                            {ex.category || 'Uncategorized'}
+                            {index !== undefined ? `${index + 1}. ` : ""}{ex.category || 'Uncategorized'}
                         </div>
                         {hasVariations && (
                             <div style={{ display: "flex", gap: 4 }}>
@@ -398,11 +394,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                         )}
                     </div>
                     <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
-                        Best: <span style={{ color: 'var(--accent)' }}>{activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
-                    </div>
+                    {showBestPR && (
+                        <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)', marginTop: 3 }}>
+                            Best: <span style={{ color: 'var(--accent)' }}>{activePeople && activePeople.length > 0 ? getBest(activePeople[0].toLowerCase()) : "N/A"}</span>
+                        </div>
+                    )}
                 </div>
             </div>
+            
             {isOpen && (
                 <div style={{ padding: '0 16px 16px 16px', borderTop: '1px solid #222' }}>
                     {(isDone || isSkipped) ? (
@@ -410,11 +409,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                             <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
                                 {isDone ? 'COMPLETED' : 'SKIPPED'}
                             </div>
-                            <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
+                            <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); onUndo(ex.name); }}>UNDO</button>
                         </div>
                     ) : (
                         <div style={{ marginTop: 16 }}>
-                            {group.originalBaseKey && (
+                            {(group?.originalBaseKey || onSwap) && (
                                 <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {swapMode === ex.name ? (
                                         <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
@@ -437,8 +436,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             >
                                                 <option value="">-- Select Exercise --</option>
                                                 <option value="custom">-- New Custom Exercise --</option>
-                                                {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                                    <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                                {(allExercises || exercises || []).filter(alt => alt.category === ex.category).map(alt => (
+                                                    <option key={alt.name} value={alt.name}>{alt.name}</option>
                                                 ))}
                                             </select>
 
@@ -448,13 +447,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                     <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
                                                     
                                                     <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+                                                    <datalist id="category-list">{uniqueCategories.map(c => <option key={c} value={c} />)}</datalist>
 
                                                     <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
-
-                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+                                                    <datalist id="manufacturer-list">{(allExercises || exercises || []).map(e => e.manufacturer).filter(Boolean).map(m => <option key={m} value={m} />)}</datalist>
 
                                                     <button 
                                                         onClick={() => executeSwap(customSwapState)}
@@ -478,50 +474,49 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
-                                {editMode ? (
-                                    <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
-                                        {editMode === 'rename' && (
-                                            <input 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)} 
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                                autoFocus
-                                            />
-                                        )}
-                                        {editMode === 'category' && (
-                                            <select 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                            >
-                                                <option value="">Select Category...</option>
-                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                                <option value="ADD_NEW">+ Add new...</option>
-                                            </select>
-                                        )}
-                                        {editMode === 'location' && (
-                                            <select 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                            >
-                                                <option value="Anywhere">Anywhere</option>
-                                                {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
-                                                <option value="ADD_NEW">+ Add new...</option>
-                                            </select>
-                                        )}
-                                        <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
-                                        <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
-                                        <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
-                                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                            {showAdminFeatures && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group?.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group?.originalBaseKey ? 0 : 8 }}>
+                                    {editMode ? (
+                                        <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                            {editMode === 'rename' && (
+                                                <input 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)} 
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                    autoFocus
+                                                />
+                                            )}
+                                            {editMode === 'category' && (
+                                                <select 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                >
+                                                    <option value="">Select Category...</option>
+                                                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    <option value="ADD_NEW">+ Add new...</option>
+                                                </select>
+                                            )}
+                                            {editMode === 'location' && (
+                                                <select 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                >
+                                                    <option value="Anywhere">Anywhere</option>
+                                                    {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                                    <option value="ADD_NEW">+ Add new...</option>
+                                                </select>
+                                            )}
+                                            <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+                                            <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                            <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                            <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                                 <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
@@ -530,7 +525,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
 
                             {activeTab === "LOG" && (
                                 <div>
-                                    {activePeople.map(person => {
+                                    {(activePeople && activePeople.length > 0 ? activePeople : people).map(person => {
                                         const key = person.toLowerCase();
                                         const input = logInputs[key] || {};
                                         return (
@@ -550,15 +545,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                                         <button className="btn-secondary" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
                                             e.stopPropagation(); 
-                                            if (window.confirm(`Are you sure you want to mark "${ex.name}" as DONE?`)) {
-                                                setExerciseDone(ex.name); 
-                                            }
+                                            onExplicitDone(ex.name); 
                                         }}>DONE</button>
                                         <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
                                             e.stopPropagation(); 
-                                            if (window.confirm(`Are you sure you want to SKIP "${ex.name}"?`)) {
-                                                setExerciseSkipped(ex.name); 
-                                            }
+                                            onSkip(ex.name); 
                                         }}>SKIP</button>
                                     </div>
                                 </div>
@@ -568,10 +559,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
                                         <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
-                                        {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
+                                        {(!ex.history || ex.history.filter(h => (activePeople || people).some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
                                             <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                                         ) : (
-                                            ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
+                                            ex.history.filter(h => (activePeople || people).some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
                                                 <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div>
@@ -604,38 +595,20 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                             )}
                         </div>
                     )}
-                    
-                    {toast && <div style={{ color: 'var(--success)', fontSize: 12, textAlign: 'center', marginTop: 12 }}>{toast}</div>}
                 </div>
             )}
-
+            
             {showImage && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={() => setShowImage(false)}>
-                    <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <div style={{ fontSize: 16, fontWeight: 700 }}>{group.baseName}</div>
-                            <button className="btn-ghost" onClick={() => setShowImage(false)} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-                            {ex.fileReference ? (
-                                <img 
-                                    src={imgSrc} 
-                                    alt={group.baseName} 
-                                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
-                                    onError={(e) => { 
-                                        if (!e.target.dataset.retried) {
-                                            e.target.dataset.retried = true;
-                                            const safeName = (ex.name || "").replace(/\s*\/\s*/g, " ");
-                                            e.target.src = `${import.meta.env.BASE_URL}images/${safeName}.jpg`;
-                                        } else {
-                                            e.target.style.display = 'none'; 
-                                            e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); 
-                                        }
-                                    }}
-                                />
-                            ) : null}
-                        </div>
-                    </div>
+                <div 
+                    onClick={() => setShowImage(false)}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+                >
+                    <img 
+                        src={imgSrc} 
+                        alt={ex.name} 
+                        style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, border: '2px solid var(--accent)' }} 
+                        onError={(e) => { e.target.src = `${import.meta.env.BASE_URL}images/placeholder.jpg`; }}
+                    />
                 </div>
             )}
         </div>

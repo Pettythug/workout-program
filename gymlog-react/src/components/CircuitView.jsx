@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
-import CircuitCard from './CircuitCard';
+import WorkoutCard from './WorkoutCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
@@ -230,87 +230,24 @@ export default function CircuitView() {
         }
     };
 
-    const handleLogSet = async (ex, logs) => {
-        console.log("handleLogSet CALLED", {ex, logs});
-
+    const handleLogSetSaved = (exName, entries) => {
         const newMap = { ...completedMap };
-        const currentData = newMap[ex.name] || { status: 'active', sets: [] };
+        const currentData = newMap[exName] || { status: 'active', sets: [] };
         const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        const nextSetNum = currentSets.length + 1;
+        
+        newMap[exName] = {
+            status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
+            sets: [...currentSets, entries]
+        };
+        updateCircuitState(circuit, newMap);
 
-        const entries = [];
-        for (const person of activePeople) {
-            const key = person.toLowerCase();
-            const input = logs[key];
-            if (!input) continue;
-            
-            if (ex.timed) {
-                if (input.duration) {
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: input.duration,
-                        weight: input.weight || "",
-                        range: "r13_plus",
-                        timed: true,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
-                }
-            } else {
-                if (input.reps) {
-                    const r = parseInt(input.reps);
-                    let range = "r13_plus";
-                    if (r <= 3) range = "r1_3";
-                    else if (r <= 7) range = "r4_7";
-                    else if (r <= 12) range = "r8_12";
-
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: r,
-                        weight: input.weight || "",
-                        range: range,
-                        timed: false,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
-                }
-            }
+        // Auto-start rest timer if a countdown is configured
+        const duration = parseInt(timerMode, 10);
+        if (!isNaN(duration) && duration > 0) {
+            setTimerSeconds(duration);
+            setTimerIsCountdown(true);
+            setTimerIsRunning(true);
         }
-
-        console.log("ENTRIES:", entries);
-        if (entries.length > 0) {
-            try {
-                await logSet(ex.name, entries);
-                addSetToLocalHistory(ex.name, entries);
-                
-                const newMap = { ...completedMap };
-                const currentData = newMap[ex.name] || { status: 'active', sets: [] };
-                const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-                
-                newMap[ex.name] = {
-                    status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
-                    sets: [...currentSets, entries]
-                };
-                updateCircuitState(circuit, newMap);
-
-                // Auto-start rest timer if a countdown is configured
-                const duration = parseInt(timerMode, 10);
-                if (!isNaN(duration) && duration > 0) {
-                    setTimerSeconds(duration);
-                    setTimerIsCountdown(true);
-                    setTimerIsRunning(true);
-                }
-
-                return true;
-            } catch (e) {
-                console.error("Error logging set:", e);
-                alert("Failed to log set: " + e.message);
-                return false;
-            }
-        }
-        return false;
     };
 
     const handleExplicitDone = (exName) => {
@@ -598,13 +535,9 @@ export default function CircuitView() {
                         const ex = circuit[activeIdx];
                         const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
 
-                        const wrappedHandleLogSet = async (exObj, logs) => {
-                            const success = await handleLogSet(exObj, logs);
-                            if (success) {
-                                // Find the actual DOM log set button and blur it to close keyboard
-                                document.activeElement?.blur();
-                            }
-                            return success;
+                        const wrappedHandleLogSetSaved = (entries) => {
+                            handleLogSetSaved(ex.name, entries);
+                            document.activeElement?.blur();
                         };
 
                         const wrappedHandleSkip = () => {
@@ -613,13 +546,13 @@ export default function CircuitView() {
 
                         return (
                             <>
-                                <CircuitCard 
+                                <WorkoutCard 
                                     key={`${ex.name}-${activeIdx}`} 
                                     ex={upToDateEx} 
                                     index={activeIdx} 
                                     completedStatus={completedMap[ex.name]} 
                                     activePeople={activePeople} 
-                                    onLogSet={wrappedHandleLogSet} 
+                                    onLogSetSaved={wrappedHandleLogSetSaved} 
                                     onExplicitDone={handleExplicitDone} 
                                     onSkip={wrappedHandleSkip} 
                                     onUndo={handleUndo} 
@@ -629,6 +562,8 @@ export default function CircuitView() {
                                     onToggle={() => {}}
                                     onSwap={handleSwap}
                                     allExercises={exercises}
+                                    showAdminFeatures={false}
+                                    showBestPR={false}
                                 />
                                 
                                 <button 

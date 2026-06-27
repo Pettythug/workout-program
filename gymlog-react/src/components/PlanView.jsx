@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import ExerciseCard from './ExerciseCard';
+import WorkoutCard from './WorkoutCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
 export default function PlanView() {
-    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, resetExerciseStatus } = useAppContext();
+    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
@@ -170,42 +170,36 @@ export default function PlanView() {
         }
     };
 
+    const handleExplicitDone = (exName) => {
+        if (!window.confirm(`Are you sure you want to mark "${exName}" as DONE?`)) return;
+        setExerciseDone(exName);
+
+        // Immediate skipped exercise recycling:
+        // Reset any exercises in today's rotation that were skipped back to active status
+        plannedExercises.forEach(group => {
+            Object.values(group.variations || {}).forEach(v => {
+                if (exerciseStatus[v.name] === 'skipped') {
+                    resetExerciseStatus(v.name);
+                }
+            });
+        });
+    };
+
+    const handleSkip = (exName) => {
+        if (!window.confirm(`Are you sure you want to SKIP "${exName}"?`)) return;
+        setExerciseSkipped(exName);
+    };
+
+    const handleUndo = (exName) => {
+        resetExerciseStatus(exName);
+    };
+
     const isGroupCompleteOrSkipped = (group) => {
         const vars = Object.values(group.variations || {});
         return vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
     };
 
-    // Effect to recycle skipped exercises back to active if all are done/skipped
-    React.useEffect(() => {
-        if (!plannedExercises || plannedExercises.length === 0) return;
-        
-        let allDoneOrSkipped = true;
-        let hasSkipped = false;
-        let skippedVariations = [];
-        
-        plannedExercises.forEach(group => {
-            const vars = Object.values(group.variations || {});
-            const doneOrSkipped = vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
-            const skipped = vars.some(v => exerciseStatus[v.name] === 'skipped');
-            
-            if (!doneOrSkipped) allDoneOrSkipped = false;
-            if (skipped) {
-                hasSkipped = true;
-                vars.forEach(v => {
-                    if (exerciseStatus[v.name] === 'skipped') {
-                        skippedVariations.push(v.name);
-                    }
-                });
-            }
-        });
 
-        if (allDoneOrSkipped && hasSkipped) {
-            // Reset the skipped ones back to active
-            skippedVariations.forEach(varName => {
-                resetExerciseStatus(varName);
-            });
-        }
-    }, [plannedExercises, exerciseStatus, resetExerciseStatus]);
 
     const toggleWorkoutType = () => {
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
@@ -377,11 +371,19 @@ export default function PlanView() {
                         </div>
 
                         <div id="exerciseList">
-                            <ExerciseCard 
+                            <WorkoutCard 
                                 key={activeIdx} 
                                 group={activeGroup} 
+                                index={activeIdx}
+                                completedStatus={exerciseStatus}
                                 isOpen={true} 
-                                onLogSet={handleLogSetSaved} 
+                                onLogSetSaved={handleLogSetSaved} 
+                                onExplicitDone={handleExplicitDone}
+                                onSkip={handleSkip}
+                                onUndo={handleUndo}
+                                allExercises={exercises}
+                                showAdminFeatures={true}
+                                showBestPR={true}
                             />
                         </div>
 
