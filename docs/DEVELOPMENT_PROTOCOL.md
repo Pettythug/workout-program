@@ -7,38 +7,53 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 ---
 
 ## 1. Project Metadata & Topology
-- **Domain**: React-based gymlog workout tracker web application and database integrations.
-- **Tech Stack**: `["React (JSX/JS)", "Vite", "Vanilla CSS", "Git"]`
-- **Sandbox Directories**:
-  - `ALLOW_EXECUTION`: `["/gymlog-react/src/*"]`
-  - `RESTRICTED_DIRECTORIES`: `["/gymlog-react/dist/*", "/node_modules/*"]`
-  - `REQUIRE_STATE_POLLING`: `["/docs/jira_tasks/*"]`
+- `DOMAIN`: "React-based gymlog workout tracker web application and database integrations."
+- `TECH_STACK`: `["React (JSX/JS)", "Vite", "Vanilla CSS", "Git"]`
+- `ALLOW_EXECUTION`: `["/gymlog-react/src/*"]`
+- `RESTRICTED_DIRECTORIES`: `["/gymlog-react/dist/*", "/node_modules/*"]`
+- `REQUIRE_STATE_POLLING`: `["/docs/jira_tasks/*"]`
 
 ---
 
-## 2. Sandbox Environment & Role Separation
-- **Roles**: The Manager acts strictly as Project Manager, Architect, Auditor, and Git Gatekeeper. The Developer writes the code in an isolated Sandbox workspace.
-- **Git Feature Branches**: All development work must live on a dedicated branch named `TASK-*` and must be reviewed and merged by the Manager to the `main` branch. Direct commits to `main` are prohibited.
+## 2. Deterministic Role Constraints & Mandates
+
+### Manager_Auditor Mandates
+- `LANE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"]) REQUIRE(Delegation_Pattern)`
+- `GATEKEEPER_LOCK`: `REQUIRE(git checkout branch TASK-*, git diff audit) REQUIRE(Human_Merge_Signoff)`
+
+### Sandbox_Developer Mandates
+- `LANE_LOCK`: `ALLOW(Write: ["/gymlog-react/src/*"]) DENY(Write: ["/docs/*", "/tests/*", "/*.config", "/.agents/*"])`
+- `VALIDATION_MANDATE`: `REQUIRE(cmd /c npm run build) ON(Success_Build) -> TRIGGER(git commit)`
+- `VIOLATION_TRIGGER`: `IF(Attempt_Write_Outside_Sandbox) -> ACTION(THROW: UNAUTHORIZED_ACCESS_EXCEPTION -> HALT)`
 
 ---
 
 ## 3. Gated Orchestration Protocol
-All tasks are executed via the following pipeline:
-1. **Ticket Generation**: The Manager writes a task description file to `docs/jira_tasks/TASK-*.md`.
-2. **Branch Isolation**: The Manager creates and switches to a git branch named `TASK-*`.
-3. **Task Delegation**: The Manager invokes the Sandbox Developer subagent (`invoke_subagent`), passing the task description in the prompt.
-4. **Developer Execution**: The Developer writes code in `/gymlog-react/src/*`, verifies compilation, commits to the branch, and outputs an audit log.
-5. **Code Audit & Promotion**: The Manager reviews the developer's audit log, runs a production build to verify compilation, and requests User approval to merge the branch to `main`.
+- `ROUTING_NODE`: `REQUIRE(Manager_Auditor)`
+- `TASK_ASSIGNMENT_METHOD`: `REQUIRE(invoke_subagent)`
+- `MANAGER_EXECUTION_SEQUENCE`:
+  1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
+  2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
+  3. `OUTPUT_TO_HUMAN: "Ready for development. Proceed?"`
+  4. `AWAIT: USER_DEPLOYMENT_APPROVAL`
+  5. `EXECUTE: INVOKE_SUBAGENT(Developer, target=TASK-*.md)`
+  6. `AWAIT: SUBAGENT_COMPLETION_MESSAGE`
+  7. `EVALUATE: CTO_CODE_REVIEW(Audit_Log)`
+  8. `OUTPUT_TO_HUMAN: "Code review complete. Merge?"`
+  9. `AWAIT: USER_MERGE_APPROVAL`
+  10. `EXECUTE: GIT_MERGE_TO_MAIN`
 
 ---
 
 ## 4. Coding & Refactoring Standards
 
 ### React Frontend Patterns
-- **Error Handling**: Use explicit `try/catch` blocks for all API calls and local storage sync operations.
-- **Zero-Drift Component Design**: Do not duplicate views or create ad-hoc styling layout blocks. Keep component styling aligned to predefined design CSS variables.
-- **Build Checks**: Every task must compile successfully using `npm run build` before merge.
+- `ERROR_HANDLING`: `REQUIRE(Try/Catch) SCOPE(API / Data Sync operations)`
+- `DESIGN_PATTERN`: `REQUIRE(CSS variables & unified Design Tokens) DENY(Inline ad-hoc styling)`
+- `COMPILE_CHECK`: `REQUIRE(npm run build) SCOPE(All task merges)`
 
 ### SQL Database Standards
-- **Headers**: Every `.sql` file must contain a multi-line comment header with **Author: Brian Wance**.
-- **Formatting**: Use leading commas in lists. Use explicit field names in clauses (e.g., `GROUP BY business_unit`), not column numbers. Avoid correlated subqueries.
+- `HEADERS`: `REQUIRE(Multi-line block comment: Author: Brian Wance) LOCATION(File Header)`
+- `FORMATTING`: `REQUIRE(Leading commas in lists)`
+- `FIELD_CLAUSES`: `REQUIRE(Explicit field names) DENY(Column numbers)`
+- `SUBQUERIES`: `DENY(Correlated subqueries)`
