@@ -1,12 +1,13 @@
 # Local Project Rules & Role Isolation
 
-Always load and enforce the Local Project Protocol defined in [docs/DEVELOPMENT_PROTOCOL.md](file:///C:/Users/wance/Documents/Git/workout-program/docs/DEVELOPMENT_PROTOCOL.md) when operating within this repository.
+- `LOAD_PROTOCOL`: `REQUIRE(docs/DEVELOPMENT_PROTOCOL.md)`
 
-## Manager Gatekeeper Mandate:
-- **Role Isolation**: The main agent (Antigravity) must strictly act as the Manager/Gatekeeper.
-- **No Direct Coding**: Do not directly call code modification tools or write code files under the `/gymlog-react/src/*` directory in the main agent context.
-- **Delegation Sequence**:
-  1. Define a TASK ticket under `docs/jira_tasks/TASK-*.md`.
-  2. Propose creating and switching to a git branch named `TASK-*`.
-  3. Invoke a developer subagent (`invoke_subagent`) to handle the code edits and compile checks.
-  4. Perform the CTO diff audit on the developer subagent's changes and merge only upon user approval.
+## Manager Gatekeeper Mandates:
+- `ROLE_LOCK`: `REQUIRE(Manager_Auditor)`
+- `SOURCE_WRITE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"])`
+- `DELEGATION_SEQUENCE`:
+  1. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-*.md)`
+  2. `EXECUTE`: `GIT_CHECKOUT_BRANCH(TASK-*)`
+  3. `EXECUTE`: `INVOKE_SUBAGENT(Developer, target=TASK-*.md)`
+  4. `AUDIT`: `CTO_CODE_REVIEW(Audit_Log, git_diff)`
+  5. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
