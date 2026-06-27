@@ -2,6 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
+const hashPin = async (plaintext) => {
+    const msgBuffer = new TextEncoder().encode(plaintext);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+};
+
 export default function SettingsModal({ isOpen, onClose }) {
     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
     const { deleteExercise } = useGymAPI();
@@ -92,7 +100,9 @@ export default function SettingsModal({ isOpen, onClose }) {
             return;
         }
         const pin = prompt("Enter Admin PIN to delete this exercise:");
-        if (pin !== "5050") {
+        if (pin === null) return;
+        const hashed = await hashPin(pin);
+        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
             alert("Invalid PIN.");
             return;
         }

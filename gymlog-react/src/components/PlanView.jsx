@@ -6,6 +6,14 @@ import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
+const hashPin = async (plaintext) => {
+    const msgBuffer = new TextEncoder().encode(plaintext);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+};
+
 export default function PlanView() {
     const { deleteHistory } = useGymAPI();
     const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, deleteSetFromLocalHistory } = useAppContext();
@@ -256,7 +264,8 @@ export default function PlanView() {
     const handleDeleteHistoryEntry = async (entry) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-        if (pin !== "5050") {
+        const hashed = await hashPin(pin);
+        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
             alert("Incorrect Admin PIN.");
             return;
         }
