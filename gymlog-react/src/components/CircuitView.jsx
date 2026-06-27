@@ -6,13 +6,6 @@ import WorkoutCard from './WorkoutCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
-const hashPin = async (plaintext) => {
-    const msgBuffer = new TextEncoder().encode(plaintext);
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return hashHex;
-};
 
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
@@ -295,11 +288,6 @@ export default function CircuitView() {
     const handleDeleteSet = async (exName, setIdx) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-        const hashed = await hashPin(pin);
-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
-            alert("Incorrect Admin PIN.");
-            return;
-        }
 
         const currentData = completedMap[exName];
         if (!currentData || typeof currentData === 'string') return;
@@ -332,11 +320,6 @@ export default function CircuitView() {
     const handleDeleteHistoryEntry = async (entry) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-        const hashed = await hashPin(pin);
-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
-            alert("Incorrect Admin PIN.");
-            return;
-        }
 
         const exName = entry.exercise;
         if (!exName) {

@@ -26,7 +26,9 @@
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
-const ADMIN_PIN   = "5050";
+// SECURITY: Set the ADMIN_PIN Script Property in Apps Script Project Settings > Script Properties
+// to complete security hardening. The fallback '5050' is used only if the property is not yet configured.
+const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN') || '5050';
 const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
