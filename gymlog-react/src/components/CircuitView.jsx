@@ -24,6 +24,81 @@ export default function CircuitView() {
     const circuit = circuitState.circuit || [];
     const completedMap = circuitState.completedMap || {};
 
+    // Timer states
+    const [timerMode, setTimerMode] = useState(() => {
+        return localStorage.getItem('gym-timer-mode') || 'stopwatch';
+    });
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const [timerIsRunning, setTimerIsRunning] = useState(false);
+    const [timerIsCountdown, setTimerIsCountdown] = useState(false);
+
+    // Sync timer mode to localStorage and set initial time
+    useEffect(() => {
+        localStorage.setItem('gym-timer-mode', timerMode);
+        setTimerIsRunning(false);
+        if (timerMode === 'stopwatch') {
+            setTimerSeconds(0);
+            setTimerIsCountdown(false);
+        } else {
+            setTimerSeconds(parseInt(timerMode, 10));
+            setTimerIsCountdown(true);
+        }
+    }, [timerMode]);
+
+    // Timer interval effect
+    useEffect(() => {
+        let interval = null;
+        if (timerIsRunning) {
+            interval = setInterval(() => {
+                setTimerSeconds(prev => {
+                    if (timerIsCountdown) {
+                        if (prev <= 1) {
+                            setTimerIsRunning(false);
+                            // Visual and sound alert (native Web Audio API beep)
+                            try {
+                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                const osc = ctx.createOscillator();
+                                const gain = ctx.createGain();
+                                osc.connect(gain);
+                                gain.connect(ctx.destination);
+                                osc.frequency.value = 800; // 800Hz
+                                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                                osc.start();
+                                osc.stop(ctx.currentTime + 0.15);
+                            } catch (e) {
+                                console.error("Beep error:", e);
+                            }
+                            return 0;
+                        }
+                        return prev - 1;
+                    } else {
+                        return prev + 1;
+                    }
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [timerIsRunning, timerIsCountdown]);
+
+    const formatTimerTime = (totalSeconds) => {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const toggleTimer = () => {
+        setTimerIsRunning(!timerIsRunning);
+    };
+
+    const resetTimer = () => {
+        setTimerIsRunning(false);
+        if (timerMode === 'stopwatch') {
+            setTimerSeconds(0);
+        } else {
+            setTimerSeconds(parseInt(timerMode, 10));
+        }
+    };
+
     // Accordion state
     const [openCardIndex, setOpenCardIndex] = useState(0);
 
@@ -219,6 +294,15 @@ export default function CircuitView() {
                     sets: [...currentSets, entries]
                 };
                 updateCircuitState(circuit, newMap);
+
+                // Auto-start rest timer if a countdown is configured
+                const duration = parseInt(timerMode, 10);
+                if (!isNaN(duration) && duration > 0) {
+                    setTimerSeconds(duration);
+                    setTimerIsCountdown(true);
+                    setTimerIsRunning(true);
+                }
+
                 return true;
             } catch (e) {
                 console.error("Error logging set:", e);
@@ -230,6 +314,7 @@ export default function CircuitView() {
     };
 
     const handleExplicitDone = (exName) => {
+        if (!window.confirm(`Are you sure you want to mark "${exName}" as DONE?`)) return;
         const newMap = { ...completedMap };
         const currentData = newMap[exName] || { status: 'active', sets: [] };
         const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
@@ -246,6 +331,7 @@ export default function CircuitView() {
     };
 
     const handleSkip = (exName) => {
+        if (!window.confirm(`Are you sure you want to SKIP "${exName}"?`)) return;
         const newMap = { ...completedMap };
         const currentData = newMap[exName] || { status: 'active', sets: [] };
         const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
@@ -452,6 +538,40 @@ export default function CircuitView() {
                             <button className="btn-ghost" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
                                 📋 FULL LIST
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Timer Widget */}
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                        <div style={{ flex: '1 1 120px' }}>
+                            <div style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                {timerIsCountdown ? '⏳ REST COUNTDOWN' : '⏱️ STOPWATCH'}
+                            </div>
+                            <div style={{ fontSize: 24, fontWeight: 'bold', fontFamily: 'var(--mono)', color: timerIsCountdown && timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)', transition: 'color 0.3s' }}>
+                                {formatTimerTime(timerSeconds)}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)', background: timerIsRunning ? 'rgba(239, 68, 68, 0.1)' : 'transparent', color: timerIsRunning ? '#ef4444' : 'white' }} onClick={toggleTimer}>
+                                {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
+                            </button>
+                            <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)' }} onClick={resetTimer}>
+                                🔄 RESET
+                            </button>
+                            <select 
+                                value={timerMode} 
+                                onChange={e => setTimerMode(e.target.value)}
+                                style={{ background: '#000', border: '1px solid var(--border)', color: 'white', fontSize: 11, padding: 6, borderRadius: 4, cursor: 'pointer' }}
+                            >
+                                <option value="stopwatch">⏱️ STOPWATCH</option>
+                                <option value="30">⏳ 30S REST</option>
+                                <option value="60">⏳ 60S REST</option>
+                                <option value="90">⏳ 90S REST</option>
+                                <option value="120">⏳ 2M REST</option>
+                                <option value="180">⏳ 3M REST</option>
+                                <option value="240">⏳ 4M REST</option>
+                                <option value="300">⏳ 5M REST</option>
+                            </select>
                         </div>
                     </div>
 

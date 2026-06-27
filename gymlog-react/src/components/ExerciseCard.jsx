@@ -80,12 +80,13 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     );
 };
 
-export default function ExerciseCard({ group }) {
+export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpenState, setIsOpenState] = useState(false);
+    const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
     const [activeTab, setActiveTab] = useState("LOG"); // "LOG", "HISTORY"
     const [logInputs, setLogInputs] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -116,20 +117,41 @@ export default function ExerciseCard({ group }) {
         ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
 
-    // Initialize log inputs if empty
-    const initLogInputs = () => {
-        if (Object.keys(logInputs).length === 0) {
-            const initial = {};
-            people.forEach(p => {
-                initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
-            });
-            setLogInputs(initial);
+    const getNextSetNumber = () => {
+        let nextSetNum = 1;
+        if (ex.history && ex.history.length > 0) {
+            const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
+            if (todaysEntries.length > 0) {
+                const maxSetNum = todaysEntries.reduce((max, h) => {
+                    const num = parseInt(h.setNum) || 0;
+                    return num > max ? num : max;
+                }, 0);
+                nextSetNum = maxSetNum + 1;
+            }
         }
+        return nextSetNum;
     };
 
+    // Initialize log inputs if empty
+    const initLogInputs = () => {
+        const initial = {};
+        people.forEach(p => {
+            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+        });
+        setLogInputs(initial);
+    };
+
+    // Auto-initialize when opened
+    React.useEffect(() => {
+        if (isOpen) {
+            initLogInputs();
+        }
+    }, [isOpen, people]);
+
     const handleOpen = () => {
-        setIsOpen(!isOpen);
-        if (!isOpen) initLogInputs();
+        if (propIsOpen === undefined) {
+            setIsOpenState(!isOpenState);
+        }
     };
 
     const updateLogInput = (personKey, field, value) => {
@@ -203,6 +225,9 @@ export default function ExerciseCard({ group }) {
                 addSetToLocalHistory(ex.name, entries);
                 setToast("Set Saved!");
                 setTimeout(() => setToast(""), 2000);
+                if (onLogSet) {
+                    onLogSet();
+                }
             }
         } catch (e) {
             console.error(e);
@@ -378,197 +403,205 @@ export default function ExerciseCard({ group }) {
                     </div>
                 </div>
             </div>
-
             {isOpen && (
                 <div style={{ padding: '0 16px 16px 16px', borderTop: '1px solid #222' }}>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, marginTop: 16 }}>
-                        {!isDone && !isSkipped && (
-                            <>
-                                <button className="btn-success" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setExerciseDone(ex.name); }}>DONE</button>
-                                <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setExerciseSkipped(ex.name); }}>SKIP</button>
-                            </>
-                        )}
-                        {(isDone || isSkipped) && (
-                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a1a', padding: 12, borderRadius: 8 }}>
-                                <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
-                                    {isDone ? 'COMPLETED' : 'SKIPPED'}
-                                </div>
-                                <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
+                    {(isDone || isSkipped) ? (
+                        <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a1a', padding: 12, borderRadius: 8 }}>
+                            <div style={{ fontWeight: 'bold', color: isDone ? 'var(--success)' : 'var(--skip)' }}>
+                                {isDone ? 'COMPLETED' : 'SKIPPED'}
                             </div>
-                        )}
-                    </div>
-
-                    {group.originalBaseKey && (
-                        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {swapMode === ex.name ? (
-                                <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
-                                    <select 
-                                        onChange={(e) => {
-                                            if (e.target.value === "custom") {
-                                                setCustomSwapState({
-                                                    name: "",
-                                                    category: ex.category || "General",
-                                                    manufacturer: "",
-                                                    baseExercise: "",
-                                                    muscle: ""
-                                                });
-                                            } else if (e.target.value) {
-                                                executeSwap(e.target.value);
-                                            }
-                                        }}
-                                        style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
-                                    >
-                                        <option value="">-- Select Exercise --</option>
-                                        <option value="custom">-- New Custom Exercise --</option>
-                                        {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                            <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
-                                        ))}
-                                    </select>
-
-                                    {customSwapState && (
-                                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
-                                            <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
-                                            <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
-                                            
-                                            <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                            <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
-
-                                            <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                            <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
-
-                                            <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                            <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
-
-                                            <button 
-                                                onClick={() => executeSwap(customSwapState)}
-                                                className="btn-success"
-                                                style={{ padding: "12px", marginTop: 4 }}
-                                            >SAVE & SWAP</button>
-                                        </div>
-                                    )}
-                                    <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                        🔄 SWAP
-                                    </button>
-                                    <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                        📸 IMAGE
-                                    </button>
-                                </div>
-                            )}
+                            <button className="btn-ghost" onClick={(e) => { e.stopPropagation(); resetExerciseStatus(ex.name); }}>UNDO</button>
                         </div>
-                    )}
+                    ) : (
+                        <div style={{ marginTop: 16 }}>
+                            {group.originalBaseKey && (
+                                <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {swapMode === ex.name ? (
+                                        <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+                                            <select 
+                                                onChange={(e) => {
+                                                    if (e.target.value === "custom") {
+                                                        setCustomSwapState({
+                                                            name: "",
+                                                            category: ex.category || "General",
+                                                            manufacturer: "",
+                                                            baseExercise: "",
+                                                            muscle: ""
+                                                        });
+                                                    } else if (e.target.value) {
+                                                        executeSwap(e.target.value);
+                                                    }
+                                                }}
+                                                style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
+                                            >
+                                                <option value="">-- Select Exercise --</option>
+                                                <option value="custom">-- New Custom Exercise --</option>
+                                                {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
+                                                    <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                                ))}
+                                            </select>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
-                        {editMode ? (
-                            <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
-                                {editMode === 'rename' && (
-                                    <input 
-                                        value={editValue} onChange={e => setEditValue(e.target.value)} 
-                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                        autoFocus
-                                    />
-                                )}
-                                {editMode === 'category' && (
-                                    <select 
-                                        value={editValue} onChange={e => setEditValue(e.target.value)}
-                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                    >
-                                        <option value="">Select Category...</option>
-                                        {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                        <option value="ADD_NEW">+ Add new...</option>
-                                    </select>
-                                )}
-                                {editMode === 'location' && (
-                                    <select 
-                                        value={editValue} onChange={e => setEditValue(e.target.value)}
-                                        style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                    >
-                                        <option value="Anywhere">Anywhere</option>
-                                        {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
-                                        <option value="ADD_NEW">+ Add new...</option>
-                                    </select>
-                                )}
-                                <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
-                                <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
-                            </div>
-                        ) : (
-                            <>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
-                                <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
-                                <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
-                                    {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                                </button>
-                            </>
-                        )}
-                    </div>
+                                            {customSwapState && (
+                                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
+                                                    <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
+                                                    <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
+                                                    
+                                                    <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
 
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                        <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
-                        <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, padding: '8px' }}>HISTORY</button>
-                    </div>
+                                                    <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
 
-                    {activeTab === "LOG" && (
-                        <div>
-                            {activePeople.map(person => {
-                                const key = person.toLowerCase();
-                                const input = logInputs[key] || {};
-                                return (
-                                    <PersonLogSection 
-                                        key={person} 
-                                        person={person} 
-                                        ex={ex} 
-                                        input={input} 
-                                        updateLogInput={updateLogInput} 
-                                    />
-                                );
-                            })}
-                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
-                                {isSaving ? "SAVING..." : "SAVE SET"}
-                            </button>
-                        </div>
-                    )}
+                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
 
-                    {activeTab === "HISTORY" && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
-                                {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
-                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
-                                ) : (
-                                    ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
-                                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div>
-                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
-                                                        {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
-                                                    </div>
                                                     <button 
-                                                        onClick={() => handleDeleteHistory(h)}
-                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
-                                                        title="Delete History Entry"
-                                                    >
-                                                        🗑
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            {h.note && (
-                                                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-                                                    "{h.note}"
+                                                        onClick={() => executeSwap(customSwapState)}
+                                                        className="btn-success"
+                                                        style={{ padding: "12px", marginTop: 4 }}
+                                                    >SAVE & SWAP</button>
                                                 </div>
                                             )}
+                                            <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
                                         </div>
-                                    ))
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                                🔄 SWAP
+                                            </button>
+                                            <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                                📸 IMAGE
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
+                                {editMode ? (
+                                    <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                        {editMode === 'rename' && (
+                                            <input 
+                                                value={editValue} onChange={e => setEditValue(e.target.value)} 
+                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                autoFocus
+                                            />
+                                        )}
+                                        {editMode === 'category' && (
+                                            <select 
+                                                value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                            >
+                                                <option value="">Select Category...</option>
+                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                <option value="ADD_NEW">+ Add new...</option>
+                                            </select>
+                                        )}
+                                        {editMode === 'location' && (
+                                            <select 
+                                                value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                            >
+                                                <option value="Anywhere">Anywhere</option>
+                                                {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                                <option value="ADD_NEW">+ Add new...</option>
+                                            </select>
+                                        )}
+                                        <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+                                        <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                        <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                        </button>
+                                    </>
                                 )}
                             </div>
+
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                                <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
+                                <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, padding: '8px' }}>HISTORY</button>
+                            </div>
+
+                            {activeTab === "LOG" && (
+                                <div>
+                                    {activePeople.map(person => {
+                                        const key = person.toLowerCase();
+                                        const input = logInputs[key] || {};
+                                        return (
+                                            <PersonLogSection 
+                                                key={person} 
+                                                person={person} 
+                                                ex={ex} 
+                                                input={input} 
+                                                updateLogInput={updateLogInput} 
+                                            />
+                                        );
+                                    })}
+                                    <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
+                                        {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                                    </button>
+
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                        <button className="btn-secondary" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (window.confirm(`Are you sure you want to mark "${ex.name}" as DONE?`)) {
+                                                setExerciseDone(ex.name); 
+                                            }
+                                        }}>DONE</button>
+                                        <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            if (window.confirm(`Are you sure you want to SKIP "${ex.name}"?`)) {
+                                                setExerciseSkipped(ex.name); 
+                                            }
+                                        }}>SKIP</button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === "HISTORY" && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
+                                        {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
+                                        ) : (
+                                            ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
+                                                <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                                                                {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => handleDeleteHistory(h)}
+                                                                style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                                title="Delete History Entry"
+                                                            >
+                                                                🗑
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {h.note && (
+                                                        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                            "{h.note}"
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                     
