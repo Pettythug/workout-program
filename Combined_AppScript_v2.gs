@@ -43,6 +43,10 @@ const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
+// Google Drive folder ID for exercise images.
+// SECURITY: Store this as Script Property 'DRIVE_FOLDER_ID' and set it in Project Settings.
+const DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || '';
+
 // Workout Builder tabs (unchanged)
 const WB_WORKOUTS_TAB  = "Workouts";
 const WB_EXERCISES_TAB = "Exercises";
@@ -90,6 +94,7 @@ function doGet(e) {
       if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
+      if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -117,6 +122,7 @@ function doPost(e) {
     if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
+    if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -541,6 +547,39 @@ function gymlog_handleSaveExerciseNote(payload) {
   }
 }
 
+
+// =============================================================================
+// GYMLOG — UPLOAD IMAGE TO GOOGLE DRIVE
+// =============================================================================
+
+function gymlog_handleUploadImage(payload) {
+  verifyAdminPin(payload);
+  const { baseName, base64Data, mimeType, filename } = payload;
+  if (!baseName || !base64Data) return err("Missing baseName or base64Data");
+
+  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+  const decoded = Utilities.base64Decode(base64Data);
+  const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename || (baseName + '.jpg'));
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  const fileUrl = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+
+  // Update the fileReference column in the Exercises sheet
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  const lastRow = exSheet.getLastRow();
+  if (lastRow > 1) {
+    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < names.length; i++) {
+      if (String(names[i][0]).trim().toLowerCase() === String(baseName).trim().toLowerCase()) {
+        const fileRefCol = EXERCISES_HEADERS.indexOf("File Reference") + 1;
+        exSheet.getRange(i + 2, fileRefCol).setValue(fileUrl);
+        break;
+      }
+    }
+  }
+  return ok({ url: fileUrl });
+}
 
 // =============================================================================
 // GYMLOG — SAVE PEOPLE

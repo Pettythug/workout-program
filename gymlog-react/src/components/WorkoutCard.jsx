@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
@@ -99,7 +99,7 @@ export default function WorkoutCard({
     showBestPR = false 
 }) {
     const { people, activePeople, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, saveExercise } = useAppContext();
-    const { logSet, deleteHistory } = useGymAPI();
+    const { logSet, deleteHistory, uploadImage } = useGymAPI();
 
     const [mode, setMode] = useState("Standard");
     const [isOpenState, setIsOpenState] = useState(false);
@@ -114,6 +114,8 @@ export default function WorkoutCard({
     const [customSwapState, setCustomSwapState] = useState(null);
     const [showImage, setShowImage] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const fileInputRef = useRef(null);
 
     const handleShowImage = () => {
         setImageError(false);
@@ -142,8 +144,10 @@ export default function WorkoutCard({
     const isDone = status === 'done';
     const isSkipped = status === 'skipped';
 
-    const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
+    const imgSrc = ex.fileReference
+        ? (ex.fileReference.startsWith('http')
+            ? ex.fileReference
+            : `${import.meta.env.BASE_URL}images/${ex.fileReference}`)
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
 
     const uniqueCategories = useMemo(() => {
@@ -257,6 +261,30 @@ export default function WorkoutCard({
             setTimeout(() => setToast(""), 2000);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const pin = window.prompt("Enter Admin PIN to upload image:");
+        if (!pin) return;
+        setUploadingImage(true);
+        try {
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const base64 = ev.target.result.split(',')[1];
+                const result = await uploadImage(ex.name, base64, file.type, file.name, pin);
+                // Update exercise fileReference in local state via saveExercise
+                await saveExercise({ ...ex, fileReference: result.url });
+                setToast("Image uploaded!");
+                setTimeout(() => setToast(""), 3000);
+                setUploadingImage(false);
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            alert("Upload failed: " + err.message);
+            setUploadingImage(false);
         }
     };
 
@@ -572,49 +600,69 @@ export default function WorkoutCard({
                                     )}
 
                                     {showAdminFeatures && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                            {editMode ? (
-                                                <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
-                                                    {editMode === 'rename' && (
-                                                        <input 
-                                                            value={editValue} onChange={e => setEditValue(e.target.value)} 
-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                                            autoFocus
-                                                        />
-                                                    )}
-                                                    {editMode === 'category' && (
-                                                        <select 
-                                                            value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                                        >
-                                                            <option value="">Select Category...</option>
-                                                            {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                                            <option value="ADD_NEW">+ Add new...</option>
-                                                        </select>
-                                                    )}
-                                                    {editMode === 'location' && (
-                                                        <select 
-                                                            value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                                        >
-                                                            <option value="Anywhere">Anywhere</option>
-                                                            {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
-                                                            <option value="ADD_NEW">+ Add new...</option>
-                                                        </select>
-                                                    )}
-                                                    <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
-                                                    <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
-                                                    <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
-                                                        {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                                                    </button>
-                                                </>
-                                            )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                                {editMode ? (
+                                                    <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                                        {editMode === 'rename' && (
+                                                            <input 
+                                                                value={editValue} onChange={e => setEditValue(e.target.value)} 
+                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                                autoFocus
+                                                            />
+                                                        )}
+                                                        {editMode === 'category' && (
+                                                            <select 
+                                                                value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                            >
+                                                                <option value="">Select Category...</option>
+                                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                <option value="ADD_NEW">+ Add new...</option>
+                                                            </select>
+                                                        )}
+                                                        {editMode === 'location' && (
+                                                            <select 
+                                                                value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                            >
+                                                                <option value="Anywhere">Anywhere</option>
+                                                                {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                                                <option value="ADD_NEW">+ Add new...</option>
+                                                            </select>
+                                                        )}
+                                                        <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+                                                        <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                                        <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <div style={{ marginTop: 4 }}>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                    ref={fileInputRef}
+                                                    style={{ display: 'none' }}
+                                                    onChange={handleImageUpload}
+                                                />
+                                                <button
+                                                    className="btn-ghost"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    disabled={uploadingImage}
+                                                    style={{ fontSize: 11, padding: '4px 8px' }}
+                                                >
+                                                    {uploadingImage ? "Uploading..." : "📷 Upload Image"}
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

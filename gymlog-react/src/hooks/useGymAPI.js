@@ -193,6 +193,26 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Upload an image to Google Drive and update fileReference on the exercise.
+     * @param {string} baseName
+     * @param {string} base64Data
+     * @param {string} mimeType
+     * @param {string} filename
+     * @param {string} pin
+     * @returns {Promise<any>}
+     */
+    const uploadImage = useCallback((baseName, base64Data, mimeType, filename, pin) => {
+        return sheetsPost({
+            action: "uploadImage",
+            baseName,
+            base64Data,
+            mimeType,
+            filename,
+            pin
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
@@ -202,6 +222,7 @@ export function useGymAPI() {
         sheetsPost,
         deleteExercise,
         saveSettings,
-        saveExerciseNote
+        saveExerciseNote,
+        uploadImage
     };
 }
