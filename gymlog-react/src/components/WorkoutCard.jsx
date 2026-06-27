@@ -255,32 +255,45 @@ export default function WorkoutCard({
     };
 
     const handleOpenEdit = (type) => {
+        if (type === 'circuit') {
+            handleSaveInlineEdit('circuit');
+            return;
+        }
         setEditMode(type);
         if (type === 'rename') setEditValue(ex.name);
         else if (type === 'category') setEditValue(ex.category || '');
         else if (type === 'location') setEditValue(ex.location || 'Anywhere');
     };
 
-    const handleSaveInlineEdit = async () => {
-        if (!editMode) return;
+    const handleSaveInlineEdit = async (explicitType = null) => {
+        const typeToSave = explicitType || editMode;
+        if (!typeToSave) return;
 
         let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
         let finalValue = editValue;
 
-        if (finalValue === "ADD_NEW") {
-            finalValue = prompt(`Enter new ${editMode} name:`);
-            if (!finalValue) return;
-        }
+        if (typeToSave === 'circuit') {
+            const confirmMsg = ex.isCircuit 
+                ? `Remove '${ex.name}' from Circuit Generator?`
+                : `Add '${ex.name}' to Circuit Generator?`;
+            if (!window.confirm(confirmMsg)) return;
+            payload.isCircuit = !ex.isCircuit;
+        } else {
+            if (finalValue === "ADD_NEW") {
+                finalValue = prompt(`Enter new ${typeToSave} name:`);
+                if (!finalValue) return;
+            }
 
-        if (editMode === 'rename') {
-            if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
-            payload.newName = finalValue;
-        } else if (editMode === 'category') {
-            if (finalValue === ex.category) { setEditMode(null); return; }
-            payload.category = finalValue;
-        } else if (editMode === 'location') {
-            if (finalValue === ex.location) { setEditMode(null); return; }
-            payload.location = finalValue;
+            if (typeToSave === 'rename') {
+                if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
+                payload.newName = finalValue;
+            } else if (typeToSave === 'category') {
+                if (finalValue === ex.category) { setEditMode(null); return; }
+                payload.category = finalValue;
+            } else if (typeToSave === 'location') {
+                if (finalValue === ex.location) { setEditMode(null); return; }
+                payload.location = finalValue;
+            }
         }
 
         const pin = prompt("Admin PIN required to save:");
@@ -513,6 +526,9 @@ export default function WorkoutCard({
                                             <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
                                             <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
                                             <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                            <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                                {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                            </button>
                                         </>
                                     )}
                                 </div>
