@@ -113,6 +113,12 @@ export default function WorkoutCard({
     const [swapMode, setSwapMode] = useState(null);
     const [customSwapState, setCustomSwapState] = useState(null);
     const [showImage, setShowImage] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    const handleShowImage = () => {
+        setImageError(false);
+        setShowImage(true);
+    };
 
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
@@ -557,7 +563,7 @@ export default function WorkoutCard({
                                                     <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
                                                         🔄 SWAP
                                                     </button>
-                                                    <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                                    <button onClick={handleShowImage} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
                                                         📸 IMAGE
                                                     </button>
                                                 </div>
@@ -623,12 +629,24 @@ export default function WorkoutCard({
                     onClick={() => setShowImage(false)}
                     style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
                 >
-                    <img 
-                        src={imgSrc} 
-                        alt={ex.name} 
-                        style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8, border: '2px solid var(--accent)' }} 
-                        onError={(e) => { e.target.src = `${import.meta.env.BASE_URL}images/placeholder.jpg`; }}
-                    />
+                    <div style={{ background: '#111', padding: 24, borderRadius: 12, border: '1px solid var(--border)', maxWidth: '90%', maxHeight: '90%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, position: 'relative' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', borderBottom: '1px solid #222', paddingBottom: 8 }}>
+                            <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
+                            <button onClick={() => setShowImage(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>×</button>
+                        </div>
+                        {imageError ? (
+                            <div style={{ color: 'var(--muted)', padding: '40px 24px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 13, background: '#0a0a0a' }}>
+                                📸 Image not found for this exercise.
+                            </div>
+                        ) : (
+                            <img 
+                                src={imgSrc} 
+                                alt={ex.name} 
+                                style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }} 
+                                onError={() => setImageError(true)}
+                            />
+                        )}
+                    </div>
                 </div>
             )}
         </div>
