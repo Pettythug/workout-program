@@ -4,32 +4,41 @@ This document serves as the project-specific source of truth for the Manager and
 
 For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the User's Global System Rules.
 
-## 1. The Sandbox Environment & Role Separation
-- **Roles:** The Manager acts strictly as Project Manager, Architect, Auditor, and Git Gatekeeper. The Developer writes the code in an isolated Sandbox environment.
-- **Gatekeeper Merge:** The Developer never commits directly to production. The Manager reviews the Developer's Audit Submission and physically promotes the code from the sandbox to the Main Repository.
+---
 
-## 2. The Prompt Handoff Workflow (Option B)
-- **Ticket Generation:** The Manager defines the task and saves it to `docs/jira_tasks/` for historical auditing.
-- **Model Mandate:** The Manager MUST explicitly state the required model tier (e.g., Gemini 3.5 Flash) at the very top of every Jira ticket to ensure resource efficiency.
-- **Prompt Handoff:** The Manager provides the raw text of the instructions to the User, who pastes it directly to the Sandbox Developer to save the Developer from fetching files.
-- **Audit Submissions:** When finished, the Developer MUST provide an Audit Submission containing explicit `diff` blocks (or exact replacement text) and raw terminal output proving a clean build. Vague summaries are unacceptable.
+## 1. Project Metadata & Topology
+- **Domain**: React-based gymlog workout tracker web application and database integrations.
+- **Tech Stack**: `["React (JSX/JS)", "Vite", "Vanilla CSS", "Git"]`
+- **Sandbox Directories**:
+  - `ALLOW_EXECUTION`: `["/gymlog-react/src/*"]`
+  - `RESTRICTED_DIRECTORIES`: `["/gymlog-react/dist/*", "/node_modules/*"]`
+  - `REQUIRE_STATE_POLLING`: `["/docs/jira_tasks/*"]`
 
-## 3. Git & Commit Standards
-- **Conventional Commits:** All Git commits must follow the Conventional Commits standard (e.g., `feat: added routing`, `fix: resolved image mapping bug`, `docs: updated protocol`).
-- **Isolation:** Developers must never commit directly to `main`. All code changes must live on a branch and be merged by the Manager.
+---
 
-## 4. Documentation & The Paper Trail
-- **The Permanent Paper Trail:** Micro-folder READMEs are forbidden. Instead, the `docs/jira_tasks/` folder acts as the permanent historical archive. 
-- **Ticket Completion:** When a task is fully merged, its instruction file must be marked `[COMPLETED]`.
+## 2. Sandbox Environment & Role Separation
+- **Roles**: The Manager acts strictly as Project Manager, Architect, Auditor, and Git Gatekeeper. The Developer writes the code in an isolated Sandbox workspace.
+- **Git Feature Branches**: All development work must live on a dedicated branch named `TASK-*` and must be reviewed and merged by the Manager to the `main` branch. Direct commits to `main` are prohibited.
 
-## 5. Repository Structure & Patterns
-- **Standard Structure:** Core directories are `/src`, `/docs`, `/tests`, and `/archive`.
-- **Ecosystem Alignment:** Before creating new files or features, you must inspect the existing repository to identify the established tech stack, architecture, and design patterns. Align all new work to match these patterns.
+---
 
-## 6. Production Isolation
-- **Strict Isolation:** Never migrate, merge, or overwrite "live" or production files with code from beta variations. All development must be validated in the beta environment/sandbox first.
-- **Promotion Rule:** "Promotion to Production" must be treated as a separate, explicitly requested task requiring direct user approval.
+## 3. Gated Orchestration Protocol
+All tasks are executed via the following pipeline:
+1. **Ticket Generation**: The Manager writes a task description file to `docs/jira_tasks/TASK-*.md`.
+2. **Branch Isolation**: The Manager creates and switches to a git branch named `TASK-*`.
+3. **Task Delegation**: The Manager invokes the Sandbox Developer subagent (`invoke_subagent`), passing the task description in the prompt.
+4. **Developer Execution**: The Developer writes code in `/gymlog-react/src/*`, verifies compilation, commits to the branch, and outputs an audit log.
+5. **Code Audit & Promotion**: The Manager reviews the developer's audit log, runs a production build to verify compilation, and requests User approval to merge the branch to `main`.
 
-## 7. SQL Coding & Header Standards
-- **Headers:** Every `.sql` file must have the multi-line block comment header with Author: **Brian Wance**.
-- **Formatting & Logic:** Use leading commas in lists. Use explicit field names (e.g., `GROUP BY business_unit`), not numbers. Avoid correlated subqueries.
+---
+
+## 4. Coding & Refactoring Standards
+
+### React Frontend Patterns
+- **Error Handling**: Use explicit `try/catch` blocks for all API calls and local storage sync operations.
+- **Zero-Drift Component Design**: Do not duplicate views or create ad-hoc styling layout blocks. Keep component styling aligned to predefined design CSS variables.
+- **Build Checks**: Every task must compile successfully using `npm run build` before merge.
+
+### SQL Database Standards
+- **Headers**: Every `.sql` file must contain a multi-line comment header with **Author: Brian Wance**.
+- **Formatting**: Use leading commas in lists. Use explicit field names in clauses (e.g., `GROUP BY business_unit`), not column numbers. Avoid correlated subqueries.
