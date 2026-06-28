@@ -213,6 +213,22 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Set a new PIN for a specific user.
+     * @param {string} person
+     * @param {string} pin
+     * @param {string} adminPin
+     * @returns {Promise<any>}
+     */
+    const setPeoplePin = useCallback((person, pin, adminPin) => {
+        return sheetsPost({
+            action: "setPeoplePin",
+            person,
+            pin,
+            adminPin
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
@@ -223,6 +239,7 @@ export function useGymAPI() {
         deleteExercise,
         saveSettings,
         saveExerciseNote,
-        uploadImage
+        uploadImage,
+        setPeoplePin
     };
 }

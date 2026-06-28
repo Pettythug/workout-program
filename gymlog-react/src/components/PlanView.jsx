@@ -255,7 +255,7 @@ export default function PlanView() {
     };
 
     const handleDeleteHistoryEntry = async (entry) => {
-        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+        const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
         if (pin === null) return;
 
         const exName = entry.exercise;

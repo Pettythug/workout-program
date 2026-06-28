@@ -349,8 +349,8 @@ export default function WorkoutCard({
     };
 
     const handleDeleteHistory = async (entry) => {
-        const pin = prompt("Admin PIN required:");
-        if (pin === "5050") {
+        const pin = prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
+        if (pin !== null && pin !== "") {
             try {
                 await deleteHistory({ exercise: ex.name, ...entry }, pin);
                 deleteSetFromLocalHistory(ex.name, entry);
@@ -359,7 +359,7 @@ export default function WorkoutCard({
                 setTimeout(() => setToast(""), 2000);
             } catch (e) {
                 console.error(e);
-                setToast("Error deleting");
+                setToast(e.message || "Error deleting");
             }
         }
     };

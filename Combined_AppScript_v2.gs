@@ -95,6 +95,7 @@ function doGet(e) {
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
       if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
+      if (payload.action === "setPeoplePin")   return withLock(gymlog_handleSetPeoplePin, payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -123,6 +124,7 @@ function doPost(e) {
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
     if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
+    if (payload.action === "setPeoplePin")   return withLock(gymlog_handleSetPeoplePin, payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -596,6 +598,19 @@ function gymlog_handleSavePeople(payload) {
   return ok({ saved: people.length });
 }
 
+function gymlog_handleSetPeoplePin(payload) {
+  const { person, pin, adminPin } = payload;
+  if (!person || !pin || !adminPin) return err("Missing person, pin, or adminPin");
+  
+  if (adminPin !== ADMIN_PIN) {
+    throw new Error("Unauthorized: Invalid Admin PIN");
+  }
+  
+  const name = person.toUpperCase();
+  PropertiesService.getScriptProperties().setProperty('PIN_' + name, pin);
+  return ok({ saved: person });
+}
+
 
 // =============================================================================
 // GYMLOG — DELETE HISTORY ENTRY
@@ -606,8 +621,17 @@ function verifyAdminPin(payload) {
     throw new Error("Unauthorized: Invalid Admin PIN");
   }
 }
+
+function verifyUserPin(payload) {
+  const name = (payload.person || '').toUpperCase();
+  const userPin = PropertiesService.getScriptProperties().getProperty('PIN_' + name);
+  const adminPin = ADMIN_PIN;
+  if (payload.pin !== userPin && payload.pin !== adminPin) {
+    throw new Error('Unauthorized: Invalid PIN for ' + name);
+  }
+}
 function gymlog_handleDeleteHistory(payload) {
-  verifyAdminPin(payload);
+  verifyUserPin(payload);
   const { exercise, person, reps, weight, range } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
 

@@ -286,9 +286,6 @@ export default function CircuitView() {
     };
 
     const handleDeleteSet = async (exName, setIdx) => {
-        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
-        if (pin === null) return;
-
         const currentData = completedMap[exName];
         if (!currentData || typeof currentData === 'string') return;
         
@@ -298,6 +295,8 @@ export default function CircuitView() {
 
         try {
             for (const entry of setEntries) {
+                const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
+                if (pin === null) continue;
                 await deleteHistory({ ...entry, exercise: exName }, pin);
                 deleteSetFromLocalHistory(exName, entry);
             }
@@ -318,7 +317,7 @@ export default function CircuitView() {
     };
 
     const handleDeleteHistoryEntry = async (entry) => {
-        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+        const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
         if (pin === null) return;
 
         const exName = entry.exercise;
