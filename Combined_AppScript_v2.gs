@@ -1,26 +1,16 @@
 // =============================================================================
-// Combined_AppScript_v3.gs
+// GymLog Ultimate - Secure Backend (v4)
 // Author: Brian Wance
 //
-// Version 3 of the GymLog backend.
+// Description: Core API router for the GymLog React frontend.
 //
-// Changes from v2:
-//   - Purged all legacy 'Workout Builder' (wb_) routes and functions.
-//   - Backend is now strictly optimized for the GymLog Ultimate SPA.
+// Recent Updates (v4):
+//   - Task 010: Implemented formula injection sanitization on all inputs.
+//   - Task 010: Removed plaintext PIN fallback; enforcing strict property auth.
+//   - Task 010: Increased concurrent write waitLock to 30000ms.
+//   - Cleaned up legacy v1/v2/v3 migration comments.
 //
-// Changes from v1 (Combined_AppScript.gs):
-//   - Rep range r15_20 → r13_plus (any reps >= 13, no upper limit)
-//   - GymLog Best tab schema redesigned:
-//       Old: Exercise | Brian_r1_3 | Brian_r4_7 | Brian_r8_12 | Brian_r15_20 | Dad_...
-//       New: Exercise | Person | r1_3 | r4_7 | r8_12 | r13_plus
-//       One row per exercise+person — supports dynamic roster
-//   - Added GymLog_People tab for cross-device roster sync
-//   - Added savePeople action handler
-//   - gymlog_doGet() now returns people[] array
-//   - Old r15_20 entries in history are transparently remapped to r13_plus on read/write
-//   - migrateBestTab() one-time migration utility (run once from editor after deploy)
-//
-// Rollback: Re-paste Combined_AppScript_v2.gs content into the editor and redeploy.
+// Deployment: Copy this entire file and paste it into the Google Apps Script editor.
 // =============================================================================
 
 // ── Constants ─────────────────────────────────────────────────────────────────
