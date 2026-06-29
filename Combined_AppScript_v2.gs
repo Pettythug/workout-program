@@ -27,8 +27,10 @@
 
 const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
 // SECURITY: Set the ADMIN_PIN Script Property in Apps Script Project Settings > Script Properties
-// to complete security hardening. The fallback '5050' is used only if the property is not yet configured.
-const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN') || '5050';
+const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
+if (!ADMIN_PIN) {
+  throw new Error("FATAL: ADMIN_PIN Script Property is not configured. Backend locked.");
+}
 const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
@@ -60,13 +62,18 @@ const WB_LOG_TAB       = "Log";
 function withLock(handler, payload) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(10000); // Wait up to 10 seconds for the lock
+    lock.waitLock(30000); // Wait up to 30 seconds for the lock
     return handler(payload);
   } catch (e) {
     return err("Server is busy due to concurrent writes. Please try again.");
   } finally {
     lock.releaseLock();
   }
+}
+
+function sanitizeInput(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/^[=+\-@]/, '');
 }
 
 /**
@@ -309,10 +316,10 @@ function gymlog_handleLogSet(payload) {
       entry.date,
       entry.person,
       exercise,
-      entry.reps,
-      entry.weight,
+      sanitizeInput(entry.reps),
+      sanitizeInput(entry.weight),
       normalizeRange(entry.range),   // remap r15_20 → r13_plus on write
-      entry.note   || "",
+      sanitizeInput(entry.note   || ""),
       entry.setNum || ""
     ]);
   });
