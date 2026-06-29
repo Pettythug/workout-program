@@ -17,7 +17,7 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 
 ## 2. Deterministic Role Constraints & Mandates
 
-### Manager_Auditor Mandates
+### Manager Mandates
 - `LANE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"]) REQUIRE(Delegation_Pattern)`
 - `GATEKEEPER_LOCK`: `REQUIRE(git checkout branch TASK-*, git diff audit) REQUIRE(Human_Merge_Signoff)`
 
@@ -28,22 +28,7 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 
 ---
 
-## 3. Gated Orchestration Protocol
-- `ROUTING_NODE`: `REQUIRE(Manager_Auditor)`
-- `TASK_ASSIGNMENT_METHOD`: `REQUIRE(invoke_subagent)`
-- `MANAGER_EXECUTION_SEQUENCE`:
-  1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
-  2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
-  3. `OUTPUT_TO_HUMAN: "Ready for development. Proceed?"`
-  4. `AWAIT: USER_DEPLOYMENT_APPROVAL`
-  5. `EXECUTE: INVOKE_SUBAGENT(Developer, target=TASK-*.md)`
-  6. `AWAIT: SUBAGENT_COMPLETION_MESSAGE`
-  7. `EVALUATE: CTO_CODE_REVIEW(Audit_Log)`
-  8. `OUTPUT_TO_HUMAN: "Code review complete. Merge?"`
-  9. `AWAIT: USER_MERGE_APPROVAL`
-  10. `EXECUTE: GIT_MERGE_TO_MAIN`
 
----
 
 ## 4. Coding & Refactoring Standards
 
