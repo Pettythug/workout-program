@@ -1,15 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
-import { useGymAPI } from '../hooks/useGymAPI';
-import WorkoutCard from './WorkoutCard';
+import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
-
 export default function PlanView() {
-    const { deleteHistory } = useGymAPI();
-    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, deleteSetFromLocalHistory } = useAppContext();
+    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, resetExerciseStatus } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
@@ -173,36 +170,42 @@ export default function PlanView() {
         }
     };
 
-    const handleExplicitDone = (exName) => {
-        if (!window.confirm(`Are you sure you want to mark "${exName}" as DONE?`)) return;
-        setExerciseDone(exName);
-
-        // Immediate skipped exercise recycling:
-        // Reset any exercises in today's rotation that were skipped back to active status
-        plannedExercises.forEach(group => {
-            Object.values(group.variations || {}).forEach(v => {
-                if (exerciseStatus[v.name] === 'skipped') {
-                    resetExerciseStatus(v.name);
-                }
-            });
-        });
-    };
-
-    const handleSkip = (exName) => {
-        if (!window.confirm(`Are you sure you want to SKIP "${exName}"?`)) return;
-        setExerciseSkipped(exName);
-    };
-
-    const handleUndo = (exName) => {
-        resetExerciseStatus(exName);
-    };
-
     const isGroupCompleteOrSkipped = (group) => {
         const vars = Object.values(group.variations || {});
         return vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
     };
 
+    // Effect to recycle skipped exercises back to active if all are done/skipped
+    React.useEffect(() => {
+        if (!plannedExercises || plannedExercises.length === 0) return;
+        
+        let allDoneOrSkipped = true;
+        let hasSkipped = false;
+        let skippedVariations = [];
+        
+        plannedExercises.forEach(group => {
+            const vars = Object.values(group.variations || {});
+            const doneOrSkipped = vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
+            const skipped = vars.some(v => exerciseStatus[v.name] === 'skipped');
+            
+            if (!doneOrSkipped) allDoneOrSkipped = false;
+            if (skipped) {
+                hasSkipped = true;
+                vars.forEach(v => {
+                    if (exerciseStatus[v.name] === 'skipped') {
+                        skippedVariations.push(v.name);
+                    }
+                });
+            }
+        });
 
+        if (allDoneOrSkipped && hasSkipped) {
+            // Reset the skipped ones back to active
+            skippedVariations.forEach(varName => {
+                resetExerciseStatus(varName);
+            });
+        }
+    }, [plannedExercises, exerciseStatus, resetExerciseStatus]);
 
     const toggleWorkoutType = () => {
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
@@ -213,16 +216,12 @@ export default function PlanView() {
     };
 
     const completeWorkout = () => {
-        if (!window.confirm("Are you sure you want to finish today's workout and advance to the next day?")) return;
-
         // Increment the counters for the groups we just used so they rotate next time
-        plannedExercises.forEach(group => {
-            Object.values(group.variations || {}).forEach(v => {
-                if (v && v.rotationKey) {
-                    const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + v.rotationKey) || '0', 10);
-                    localStorage.setItem('gymlog_rotation_' + v.rotationKey, currentIdx + 1);
-                }
-            });
+        plannedExercises.forEach(ex => {
+            if (ex && ex.rotationKey) {
+                const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
+                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, currentIdx + 1);
+            }
         });
 
         // Clear exercise status for all variations in today's rotation
@@ -237,41 +236,6 @@ export default function PlanView() {
         localStorage.setItem('gymlog_workoutType', newType);
         updateWorkoutDay(workoutDay + 1);
         setView('tracker');
-    };
-
-    const getTodaysLoggedSets = () => {
-        const logged = [];
-        plannedExercises.forEach(group => {
-            Object.values(group.variations || {}).forEach(v => {
-                if (v.history && v.history.length > 0) {
-                    const todays = v.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
-                    if (todays.length > 0) {
-                        logged.push({ exercise: v, sets: todays });
-                    }
-                }
-            });
-        });
-        return logged;
-    };
-
-    const handleDeleteHistoryEntry = async (entry) => {
-        const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
-        if (pin === null) return;
-
-        const exName = entry.exercise;
-        if (!exName) {
-            alert("Exercise name is missing in history entry.");
-            return;
-        }
-
-        try {
-            await deleteHistory(entry, pin);
-            deleteSetFromLocalHistory(exName, entry);
-            alert("Set deleted successfully.");
-        } catch (e) {
-            console.error("Error deleting history entry:", e);
-            alert("Failed to delete history entry: " + e.message);
-        }
     };
 
     const getRepRange = (day) => {
@@ -323,43 +287,12 @@ export default function PlanView() {
                 const isWorkoutComplete = activeIdx >= plannedExercises.length;
 
                 if (isWorkoutComplete) {
-                    const todaysLogs = getTodaysLoggedSets();
                     return (
-                        <div style={{ padding: 16, background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                                <div style={{ fontSize: 40 }}>🎉</div>
-                                <h2 style={{ fontSize: 22, fontWeight: 'bold', color: 'var(--success)' }}>Workout Complete!</h2>
-                                <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>Great job finishing today's routine.</p>
-                            </div>
-
-                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Today's Logged Sets</div>
-                                {todaysLogs.length === 0 ? (
-                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, padding: 12 }}>No sets logged today</div>
-                                ) : (
-                                    todaysLogs.map((logGroup, idx) => (
-                                        <div key={idx} style={{ marginBottom: idx < todaysLogs.length - 1 ? 16 : 0, borderBottom: idx < todaysLogs.length - 1 ? '1px solid #222' : 'none', paddingBottom: idx < todaysLogs.length - 1 ? 12 : 0 }}>
-                                            <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--accent)', marginBottom: 6 }}>{logGroup.exercise.name}</div>
-                                            {logGroup.sets.map((set, sIdx) => (
-                                                <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingLeft: 8 }}>
-                                                    <div style={{ fontSize: 11, color: 'white' }}>
-                                                        <span style={{ color: 'var(--muted)' }}>Set {set.setNum || (sIdx + 1)} ({set.person.toUpperCase()}):</span> {set.timed ? `${set.reps}` : `${set.reps}x${set.weight || 0} lbs`}
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => handleDeleteHistoryEntry({ ...set, exercise: logGroup.exercise.name })}
-                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 13, padding: '0 4px' }}
-                                                        title="Delete Set"
-                                                    >
-                                                        🗑
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            <button className="btn-success" onClick={completeWorkout} style={{ width: '100%', padding: 16, fontWeight: 'bold', fontSize: 14 }}>
+                        <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                            <div style={{ fontSize: 40 }}>🎉</div>
+                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Complete!</h2>
+                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
+                            <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
                                 Finish Workout
                             </button>
                         </div>
@@ -444,19 +377,11 @@ export default function PlanView() {
                         </div>
 
                         <div id="exerciseList">
-                            <WorkoutCard 
+                            <ExerciseCard 
                                 key={activeIdx} 
                                 group={activeGroup} 
-                                index={activeIdx}
-                                completedStatus={exerciseStatus}
                                 isOpen={true} 
-                                onLogSetSaved={handleLogSetSaved} 
-                                onExplicitDone={handleExplicitDone}
-                                onSkip={handleSkip}
-                                onUndo={handleUndo}
-                                allExercises={exercises}
-                                showAdminFeatures={true}
-                                showBestPR={true}
+                                onLogSet={handleLogSetSaved} 
                             />
                         </div>
 

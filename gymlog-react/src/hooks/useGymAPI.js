@@ -108,7 +108,8 @@ export function useGymAPI() {
         return sheetsPost({
             action: "logSet",
             exercise: exName,
-            entries: entries
+            entries: entries,
+            pin: "5050"
         });
     }, [sheetsPost]);
 
@@ -131,12 +132,12 @@ export function useGymAPI() {
      * @param {Object} metadata 
      * @returns {Promise<any>}
      */
-    const saveExercise = useCallback((metadata, pin) => {
+    const saveExercise = useCallback((metadata) => {
         return sheetsPost({
             action: "saveExercise",
             exercise: metadata.name || metadata.exercise,
             ...metadata,
-            pin: pin
+            pin: "5050"
         });
     }, [sheetsPost]);
 
@@ -161,11 +162,11 @@ export function useGymAPI() {
      * @param {string} name 
      * @returns {Promise<any>}
      */
-    const deleteExercise = useCallback(async (name, pin) => {
+    const deleteExercise = useCallback(async (name) => {
         return sheetsPost({
             action: "exec",
             args: ["deleteExercise", name],
-            pin: pin
+            pin: "5050"
         });
     }, [sheetsPost]);
 
@@ -177,7 +178,8 @@ export function useGymAPI() {
     const saveSettings = useCallback(async (data) => {
         return sheetsPost({
             action: "exec",
-            args: ["saveSettings", data]
+            args: ["saveSettings", data],
+            pin: "5050"
         });
     }, [sheetsPost]);
 
@@ -189,43 +191,8 @@ export function useGymAPI() {
     const saveExerciseNote = useCallback(async (data) => {
         return sheetsPost({
             action: "exec",
-            args: ["saveExerciseNote", data]
-        });
-    }, [sheetsPost]);
-
-    /**
-     * Upload an image to Google Drive and update fileReference on the exercise.
-     * @param {string} baseName
-     * @param {string} base64Data
-     * @param {string} mimeType
-     * @param {string} filename
-     * @param {string} pin
-     * @returns {Promise<any>}
-     */
-    const uploadImage = useCallback((baseName, base64Data, mimeType, filename, pin) => {
-        return sheetsPost({
-            action: "uploadImage",
-            baseName,
-            base64Data,
-            mimeType,
-            filename,
-            pin
-        });
-    }, [sheetsPost]);
-
-    /**
-     * Set a new PIN for a specific user.
-     * @param {string} person
-     * @param {string} pin
-     * @param {string} adminPin
-     * @returns {Promise<any>}
-     */
-    const setPeoplePin = useCallback((person, pin, adminPin) => {
-        return sheetsPost({
-            action: "setPeoplePin",
-            person,
-            pin,
-            adminPin
+            args: ["saveExerciseNote", data],
+            pin: "5050"
         });
     }, [sheetsPost]);
 
@@ -238,8 +205,6 @@ export function useGymAPI() {
         sheetsPost,
         deleteExercise,
         saveSettings,
-        saveExerciseNote,
-        uploadImage,
-        setPeoplePin
+        saveExerciseNote
     };
 }

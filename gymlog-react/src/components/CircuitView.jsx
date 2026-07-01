@@ -2,10 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
-import WorkoutCard from './WorkoutCard';
+import CircuitCard from './CircuitCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
-
 
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
@@ -231,24 +230,87 @@ export default function CircuitView() {
         }
     };
 
-    const handleLogSetSaved = (exName, entries) => {
-        const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active', sets: [] };
-        const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        
-        newMap[exName] = {
-            status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
-            sets: [...currentSets, entries]
-        };
-        updateCircuitState(circuit, newMap);
+    const handleLogSet = async (ex, logs) => {
+        console.log("handleLogSet CALLED", {ex, logs});
 
-        // Auto-start rest timer if a countdown is configured
-        const duration = parseInt(timerMode, 10);
-        if (!isNaN(duration) && duration > 0) {
-            setTimerSeconds(duration);
-            setTimerIsCountdown(true);
-            setTimerIsRunning(true);
+        const newMap = { ...completedMap };
+        const currentData = newMap[ex.name] || { status: 'active', sets: [] };
+        const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+        const nextSetNum = currentSets.length + 1;
+
+        const entries = [];
+        for (const person of activePeople) {
+            const key = person.toLowerCase();
+            const input = logs[key];
+            if (!input) continue;
+            
+            if (ex.timed) {
+                if (input.duration) {
+                    entries.push({
+                        date: new Date().toLocaleString('en-US'),
+                        person: key,
+                        reps: input.duration,
+                        weight: input.weight || "",
+                        range: "r13_plus",
+                        timed: true,
+                        note: input.note || "",
+                        setNum: nextSetNum
+                    });
+                }
+            } else {
+                if (input.reps) {
+                    const r = parseInt(input.reps);
+                    let range = "r13_plus";
+                    if (r <= 3) range = "r1_3";
+                    else if (r <= 7) range = "r4_7";
+                    else if (r <= 12) range = "r8_12";
+
+                    entries.push({
+                        date: new Date().toLocaleString('en-US'),
+                        person: key,
+                        reps: r,
+                        weight: input.weight || "",
+                        range: range,
+                        timed: false,
+                        note: input.note || "",
+                        setNum: nextSetNum
+                    });
+                }
+            }
         }
+
+        console.log("ENTRIES:", entries);
+        if (entries.length > 0) {
+            try {
+                await logSet(ex.name, entries);
+                addSetToLocalHistory(ex.name, entries);
+                
+                const newMap = { ...completedMap };
+                const currentData = newMap[ex.name] || { status: 'active', sets: [] };
+                const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+                
+                newMap[ex.name] = {
+                    status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
+                    sets: [...currentSets, entries]
+                };
+                updateCircuitState(circuit, newMap);
+
+                // Auto-start rest timer if a countdown is configured
+                const duration = parseInt(timerMode, 10);
+                if (!isNaN(duration) && duration > 0) {
+                    setTimerSeconds(duration);
+                    setTimerIsCountdown(true);
+                    setTimerIsRunning(true);
+                }
+
+                return true;
+            } catch (e) {
+                console.error("Error logging set:", e);
+                alert("Failed to log set: " + e.message);
+                return false;
+            }
+        }
+        return false;
     };
 
     const handleExplicitDone = (exName) => {
@@ -286,6 +348,13 @@ export default function CircuitView() {
     };
 
     const handleDeleteSet = async (exName, setIdx) => {
+        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+        if (pin === null) return;
+        if (pin !== "5050") {
+            alert("Incorrect Admin PIN.");
+            return;
+        }
+
         const currentData = completedMap[exName];
         if (!currentData || typeof currentData === 'string') return;
         
@@ -295,8 +364,6 @@ export default function CircuitView() {
 
         try {
             for (const entry of setEntries) {
-                const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
-                if (pin === null) continue;
                 await deleteHistory({ ...entry, exercise: exName }, pin);
                 deleteSetFromLocalHistory(exName, entry);
             }
@@ -317,8 +384,12 @@ export default function CircuitView() {
     };
 
     const handleDeleteHistoryEntry = async (entry) => {
-        const pin = window.prompt(`Enter PIN for ${entry.person.toUpperCase()} to confirm deletion:`);
+        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
+        if (pin !== "5050") {
+            alert("Incorrect Admin PIN.");
+            return;
+        }
 
         const exName = entry.exercise;
         if (!exName) {
@@ -527,9 +598,13 @@ export default function CircuitView() {
                         const ex = circuit[activeIdx];
                         const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
 
-                        const wrappedHandleLogSetSaved = (entries) => {
-                            handleLogSetSaved(ex.name, entries);
-                            document.activeElement?.blur();
+                        const wrappedHandleLogSet = async (exObj, logs) => {
+                            const success = await handleLogSet(exObj, logs);
+                            if (success) {
+                                // Find the actual DOM log set button and blur it to close keyboard
+                                document.activeElement?.blur();
+                            }
+                            return success;
                         };
 
                         const wrappedHandleSkip = () => {
@@ -538,13 +613,13 @@ export default function CircuitView() {
 
                         return (
                             <>
-                                <WorkoutCard 
+                                <CircuitCard 
                                     key={`${ex.name}-${activeIdx}`} 
                                     ex={upToDateEx} 
                                     index={activeIdx} 
                                     completedStatus={completedMap[ex.name]} 
                                     activePeople={activePeople} 
-                                    onLogSetSaved={wrappedHandleLogSetSaved} 
+                                    onLogSet={wrappedHandleLogSet} 
                                     onExplicitDone={handleExplicitDone} 
                                     onSkip={wrappedHandleSkip} 
                                     onUndo={handleUndo} 
@@ -554,8 +629,6 @@ export default function CircuitView() {
                                     onToggle={() => {}}
                                     onSwap={handleSwap}
                                     allExercises={exercises}
-                                    showAdminFeatures={false}
-                                    showBestPR={false}
                                 />
                                 
                                 <button 

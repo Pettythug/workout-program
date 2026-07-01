@@ -4,41 +4,32 @@ This document serves as the project-specific source of truth for the Manager and
 
 For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the User's Global System Rules.
 
----
+## 1. The Sandbox Environment & Role Separation
+- **Roles:** The Manager acts strictly as Project Manager, Architect, Auditor, and Git Gatekeeper. The Developer writes the code in an isolated Sandbox environment.
+- **Gatekeeper Merge:** The Developer never commits directly to production. The Manager reviews the Developer's Audit Submission and physically promotes the code from the sandbox to the Main Repository.
 
-## 1. Project Metadata & Topology
-- `DOMAIN`: "React-based gymlog workout tracker web application and database integrations."
-- `TECH_STACK`: `["React (JSX/JS)", "Vite", "Vanilla CSS", "Git"]`
-- `ALLOW_EXECUTION`: `["/gymlog-react/src/*"]`
-- `RESTRICTED_DIRECTORIES`: `["/gymlog-react/dist/*", "/node_modules/*"]`
-- `REQUIRE_STATE_POLLING`: `["/docs/jira_tasks/*"]`
+## 2. The Prompt Handoff Workflow (Option B)
+- **Ticket Generation:** The Manager defines the task and saves it to `docs/jira_tasks/` for historical auditing.
+- **Model Mandate:** The Manager MUST explicitly state the required model tier (e.g., Gemini 3.5 Flash) at the very top of every Jira ticket to ensure resource efficiency.
+- **Prompt Handoff:** The Manager provides the raw text of the instructions to the User, who pastes it directly to the Sandbox Developer to save the Developer from fetching files.
+- **Audit Submissions:** When finished, the Developer MUST provide an Audit Submission containing explicit `diff` blocks (or exact replacement text) and raw terminal output proving a clean build. Vague summaries are unacceptable.
 
----
+## 3. Git & Commit Standards
+- **Conventional Commits:** All Git commits must follow the Conventional Commits standard (e.g., `feat: added routing`, `fix: resolved image mapping bug`, `docs: updated protocol`).
+- **Isolation:** Developers must never commit directly to `main`. All code changes must live on a branch and be merged by the Manager.
 
-## 2. Deterministic Role Constraints & Mandates
+## 4. Documentation & The Paper Trail
+- **The Permanent Paper Trail:** Micro-folder READMEs are forbidden. Instead, the `docs/jira_tasks/` folder acts as the permanent historical archive. 
+- **Ticket Completion:** When a task is fully merged, its instruction file must be marked `[COMPLETED]`.
 
-### Manager Mandates
-- `LANE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"]) REQUIRE(Delegation_Pattern)`
-- `GATEKEEPER_LOCK`: `REQUIRE(git checkout branch TASK-*, git diff audit) REQUIRE(Human_Merge_Signoff)`
+## 5. Repository Structure & Patterns
+- **Standard Structure:** Core directories are `/src`, `/docs`, `/tests`, and `/archive`.
+- **Ecosystem Alignment:** Before creating new files or features, you must inspect the existing repository to identify the established tech stack, architecture, and design patterns. Align all new work to match these patterns.
 
-### Sandbox_Developer Mandates
-- `LANE_LOCK`: `ALLOW(Write: ["/gymlog-react/src/*"]) DENY(Write: ["/docs/*", "/tests/*", "/*.config", "/.agents/*"])`
-- `VALIDATION_MANDATE`: `REQUIRE(cmd /c npm run build) ON(Success_Build) -> TRIGGER(git commit)`
-- `VIOLATION_TRIGGER`: `IF(Attempt_Write_Outside_Sandbox) -> ACTION(THROW: UNAUTHORIZED_ACCESS_EXCEPTION -> HALT)`
+## 6. Production Isolation
+- **Strict Isolation:** Never migrate, merge, or overwrite "live" or production files with code from beta variations. All development must be validated in the beta environment/sandbox first.
+- **Promotion Rule:** "Promotion to Production" must be treated as a separate, explicitly requested task requiring direct user approval.
 
----
-
-
-
-## 4. Coding & Refactoring Standards
-
-### React Frontend Patterns
-- `ERROR_HANDLING`: `REQUIRE(Try/Catch) SCOPE(API / Data Sync operations)`
-- `DESIGN_PATTERN`: `REQUIRE(CSS variables & unified Design Tokens) DENY(Inline ad-hoc styling)`
-- `COMPILE_CHECK`: `REQUIRE(npm run build) SCOPE(All task merges)`
-
-### SQL Database Standards
-- `HEADERS`: `REQUIRE(Multi-line block comment: Author: Brian Wance) LOCATION(File Header)`
-- `FORMATTING`: `REQUIRE(Leading commas in lists)`
-- `FIELD_CLAUSES`: `REQUIRE(Explicit field names) DENY(Column numbers)`
-- `SUBQUERIES`: `DENY(Correlated subqueries)`
+## 7. SQL Coding & Header Standards
+- **Headers:** Every `.sql` file must have the multi-line block comment header with Author: **Brian Wance**.
+- **Formatting & Logic:** Use leading commas in lists. Use explicit field names (e.g., `GROUP BY business_unit`), not numbers. Avoid correlated subqueries.

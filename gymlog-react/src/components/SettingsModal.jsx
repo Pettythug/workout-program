@@ -2,10 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
-
 export default function SettingsModal({ isOpen, onClose }) {
     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
-    const { deleteExercise, setPeoplePin } = useGymAPI();
+    const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('gym_api_url') || '');
@@ -36,27 +35,12 @@ export default function SettingsModal({ isOpen, onClose }) {
         }
     };
 
-    const handleAddPerson = async () => {
+    const handleAddPerson = () => {
         if (!newPerson.trim()) return;
         const newName = newPerson.trim();
-        
-        const pin = prompt(`Enter a PIN for ${newName} (numbers only, min 4 digits):`);
-        if (!pin || pin.length < 4 || !/^\d+$/.test(pin)) {
-            alert("Invalid PIN. Must be at least 4 digits. Person not added.");
-            return;
-        }
-
-        const adminPin = prompt("Enter Admin PIN to authorize adding a new person:");
-        if (!adminPin) return;
-
-        try {
-            await setPeoplePin(newName, pin, adminPin);
-            addPersonToRoster(newName);
-            setNewPerson('');
-            alert(`${newName} added with PIN protection.`);
-        } catch (err) {
-            alert("Failed to add person PIN: " + err.message);
-        }
+        addPersonToRoster(newName);
+        setNewPerson('');
+        alert(`${newName} added and syncing to backend.`);
     };
 
     const handleAddLocation = () => {
@@ -108,10 +92,13 @@ export default function SettingsModal({ isOpen, onClose }) {
             return;
         }
         const pin = prompt("Enter Admin PIN to delete this exercise:");
-        if (pin === null) return;
+        if (pin !== "5050") {
+            alert("Invalid PIN.");
+            return;
+        }
 
         try {
-            await deleteExercise(deleteExName, pin);
+            await deleteExercise(deleteExName);
             removeExerciseFromLocalState(deleteExName);
             alert(`Exercise '${deleteExName}' deleted.`);
             setDeleteExName('');
@@ -172,40 +159,17 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         {p} {isOwner && <span style={{fontSize: 10, color:'var(--accent)', marginLeft: 4}}>(Owner)</span>}
                                     </span>
                                     {!isOwner && (
-                                        <>
-                                            <button 
-                                                onClick={async () => {
-                                                    const adminPin = prompt(`Enter Admin PIN to authorize changing ${p}'s PIN:`);
-                                                    if (!adminPin) return;
-                                                    const newPin = prompt(`Enter new PIN for ${p} (numbers only, min 4 digits):`);
-                                                    if (!newPin || newPin.length < 4 || !/^\d+$/.test(newPin)) {
-                                                        alert("Invalid PIN. Must be at least 4 digits.");
-                                                        return;
-                                                    }
-                                                    try {
-                                                        await setPeoplePin(p, newPin, adminPin);
-                                                        alert(`PIN for ${p} updated successfully.`);
-                                                    } catch(err) {
-                                                        alert("Failed to update PIN: " + err.message);
-                                                    }
-                                                }}
-                                                style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
-                                                title="Change PIN"
-                                            >
-                                                🔑
-                                            </button>
-                                            <button 
-                                                onClick={() => {
-                                                    if(window.confirm(`Are you sure you want to permanently delete ${p} from the roster?`)) {
-                                                        removePersonFromRoster(p);
-                                                    }
-                                                }}
-                                                style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
-                                                title="Delete Person"
-                                            >
-                                                ✕
-                                            </button>
-                                        </>
+                                        <button 
+                                            onClick={() => {
+                                                if(window.confirm(`Are you sure you want to permanently delete ${p} from the roster?`)) {
+                                                    removePersonFromRoster(p);
+                                                }
+                                            }}
+                                            style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
+                                            title="Delete Person"
+                                        >
+                                            ✕
+                                        </button>
                                     )}
                                 </div>
                             );

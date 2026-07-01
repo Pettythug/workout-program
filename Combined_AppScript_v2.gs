@@ -1,26 +1,32 @@
 // =============================================================================
-// GymLog Ultimate - Secure Backend (v4)
+// Combined_AppScript_v3.gs
 // Author: Brian Wance
 //
-// Description: Core API router for the GymLog React frontend.
+// Version 3 of the GymLog backend.
 //
-// Recent Updates (v4):
-//   - Task 010: Implemented formula injection sanitization on all inputs.
-//   - Task 010: Removed plaintext PIN fallback; enforcing strict property auth.
-//   - Task 010: Increased concurrent write waitLock to 30000ms.
-//   - Cleaned up legacy v1/v2/v3 migration comments.
+// Changes from v2:
+//   - Purged all legacy 'Workout Builder' (wb_) routes and functions.
+//   - Backend is now strictly optimized for the GymLog Ultimate SPA.
 //
-// Deployment: Copy this entire file and paste it into the Google Apps Script editor.
+// Changes from v1 (Combined_AppScript.gs):
+//   - Rep range r15_20 → r13_plus (any reps >= 13, no upper limit)
+//   - GymLog Best tab schema redesigned:
+//       Old: Exercise | Brian_r1_3 | Brian_r4_7 | Brian_r8_12 | Brian_r15_20 | Dad_...
+//       New: Exercise | Person | r1_3 | r4_7 | r8_12 | r13_plus
+//       One row per exercise+person — supports dynamic roster
+//   - Added GymLog_People tab for cross-device roster sync
+//   - Added savePeople action handler
+//   - gymlog_doGet() now returns people[] array
+//   - Old r15_20 entries in history are transparently remapped to r13_plus on read/write
+//   - migrateBestTab() one-time migration utility (run once from editor after deploy)
+//
+// Rollback: Re-paste Combined_AppScript_v2.gs content into the editor and redeploy.
 // =============================================================================
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
-// SECURITY: Set the ADMIN_PIN Script Property in Apps Script Project Settings > Script Properties
-const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
-if (!ADMIN_PIN) {
-  throw new Error("FATAL: ADMIN_PIN Script Property is not configured. Backend locked.");
-}
+const ADMIN_PIN   = "5050";
 const HISTORY_TAB = "GymLog_History";
 const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
 const PEOPLE_TAB  = "GymLog_People";   // new tab
@@ -35,10 +41,6 @@ const SETTINGS_HEADERS  = ["Setting", "Value"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
-// Google Drive folder ID for exercise images.
-// SECURITY: Store this as Script Property 'DRIVE_FOLDER_ID' and set it in Project Settings.
-const DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || '';
-
 // Workout Builder tabs (unchanged)
 const WB_WORKOUTS_TAB  = "Workouts";
 const WB_EXERCISES_TAB = "Exercises";
@@ -52,18 +54,13 @@ const WB_LOG_TAB       = "Log";
 function withLock(handler, payload) {
   const lock = LockService.getScriptLock();
   try {
-    lock.waitLock(30000); // Wait up to 30 seconds for the lock
+    lock.waitLock(10000); // Wait up to 10 seconds for the lock
     return handler(payload);
   } catch (e) {
     return err("Server is busy due to concurrent writes. Please try again.");
   } finally {
     lock.releaseLock();
   }
-}
-
-function sanitizeInput(str) {
-  if (typeof str !== 'string') return str;
-  return str.replace(/^[=+\-@]/, '');
 }
 
 /**
@@ -91,8 +88,6 @@ function doGet(e) {
       if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
-      if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
-      if (payload.action === "setPeoplePin")   return withLock(gymlog_handleSetPeoplePin, payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -120,8 +115,6 @@ function doPost(e) {
     if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
-    if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
-    if (payload.action === "setPeoplePin")   return withLock(gymlog_handleSetPeoplePin, payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -306,10 +299,10 @@ function gymlog_handleLogSet(payload) {
       entry.date,
       entry.person,
       exercise,
-      sanitizeInput(entry.reps),
-      sanitizeInput(entry.weight),
+      entry.reps,
+      entry.weight,
       normalizeRange(entry.range),   // remap r15_20 → r13_plus on write
-      sanitizeInput(entry.note   || ""),
+      entry.note   || "",
       entry.setNum || ""
     ]);
   });
@@ -548,39 +541,6 @@ function gymlog_handleSaveExerciseNote(payload) {
 
 
 // =============================================================================
-// GYMLOG — UPLOAD IMAGE TO GOOGLE DRIVE
-// =============================================================================
-
-function gymlog_handleUploadImage(payload) {
-  verifyAdminPin(payload);
-  const { baseName, base64Data, mimeType, filename } = payload;
-  if (!baseName || !base64Data) return err("Missing baseName or base64Data");
-
-  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  const decoded = Utilities.base64Decode(base64Data);
-  const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename || (baseName + '.jpg'));
-  const file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-
-  const fileUrl = 'https://drive.google.com/uc?export=view&id=' + file.getId();
-
-  // Update the fileReference column in the Exercises sheet
-  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
-  const lastRow = exSheet.getLastRow();
-  if (lastRow > 1) {
-    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
-    for (let i = 0; i < names.length; i++) {
-      if (String(names[i][0]).trim().toLowerCase() === String(baseName).trim().toLowerCase()) {
-        const fileRefCol = EXERCISES_HEADERS.indexOf("File Reference") + 1;
-        exSheet.getRange(i + 2, fileRefCol).setValue(fileUrl);
-        break;
-      }
-    }
-  }
-  return ok({ url: fileUrl });
-}
-
-// =============================================================================
 // GYMLOG — SAVE PEOPLE
 // =============================================================================
 
@@ -595,19 +555,6 @@ function gymlog_handleSavePeople(payload) {
   return ok({ saved: people.length });
 }
 
-function gymlog_handleSetPeoplePin(payload) {
-  const { person, pin, adminPin } = payload;
-  if (!person || !pin || !adminPin) return err("Missing person, pin, or adminPin");
-  
-  if (adminPin !== ADMIN_PIN) {
-    throw new Error("Unauthorized: Invalid Admin PIN");
-  }
-  
-  const name = person.toUpperCase();
-  PropertiesService.getScriptProperties().setProperty('PIN_' + name, pin);
-  return ok({ saved: person });
-}
-
 
 // =============================================================================
 // GYMLOG — DELETE HISTORY ENTRY
@@ -618,17 +565,8 @@ function verifyAdminPin(payload) {
     throw new Error("Unauthorized: Invalid Admin PIN");
   }
 }
-
-function verifyUserPin(payload) {
-  const name = (payload.person || '').toUpperCase();
-  const userPin = PropertiesService.getScriptProperties().getProperty('PIN_' + name);
-  const adminPin = ADMIN_PIN;
-  if (payload.pin !== userPin && payload.pin !== adminPin) {
-    throw new Error('Unauthorized: Invalid PIN for ' + name);
-  }
-}
 function gymlog_handleDeleteHistory(payload) {
-  verifyUserPin(payload);
+  verifyAdminPin(payload);
   const { exercise, person, reps, weight, range } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
 
