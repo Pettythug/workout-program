@@ -1,0 +1,272 @@
+From e7f3e3aa576ca6ba176b0f0dc7b21b28d2ca17a9 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 15:15:45 -0700
+Subject: [PATCH 13/24] feat(security): remove hardcoded PIN from all layers,
+ read from Script Properties
+
+---
+ Combined_AppScript_v2.gs                      |  4 +-
+ .../task_010_backend_pin_validation.md        | 63 ++++++++++++++-----
+ gymlog-react/src/components/CircuitView.jsx   | 17 -----
+ gymlog-react/src/components/PlanView.jsx      | 12 ----
+ gymlog-react/src/components/SettingsModal.jsx | 14 +----
+ gymlog-react/src/hooks/useGymAPI.js           | 17 +++--
+ 6 files changed, 60 insertions(+), 67 deletions(-)
+
+diff --git a/Combined_AppScript_v2.gs b/Combined_AppScript_v2.gs
+index c84d154..07c88df 100644
+--- a/Combined_AppScript_v2.gs
++++ b/Combined_AppScript_v2.gs
+@@ -26,7 +26,9 @@
+ // ── Constants ─────────────────────────────────────────────────────────────────
+ 
+ const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
+-const ADMIN_PIN   = "5050";
++// SECURITY: Set the ADMIN_PIN Script Property in Apps Script Project Settings > Script Properties
++// to complete security hardening. The fallback '5050' is used only if the property is not yet configured.
++const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN') || '5050';
+ const HISTORY_TAB = "GymLog_History";
+ const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
+ const PEOPLE_TAB  = "GymLog_People";   // new tab
+diff --git a/docs/jira_tasks/task_010_backend_pin_validation.md b/docs/jira_tasks/task_010_backend_pin_validation.md
+index ce4ceee..220893e 100644
+--- a/docs/jira_tasks/task_010_backend_pin_validation.md
++++ b/docs/jira_tasks/task_010_backend_pin_validation.md
+@@ -1,16 +1,51 @@
+-# task_010: Secure Backend PIN Validation
+-- **Required Model Tier**: Gemini 3.5 High
++# task_010: Secure Backend PIN Validation (Corrected Scope)
++- **Required Model Tier**: Gemini 3.5 High / Claude Sonnet
+ 
+ ## Objective:
+-Completely remove client-side knowledge of the Admin PIN or its hash by migrating the validation check entirely to the server-side Google Apps Script backend.
+-
+-## Details:
+-1. Remove the local `hashPin` helper function and hash validation comparison from:
+-   - `SettingsModal.jsx`
+-   - `CircuitView.jsx`
+-   - `PlanView.jsx`
+-2. Ensure the frontend React client simply forwards the user-entered `pin` directly inside the backend API request payloads (e.g. `deleteHistory(entry, pin)`).
+-3. Update the backend Google Apps Script web app code to:
+-   - Intercept the incoming `pin` parameter.
+-   - Validate it against the secure script configuration properties (`ScriptProperties.getProperty('ADMIN_PIN')`).
+-   - If incorrect, throw an `Unauthorized` error and return a `403` status response to block spreadsheet write operations.
++Eliminate all hardcoded plaintext `"5050"` PIN references from source code across all three layers of the application stack: React components, the API hook, and the Google Apps Script backend.
++
++## Pre-Flight Research Findings:
++- `verifyAdminPin(payload)` already exists in `Combined_AppScript_v2.gs` (line 563) and already blocks unauthorized requests server-side. The backend gate is functional.
++- `useGymAPI.js` contains 5 hardcoded `pin: "5050"` static references (lines 112, 140, 169, 183, 196).
++- `Combined_AppScript_v2.gs` line 29 declares `const ADMIN_PIN = "5050"` as a hardcoded constant in source code.
++- `SettingsModal.jsx`, `CircuitView.jsx`, `PlanView.jsx` contain the `hashPin` SHA-256 helper function and local hash comparison added in TASK-012, which is now redundant given the backend gate.
++
++## Changes Required:
++
++### 1. `gymlog-react/src/hooks/useGymAPI.js`
++- Remove `pin: "5050"` from `logSet()` — logSet is not an admin-protected action and should not carry a PIN.
++- Remove `pin: "5050"` from `saveExercise()` — this is an admin action; the caller (SettingsModal) must pass the user-entered PIN as a parameter instead.
++- Remove `pin: "5050"` from `deleteExercise()` — the caller must pass the user-entered PIN as a parameter.
++- Remove `pin: "5050"` from `saveSettings()` and `saveExerciseNote()` — evaluate whether these need PIN protection. If yes, caller must pass PIN. If no, remove from backend handler too.
++- The `deleteHistory(entry, pin)` signature already correctly accepts a dynamic PIN — no change needed.
++
++### 2. `gymlog-react/src/components/SettingsModal.jsx`
++- Remove the `hashPin` async helper function (lines ~3-10).
++- Remove the local hash comparison: `const hashed = await hashPin(pin); if (hashed !== "f71bcbe5...")`.
++- Update `handleDeleteExercise` to pass the raw user-entered `pin` string directly to `deleteExercise(name, pin)` via `useGymAPI`.
++
++### 3. `gymlog-react/src/components/CircuitView.jsx`
++- Remove the `hashPin` async helper function.
++- Remove the local hash comparisons in `handleDeleteSet` and `handleDeleteHistoryEntry`.
++- Pass the raw user-entered `pin` directly to `deleteHistory(entry, pin)`.
++
++### 4. `gymlog-react/src/components/PlanView.jsx`
++- Remove the `hashPin` async helper function.
++- Remove the local hash comparison in `handleDeleteHistoryEntry`.
++- Pass the raw user-entered `pin` directly to `deleteHistory(entry, pin)`.
++
++### 5. `Combined_AppScript_v2.gs`
++- Replace `const ADMIN_PIN = "5050";` (line 29) with:
++  `const ADMIN_PIN = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN') || '5050';`
++- This reads the PIN from Google Apps Script Script Properties (server-side environment variable) at runtime. The `|| '5050'` fallback ensures the app does not break if the Script Property has not been set yet.
++- Add a comment above explaining that the ADMIN_PIN Script Property must be set in the Apps Script project settings to complete the security hardening.
++
++## Verification:
++1. Run `npm run build` in `gymlog-react/` and verify zero compilation errors.
++2. Commit all changed files on the active branch with message: `feat(security): remove hardcoded PIN from all layers, read from Script Properties`
++3. Output a detailed Audit Log.
++
++## IMPORTANT — Out of Scope:
++- Do NOT modify any Google Sheets schema or spreadsheet data.
++- Do NOT modify `Combined_AppScript_v2.gs` except for line 29 only.
++- Do NOT modify any file outside of `/gymlog-react/src/` and `Combined_AppScript_v2.gs`.
+diff --git a/gymlog-react/src/components/CircuitView.jsx b/gymlog-react/src/components/CircuitView.jsx
+index 9687eef..b8ebd9b 100644
+--- a/gymlog-react/src/components/CircuitView.jsx
++++ b/gymlog-react/src/components/CircuitView.jsx
+@@ -6,13 +6,6 @@ import WorkoutCard from './WorkoutCard';
+ import SettingsModal from './SettingsModal';
+ import HelpDrawer from './HelpDrawer';
+ 
+-const hashPin = async (plaintext) => {
+-    const msgBuffer = new TextEncoder().encode(plaintext);
+-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+-    const hashArray = Array.from(new Uint8Array(hashBuffer));
+-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+-    return hashHex;
+-};
+ 
+ export default function CircuitView() {
+     const { logSet, deleteHistory, saveExercise } = useGymAPI();
+@@ -295,11 +288,6 @@ export default function CircuitView() {
+     const handleDeleteSet = async (exName, setIdx) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        const hashed = await hashPin(pin);
+-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+-            alert("Incorrect Admin PIN.");
+-            return;
+-        }
+ 
+         const currentData = completedMap[exName];
+         if (!currentData || typeof currentData === 'string') return;
+@@ -332,11 +320,6 @@ export default function CircuitView() {
+     const handleDeleteHistoryEntry = async (entry) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        const hashed = await hashPin(pin);
+-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+-            alert("Incorrect Admin PIN.");
+-            return;
+-        }
+ 
+         const exName = entry.exercise;
+         if (!exName) {
+diff --git a/gymlog-react/src/components/PlanView.jsx b/gymlog-react/src/components/PlanView.jsx
+index 4cb29f9..dc83130 100644
+--- a/gymlog-react/src/components/PlanView.jsx
++++ b/gymlog-react/src/components/PlanView.jsx
+@@ -6,13 +6,6 @@ import AccessoryBlock from './AccessoryBlock';
+ import SettingsModal from './SettingsModal';
+ import HelpDrawer from './HelpDrawer';
+ 
+-const hashPin = async (plaintext) => {
+-    const msgBuffer = new TextEncoder().encode(plaintext);
+-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+-    const hashArray = Array.from(new Uint8Array(hashBuffer));
+-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+-    return hashHex;
+-};
+ 
+ export default function PlanView() {
+     const { deleteHistory } = useGymAPI();
+@@ -264,11 +257,6 @@ export default function PlanView() {
+     const handleDeleteHistoryEntry = async (entry) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        const hashed = await hashPin(pin);
+-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+-            alert("Incorrect Admin PIN.");
+-            return;
+-        }
+ 
+         const exName = entry.exercise;
+         if (!exName) {
+diff --git a/gymlog-react/src/components/SettingsModal.jsx b/gymlog-react/src/components/SettingsModal.jsx
+index 3e12fd5..96bb774 100644
+--- a/gymlog-react/src/components/SettingsModal.jsx
++++ b/gymlog-react/src/components/SettingsModal.jsx
+@@ -2,13 +2,6 @@ import React, { useState, useMemo } from 'react';
+ import { useAppContext } from '../context/AppContext';
+ import { useGymAPI } from '../hooks/useGymAPI';
+ 
+-const hashPin = async (plaintext) => {
+-    const msgBuffer = new TextEncoder().encode(plaintext);
+-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+-    const hashArray = Array.from(new Uint8Array(hashBuffer));
+-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+-    return hashHex;
+-};
+ 
+ export default function SettingsModal({ isOpen, onClose }) {
+     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+@@ -101,14 +94,9 @@ export default function SettingsModal({ isOpen, onClose }) {
+         }
+         const pin = prompt("Enter Admin PIN to delete this exercise:");
+         if (pin === null) return;
+-        const hashed = await hashPin(pin);
+-        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+-            alert("Invalid PIN.");
+-            return;
+-        }
+ 
+         try {
+-            await deleteExercise(deleteExName);
++            await deleteExercise(deleteExName, pin);
+             removeExerciseFromLocalState(deleteExName);
+             alert(`Exercise '${deleteExName}' deleted.`);
+             setDeleteExName('');
+diff --git a/gymlog-react/src/hooks/useGymAPI.js b/gymlog-react/src/hooks/useGymAPI.js
+index 2409ed5..a7a4834 100644
+--- a/gymlog-react/src/hooks/useGymAPI.js
++++ b/gymlog-react/src/hooks/useGymAPI.js
+@@ -108,8 +108,7 @@ export function useGymAPI() {
+         return sheetsPost({
+             action: "logSet",
+             exercise: exName,
+-            entries: entries,
+-            pin: "5050"
++            entries: entries
+         });
+     }, [sheetsPost]);
+ 
+@@ -132,12 +131,12 @@ export function useGymAPI() {
+      * @param {Object} metadata 
+      * @returns {Promise<any>}
+      */
+-    const saveExercise = useCallback((metadata) => {
++    const saveExercise = useCallback((metadata, pin) => {
+         return sheetsPost({
+             action: "saveExercise",
+             exercise: metadata.name || metadata.exercise,
+             ...metadata,
+-            pin: "5050"
++            pin: pin
+         });
+     }, [sheetsPost]);
+ 
+@@ -162,11 +161,11 @@ export function useGymAPI() {
+      * @param {string} name 
+      * @returns {Promise<any>}
+      */
+-    const deleteExercise = useCallback(async (name) => {
++    const deleteExercise = useCallback(async (name, pin) => {
+         return sheetsPost({
+             action: "exec",
+             args: ["deleteExercise", name],
+-            pin: "5050"
++            pin: pin
+         });
+     }, [sheetsPost]);
+ 
+@@ -178,8 +177,7 @@ export function useGymAPI() {
+     const saveSettings = useCallback(async (data) => {
+         return sheetsPost({
+             action: "exec",
+-            args: ["saveSettings", data],
+-            pin: "5050"
++            args: ["saveSettings", data]
+         });
+     }, [sheetsPost]);
+ 
+@@ -191,8 +189,7 @@ export function useGymAPI() {
+     const saveExerciseNote = useCallback(async (data) => {
+         return sheetsPost({
+             action: "exec",
+-            args: ["saveExerciseNote", data],
+-            pin: "5050"
++            args: ["saveExerciseNote", data]
+         });
+     }, [sheetsPost]);
+ 
+-- 
+2.54.0.windows.1
+

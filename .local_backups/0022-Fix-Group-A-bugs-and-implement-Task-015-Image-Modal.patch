@@ -1,0 +1,136 @@
+From 54996d416c691a3ccb9a00391da41d677234ee1a Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Wed, 1 Jul 2026 13:13:50 -0700
+Subject: [PATCH 22/24] Fix Group A bugs and implement Task 015 Image Modal
+
+---
+ gymlog-react/src/components/WorkoutCard.jsx | 75 +++++++++++----------
+ 1 file changed, 38 insertions(+), 37 deletions(-)
+
+diff --git a/gymlog-react/src/components/WorkoutCard.jsx b/gymlog-react/src/components/WorkoutCard.jsx
+index 83f30b8..d7da882 100644
+--- a/gymlog-react/src/components/WorkoutCard.jsx
++++ b/gymlog-react/src/components/WorkoutCard.jsx
+@@ -484,16 +484,22 @@ export default function WorkoutCard({
+                                         {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                                     </button>
+ 
+-                                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+-                                        <button className="btn-secondary" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+-                                            e.stopPropagation(); 
+-                                            onExplicitDone(ex.name); 
+-                                        }}>DONE</button>
+-                                        <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+-                                            e.stopPropagation(); 
+-                                            onSkip(ex.name); 
+-                                        }}>SKIP</button>
+-                                    </div>
++                                    {(onExplicitDone || onSkip) && (
++                                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
++                                            {onExplicitDone && (
++                                                <button className="btn-secondary" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
++                                                    e.stopPropagation(); 
++                                                    onExplicitDone(ex.name); 
++                                                }}>DONE</button>
++                                            )}
++                                            {onSkip && (
++                                                <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
++                                                    e.stopPropagation(); 
++                                                    onSkip(ex.name); 
++                                                }}>SKIP</button>
++                                            )}
++                                        </div>
++                                    )}
+                                 </div>
+                             )}
+ 
+@@ -536,10 +542,8 @@ export default function WorkoutCard({
+                                 </div>
+                             )}
+ 
+-                            {((group?.originalBaseKey || onSwap) || showAdminFeatures) && (
+-                                <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 16 }}>
+-                                    {(group?.originalBaseKey || onSwap) && (
+-                                        <div style={{ marginBottom: showAdminFeatures ? 16 : 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
++                            <div style={{ marginTop: 16, borderTop: "1px solid #222", paddingTop: 16 }}>
++                                <div style={{ marginBottom: showAdminFeatures ? 16 : 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                             {swapMode === ex.name ? (
+                                                 <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                                     <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+@@ -597,9 +601,7 @@ export default function WorkoutCard({
+                                                 </div>
+                                             )}
+                                         </div>
+-                                    )}
+-
+-                                    {showAdminFeatures && (
++                                {showAdminFeatures && (
+                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                                 {editMode ? (
+@@ -645,28 +647,9 @@ export default function WorkoutCard({
+                                                     </>
+                                                 )}
+                                             </div>
+-                                            <div style={{ marginTop: 4 }}>
+-                                                <input
+-                                                    type="file"
+-                                                    accept="image/*"
+-                                                    capture="environment"
+-                                                    ref={fileInputRef}
+-                                                    style={{ display: 'none' }}
+-                                                    onChange={handleImageUpload}
+-                                                />
+-                                                <button
+-                                                    className="btn-ghost"
+-                                                    onClick={() => fileInputRef.current?.click()}
+-                                                    disabled={uploadingImage}
+-                                                    style={{ fontSize: 11, padding: '4px 8px' }}
+-                                                >
+-                                                    {uploadingImage ? "Uploading..." : "📷 Upload Image"}
+-                                                </button>
+-                                            </div>
+                                         </div>
+                                     )}
+                                 </div>
+-                            )}
+                         </div>
+                     )}
+                 </div>
+@@ -683,7 +666,7 @@ export default function WorkoutCard({
+                             <button onClick={() => setShowImage(false)} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px' }}>×</button>
+                         </div>
+                         {imageError ? (
+-                            <div style={{ color: 'var(--muted)', padding: '40px 24px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 13, background: '#0a0a0a' }}>
++                            <div style={{ color: 'var(--muted)', padding: '40px 24px', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 8, fontSize: 13, background: '#0a0a0a', width: '100%' }}>
+                                 📸 Image not found for this exercise.
+                             </div>
+                         ) : (
+@@ -694,6 +677,24 @@ export default function WorkoutCard({
+                                 onError={() => setImageError(true)}
+                             />
+                         )}
++                        <div style={{ width: '100%' }}>
++                            <input
++                                type="file"
++                                accept="image/*"
++                                capture="environment"
++                                ref={fileInputRef}
++                                style={{ display: 'none' }}
++                                onChange={handleImageUpload}
++                            />
++                            <button
++                                className="btn-ghost"
++                                onClick={() => fileInputRef.current?.click()}
++                                disabled={uploadingImage}
++                                style={{ width: '100%', padding: 12, fontSize: 14, fontWeight: 'bold' }}
++                            >
++                                {uploadingImage ? "UPLOADING..." : (imageError ? "📷 UPLOAD IMAGE" : "📷 REPLACE IMAGE")}
++                            </button>
++                        </div>
+                     </div>
+                 </div>
+             )}
+-- 
+2.54.0.windows.1
+

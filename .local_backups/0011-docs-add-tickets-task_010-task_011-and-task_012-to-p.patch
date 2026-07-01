@@ -1,0 +1,81 @@
+From ff914a406089bddbdcf19d01ea96f24da15980a0 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 15:00:29 -0700
+Subject: [PATCH 11/24] docs: add tickets task_010, task_011, and task_012 to
+ project backlog
+
+---
+ .../task_010_backend_pin_validation.md         | 16 ++++++++++++++++
+ docs/jira_tasks/task_011_image_upload_drive.md | 18 ++++++++++++++++++
+ .../task_012_react_migration_backlog.md        | 11 +++++++++++
+ 3 files changed, 45 insertions(+)
+ create mode 100644 docs/jira_tasks/task_010_backend_pin_validation.md
+ create mode 100644 docs/jira_tasks/task_011_image_upload_drive.md
+ create mode 100644 docs/jira_tasks/task_012_react_migration_backlog.md
+
+diff --git a/docs/jira_tasks/task_010_backend_pin_validation.md b/docs/jira_tasks/task_010_backend_pin_validation.md
+new file mode 100644
+index 0000000..ce4ceee
+--- /dev/null
++++ b/docs/jira_tasks/task_010_backend_pin_validation.md
+@@ -0,0 +1,16 @@
++# task_010: Secure Backend PIN Validation
++- **Required Model Tier**: Gemini 3.5 High
++
++## Objective:
++Completely remove client-side knowledge of the Admin PIN or its hash by migrating the validation check entirely to the server-side Google Apps Script backend.
++
++## Details:
++1. Remove the local `hashPin` helper function and hash validation comparison from:
++   - `SettingsModal.jsx`
++   - `CircuitView.jsx`
++   - `PlanView.jsx`
++2. Ensure the frontend React client simply forwards the user-entered `pin` directly inside the backend API request payloads (e.g. `deleteHistory(entry, pin)`).
++3. Update the backend Google Apps Script web app code to:
++   - Intercept the incoming `pin` parameter.
++   - Validate it against the secure script configuration properties (`ScriptProperties.getProperty('ADMIN_PIN')`).
++   - If incorrect, throw an `Unauthorized` error and return a `403` status response to block spreadsheet write operations.
+diff --git a/docs/jira_tasks/task_011_image_upload_drive.md b/docs/jira_tasks/task_011_image_upload_drive.md
+new file mode 100644
+index 0000000..4a1f7b0
+--- /dev/null
++++ b/docs/jira_tasks/task_011_image_upload_drive.md
+@@ -0,0 +1,18 @@
++# task_011: Image Upload & Google Drive Integration
++- **Required Model Tier**: Gemini 3.5 High
++
++## Objective:
++Build a dynamic image upload component allowing users to upload or capture photos from their device, save them to Google Drive via the Apps Script backend, and map the URL to the exercise row.
++
++## Details:
++1. In the unified `<WorkoutCard />`, add an "Upload Image" file selector:
++   `<input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} />`
++2. Implement frontend logic to convert the selected file to a Base64-encoded string.
++3. Add a new API endpoint in `useGymAPI.js` called `uploadImage(baseName, base64Data, filename)`.
++4. Update the Google Apps Script backend Web App code to:
++   - Accept the Base64 file content.
++   - Save the file inside a designated Google Drive folder.
++   - Set file permissions to public/webviewable.
++   - Update the Google Sheet row corresponding to `baseName`'s `fileReference` with the new file URL.
++   - Return the URL response.
++5. In React, update the exercise card's active image source state to the new URL upon successful upload, removing fallback notices.
+diff --git a/docs/jira_tasks/task_012_react_migration_backlog.md b/docs/jira_tasks/task_012_react_migration_backlog.md
+new file mode 100644
+index 0000000..22e9972
+--- /dev/null
++++ b/docs/jira_tasks/task_012_react_migration_backlog.md
+@@ -0,0 +1,11 @@
++# task_012: Legacy Page React Migration
++- **Required Model Tier**: Gemini 3.5 High
++
++## Objective:
++Identify and migrate the remaining legacy HTML/JS pages (such as spreadsheet table managers or raw logs dashboards) into clean React components inside the SPA.
++
++## Details:
++1. Examine the legacy files in the root folder (such as `gymlog-ultimate.html` or other data management HTMLs).
++2. Cross-reference the features already migrated against the roadmap `/docs/react_migration_roadmap.md` and `/docs/migration_backlog.md`.
++3. Build the missing UI views (such as the raw table database spreadsheet viewer or settings logs) as React components.
++4. Mount the new views inside the React router structure to complete the full migration and allow deprecation of the remaining legacy HTML files.
+-- 
+2.54.0.windows.1
+

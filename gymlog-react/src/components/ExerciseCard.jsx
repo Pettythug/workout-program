@@ -282,18 +282,12 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         }
 
         const pin = prompt("Admin PIN required to save:");
-        if (pin !== "5050") {
-            if (pin !== null) {
-                setToast("Invalid PIN");
-                setTimeout(() => setToast(""), 2000);
-            }
-            return;
-        }
+        if (pin === null) return;
 
         try {
             setToast("Updating metadata...");
             setEditMode(null);
-            await saveExercise(payload);
+            await saveExercise(payload, pin);
             setToast("Updated! Reload to see changes.");
             setTimeout(() => setToast(""), 3000);
         } catch (e) {
@@ -305,19 +299,15 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
 
     const handleDeleteHistory = async (entry) => {
         const pin = prompt("Admin PIN required:");
-        if (pin === "5050") {
-            try {
-                await deleteHistory({ exercise: ex.name, ...entry }, pin);
-                deleteSetFromLocalHistory(ex.name, entry);
-                setToast("Entry deleted!");
-                setTimeout(() => setToast(""), 2000);
-            } catch (e) {
-                console.error(e);
-                setToast("Error deleting");
-                setTimeout(() => setToast(""), 2000);
-            }
-        } else if (pin !== null) {
-            setToast("Invalid PIN");
+        if (pin === null) return;
+        try {
+            await deleteHistory({ exercise: ex.name, ...entry }, pin);
+            deleteSetFromLocalHistory(ex.name, entry);
+            setToast("Entry deleted!");
+            setTimeout(() => setToast(""), 2000);
+        } catch (e) {
+            console.error(e);
+            setToast("Error deleting");
             setTimeout(() => setToast(""), 2000);
         }
     };

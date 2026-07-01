@@ -1,0 +1,158 @@
+From ee852c6845b1af9fe0c96479b4c3b0f96b40dc2d Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Wed, 1 Jul 2026 13:29:08 -0700
+Subject: [PATCH 23/24] fix(circuit): resolve handleSwap signature and restore
+ accordion skip logic
+
+---
+ gymlog-react/src/components/CircuitView.jsx | 119 ++++++++++----------
+ 1 file changed, 58 insertions(+), 61 deletions(-)
+
+diff --git a/gymlog-react/src/components/CircuitView.jsx b/gymlog-react/src/components/CircuitView.jsx
+index ee7dc17..42d29c7 100644
+--- a/gymlog-react/src/components/CircuitView.jsx
++++ b/gymlog-react/src/components/CircuitView.jsx
+@@ -209,8 +209,12 @@ export default function CircuitView() {
+         }
+     };
+ 
+-    const handleSwap = async (index, targetEx, isNew) => {
+-        const oldName = circuit[index].name;
++    const handleSwap = async (oldName, newName) => {
++        const index = circuit.findIndex(e => e.name === oldName);
++        if (index === -1) return;
++        
++        const targetEx = exercises.find(e => e.name === newName) || { name: newName };
++
+         const newCircuit = [...circuit];
+         newCircuit[index] = targetEx;
+         
+@@ -221,14 +225,6 @@ export default function CircuitView() {
+         }
+         
+         updateCircuitState(newCircuit, newMap);
+-
+-        if (isNew) {
+-            try {
+-                await saveExercise(targetEx);
+-            } catch (e) {
+-                console.error("Error saving new swap exercise to backend", e);
+-            }
+-        }
+     };
+ 
+     const handleLogSetSaved = (exName, entries) => {
+@@ -514,58 +510,59 @@ export default function CircuitView() {
+                             activeIdx++;
+                         }
+ 
+-                        if (activeIdx >= circuit.length) {
+-                            return (
+-                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)' }}>
+-                                    <h2>🎉 Circuit Complete!</h2>
+-                                    <p>Great job finishing the workout.</p>
+-                                    <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12 }}>Finish</button>
+-                                </div>
+-                            );
+-                        }
+-
+-                        const ex = circuit[activeIdx];
+-                        const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
+-
+-                        const wrappedHandleLogSetSaved = (entries) => {
+-                            handleLogSetSaved(ex.name, entries);
+-                            document.activeElement?.blur();
+-                        };
+-
+-                        const wrappedHandleSkip = () => {
+-                            handleSkip(ex.name);
+-                        };
+-
+                         return (
+-                            <>
+-                                <WorkoutCard 
+-                                    key={`${ex.name}-${activeIdx}`} 
+-                                    ex={upToDateEx} 
+-                                    index={activeIdx} 
+-                                    completedStatus={completedMap[ex.name]} 
+-                                    activePeople={activePeople} 
+-                                    onLogSetSaved={wrappedHandleLogSetSaved} 
+-                                    onExplicitDone={handleExplicitDone} 
+-                                    onSkip={wrappedHandleSkip} 
+-                                    onUndo={handleUndo} 
+-                                    onDeleteSet={handleDeleteSet}
+-                                    onDeleteHistoryEntry={handleDeleteHistoryEntry}
+-                                    isOpen={true}
+-                                    onToggle={() => {}}
+-                                    onSwap={handleSwap}
+-                                    allExercises={exercises}
+-                                    showAdminFeatures={false}
+-                                    showBestPR={false}
+-                                />
+-                                
+-                                <button 
+-                                    className="complete-btn" 
+-                                    onClick={endCircuit}
+-                                    style={{ width: '100%', background: 'var(--skip)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16, letterSpacing: 1.5, textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
+-                                >
+-                                    End Circuit
+-                                </button>
+-                            </>
++                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
++                                {circuit.map((ex, idx) => {
++                                    const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
++
++                                    const wrappedHandleLogSetSaved = (entries) => {
++                                        handleLogSetSaved(ex.name, entries);
++                                        document.activeElement?.blur();
++                                    };
++
++                                    const wrappedHandleSkip = () => {
++                                        handleSkip(ex.name);
++                                    };
++
++                                    return (
++                                        <WorkoutCard 
++                                            key={`${ex.name}-${idx}`} 
++                                            ex={upToDateEx} 
++                                            index={idx} 
++                                            completedStatus={completedMap[ex.name]} 
++                                            activePeople={activePeople} 
++                                            onLogSetSaved={wrappedHandleLogSetSaved} 
++                                            onExplicitDone={handleExplicitDone} 
++                                            onSkip={wrappedHandleSkip} 
++                                            onUndo={handleUndo} 
++                                            onDeleteSet={handleDeleteSet}
++                                            onDeleteHistoryEntry={handleDeleteHistoryEntry}
++                                            isOpen={idx === activeIdx}
++                                            onToggle={() => {}}
++                                            onSwap={handleSwap}
++                                            allExercises={exercises}
++                                            showAdminFeatures={false}
++                                            showBestPR={false}
++                                        />
++                                    );
++                                })}
++
++                                {activeIdx >= circuit.length ? (
++                                    <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)' }}>
++                                        <h2>🎉 Circuit Complete!</h2>
++                                        <p>Great job finishing the workout.</p>
++                                        <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12 }}>Finish</button>
++                                    </div>
++                                ) : (
++                                    <button 
++                                        className="complete-btn" 
++                                        onClick={endCircuit}
++                                        style={{ width: '100%', background: 'var(--skip)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16, letterSpacing: 1.5, textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
++                                    >
++                                        End Circuit
++                                    </button>
++                                )}
++                            </div>
+                         );
+                     })()}
+                 </div>
+-- 
+2.54.0.windows.1
+

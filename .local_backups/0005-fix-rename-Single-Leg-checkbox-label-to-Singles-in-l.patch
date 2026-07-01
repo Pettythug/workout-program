@@ -1,0 +1,28 @@
+From 067e740aad756458d301e924b2aa6fe0328ccb45 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 13:58:23 -0700
+Subject: [PATCH 05/24] fix: rename 'Single Leg' checkbox label to 'Singles' in
+ log notes
+
+---
+ gymlog-react/src/components/WorkoutCard.jsx | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/gymlog-react/src/components/WorkoutCard.jsx b/gymlog-react/src/components/WorkoutCard.jsx
+index 73f4a55..d7e2e3b 100644
+--- a/gymlog-react/src/components/WorkoutCard.jsx
++++ b/gymlog-react/src/components/WorkoutCard.jsx
+@@ -61,8 +61,8 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
+             <div style={{ marginTop: 8 }}>
+                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+-                        <input type="checkbox" checked={(input.note || "").includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
+-                        Single Leg
++                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
++                        Singles
+                     </label>
+                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                         <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+-- 
+2.54.0.windows.1
+

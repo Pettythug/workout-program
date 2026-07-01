@@ -92,13 +92,10 @@ export default function SettingsModal({ isOpen, onClose }) {
             return;
         }
         const pin = prompt("Enter Admin PIN to delete this exercise:");
-        if (pin !== "5050") {
-            alert("Invalid PIN.");
-            return;
-        }
+        if (pin === null) return;
 
         try {
-            await deleteExercise(deleteExName);
+            await deleteExercise(deleteExName, pin);
             removeExerciseFromLocalState(deleteExName);
             alert(`Exercise '${deleteExName}' deleted.`);
             setDeleteExName('');

@@ -1,0 +1,112 @@
+From b9929679b82013ec80413374f039d71f6a624f6e Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 14:53:57 -0700
+Subject: [PATCH 10/24] feat(security): secure admin PIN check via SHA-256 hash
+
+---
+ gymlog-react/src/components/CircuitView.jsx   | 14 ++++++++++++--
+ gymlog-react/src/components/PlanView.jsx      | 11 ++++++++++-
+ gymlog-react/src/components/SettingsModal.jsx | 12 +++++++++++-
+ 3 files changed, 33 insertions(+), 4 deletions(-)
+
+diff --git a/gymlog-react/src/components/CircuitView.jsx b/gymlog-react/src/components/CircuitView.jsx
+index fc9f0a1..9687eef 100644
+--- a/gymlog-react/src/components/CircuitView.jsx
++++ b/gymlog-react/src/components/CircuitView.jsx
+@@ -6,6 +6,14 @@ import WorkoutCard from './WorkoutCard';
+ import SettingsModal from './SettingsModal';
+ import HelpDrawer from './HelpDrawer';
+ 
++const hashPin = async (plaintext) => {
++    const msgBuffer = new TextEncoder().encode(plaintext);
++    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
++    const hashArray = Array.from(new Uint8Array(hashBuffer));
++    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
++    return hashHex;
++};
++
+ export default function CircuitView() {
+     const { logSet, deleteHistory, saveExercise } = useGymAPI();
+     const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
+@@ -287,7 +295,8 @@ export default function CircuitView() {
+     const handleDeleteSet = async (exName, setIdx) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        if (pin !== "5050") {
++        const hashed = await hashPin(pin);
++        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+             alert("Incorrect Admin PIN.");
+             return;
+         }
+@@ -323,7 +332,8 @@ export default function CircuitView() {
+     const handleDeleteHistoryEntry = async (entry) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        if (pin !== "5050") {
++        const hashed = await hashPin(pin);
++        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+             alert("Incorrect Admin PIN.");
+             return;
+         }
+diff --git a/gymlog-react/src/components/PlanView.jsx b/gymlog-react/src/components/PlanView.jsx
+index 22697be..4cb29f9 100644
+--- a/gymlog-react/src/components/PlanView.jsx
++++ b/gymlog-react/src/components/PlanView.jsx
+@@ -6,6 +6,14 @@ import AccessoryBlock from './AccessoryBlock';
+ import SettingsModal from './SettingsModal';
+ import HelpDrawer from './HelpDrawer';
+ 
++const hashPin = async (plaintext) => {
++    const msgBuffer = new TextEncoder().encode(plaintext);
++    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
++    const hashArray = Array.from(new Uint8Array(hashBuffer));
++    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
++    return hashHex;
++};
++
+ export default function PlanView() {
+     const { deleteHistory } = useGymAPI();
+     const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, deleteSetFromLocalHistory } = useAppContext();
+@@ -256,7 +264,8 @@ export default function PlanView() {
+     const handleDeleteHistoryEntry = async (entry) => {
+         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
+         if (pin === null) return;
+-        if (pin !== "5050") {
++        const hashed = await hashPin(pin);
++        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+             alert("Incorrect Admin PIN.");
+             return;
+         }
+diff --git a/gymlog-react/src/components/SettingsModal.jsx b/gymlog-react/src/components/SettingsModal.jsx
+index 1870afa..3e12fd5 100644
+--- a/gymlog-react/src/components/SettingsModal.jsx
++++ b/gymlog-react/src/components/SettingsModal.jsx
+@@ -2,6 +2,14 @@ import React, { useState, useMemo } from 'react';
+ import { useAppContext } from '../context/AppContext';
+ import { useGymAPI } from '../hooks/useGymAPI';
+ 
++const hashPin = async (plaintext) => {
++    const msgBuffer = new TextEncoder().encode(plaintext);
++    const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
++    const hashArray = Array.from(new Uint8Array(hashBuffer));
++    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
++    return hashHex;
++};
++
+ export default function SettingsModal({ isOpen, onClose }) {
+     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+     const { deleteExercise } = useGymAPI();
+@@ -92,7 +100,9 @@ export default function SettingsModal({ isOpen, onClose }) {
+             return;
+         }
+         const pin = prompt("Enter Admin PIN to delete this exercise:");
+-        if (pin !== "5050") {
++        if (pin === null) return;
++        const hashed = await hashPin(pin);
++        if (hashed !== "f71bcbe5c9429e71cbcf109e25d2c6766d03ca4d41fa980bf98b248a3e758784") {
+             alert("Invalid PIN.");
+             return;
+         }
+-- 
+2.54.0.windows.1
+

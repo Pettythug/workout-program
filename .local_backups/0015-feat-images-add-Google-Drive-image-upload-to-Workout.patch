@@ -1,0 +1,487 @@
+From 4528ad851fd51b585d979e166af079168c5caad2 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 15:30:34 -0700
+Subject: [PATCH 15/24] feat(images): add Google Drive image upload to
+ WorkoutCard admin panel
+
+---
+ Combined_AppScript_v2.gs                      |  39 ++++
+ .../jira_tasks/task_011_image_upload_drive.md | 168 ++++++++++++++++--
+ gymlog-react/src/components/WorkoutCard.jsx   | 142 ++++++++++-----
+ gymlog-react/src/hooks/useGymAPI.js           |  23 ++-
+ 4 files changed, 308 insertions(+), 64 deletions(-)
+
+diff --git a/Combined_AppScript_v2.gs b/Combined_AppScript_v2.gs
+index 07c88df..5ddb538 100644
+--- a/Combined_AppScript_v2.gs
++++ b/Combined_AppScript_v2.gs
+@@ -43,6 +43,10 @@ const SETTINGS_HEADERS  = ["Setting", "Value"];
+ const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
+ const DEFAULT_PEOPLE  = ["Brian", "Dad"];
+ 
++// Google Drive folder ID for exercise images.
++// SECURITY: Store this as Script Property 'DRIVE_FOLDER_ID' and set it in Project Settings.
++const DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || '';
++
+ // Workout Builder tabs (unchanged)
+ const WB_WORKOUTS_TAB  = "Workouts";
+ const WB_EXERCISES_TAB = "Exercises";
+@@ -90,6 +94,7 @@ function doGet(e) {
+       if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
+       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
+       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
++      if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
+       return err("Unknown payload action: " + payload.action);
+     } catch (ex) {
+       return err(ex.message);
+@@ -117,6 +122,7 @@ function doPost(e) {
+     if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
+     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
+     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
++    if (payload.action === "uploadImage")     return gymlog_handleUploadImage(payload);
+     return err("Unknown action: " + payload.action);
+   } catch (ex) {
+     return err(ex.message);
+@@ -542,6 +548,39 @@ function gymlog_handleSaveExerciseNote(payload) {
+ }
+ 
+ 
++// =============================================================================
++// GYMLOG — UPLOAD IMAGE TO GOOGLE DRIVE
++// =============================================================================
++
++function gymlog_handleUploadImage(payload) {
++  verifyAdminPin(payload);
++  const { baseName, base64Data, mimeType, filename } = payload;
++  if (!baseName || !base64Data) return err("Missing baseName or base64Data");
++
++  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
++  const decoded = Utilities.base64Decode(base64Data);
++  const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename || (baseName + '.jpg'));
++  const file = folder.createFile(blob);
++  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
++
++  const fileUrl = 'https://drive.google.com/uc?export=view&id=' + file.getId();
++
++  // Update the fileReference column in the Exercises sheet
++  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
++  const lastRow = exSheet.getLastRow();
++  if (lastRow > 1) {
++    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
++    for (let i = 0; i < names.length; i++) {
++      if (String(names[i][0]).trim().toLowerCase() === String(baseName).trim().toLowerCase()) {
++        const fileRefCol = EXERCISES_HEADERS.indexOf("File Reference") + 1;
++        exSheet.getRange(i + 2, fileRefCol).setValue(fileUrl);
++        break;
++      }
++    }
++  }
++  return ok({ url: fileUrl });
++}
++
+ // =============================================================================
+ // GYMLOG — SAVE PEOPLE
+ // =============================================================================
+diff --git a/docs/jira_tasks/task_011_image_upload_drive.md b/docs/jira_tasks/task_011_image_upload_drive.md
+index 4a1f7b0..718d3a2 100644
+--- a/docs/jira_tasks/task_011_image_upload_drive.md
++++ b/docs/jira_tasks/task_011_image_upload_drive.md
+@@ -1,18 +1,154 @@
+-# task_011: Image Upload & Google Drive Integration
+-- **Required Model Tier**: Gemini 3.5 High
++# task_011: Image Upload & Google Drive Integration (Full Scope)
++- **Required Model Tier**: Claude Sonnet 4.6 / Medium
++
++## Pre-Flight Research Findings:
++- `WorkoutCard.jsx` line 145-147: `imgSrc` currently builds a LOCAL file path:
++  `${import.meta.env.BASE_URL}images/${ex.fileReference}`
++  This only works if the image file physically exists on the device. No upload mechanism exists.
++- `Combined_AppScript_v2.gs` has no Drive folder constant or upload handler.
++- The `EXERCISES_HEADERS` array (line 40) already includes a `"File Reference"` column in the Google Sheet.
++- `gymlog_handleSaveExercise()` already writes `payload.fileReference` to the Sheet row.
++- `useGymAPI.js` has `saveExercise(metadata)` which can pass `fileReference` — no changes needed there IF the new URL is passed correctly.
+ 
+ ## Objective:
+-Build a dynamic image upload component allowing users to upload or capture photos from their device, save them to Google Drive via the Apps Script backend, and map the URL to the exercise row.
+-
+-## Details:
+-1. In the unified `<WorkoutCard />`, add an "Upload Image" file selector:
+-   `<input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} />`
+-2. Implement frontend logic to convert the selected file to a Base64-encoded string.
+-3. Add a new API endpoint in `useGymAPI.js` called `uploadImage(baseName, base64Data, filename)`.
+-4. Update the Google Apps Script backend Web App code to:
+-   - Accept the Base64 file content.
+-   - Save the file inside a designated Google Drive folder.
+-   - Set file permissions to public/webviewable.
+-   - Update the Google Sheet row corresponding to `baseName`'s `fileReference` with the new file URL.
+-   - Return the URL response.
+-5. In React, update the exercise card's active image source state to the new URL upon successful upload, removing fallback notices.
++Allow users to upload or photograph an exercise image from any device. The image uploads
++to Google Drive, the public URL is saved in the Google Sheet `fileReference` column,
++and the card immediately renders the live URL instead of a local path.
++
++## Changes Required:
++
++### 1. `Combined_AppScript_v2.gs`
++Add below existing constants (after line 44):
++```javascript
++// Google Drive folder ID for exercise images.
++// SECURITY: Store this as Script Property 'DRIVE_FOLDER_ID' and set it in Project Settings.
++const DRIVE_FOLDER_ID = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID') || '';
++```
++
++Add a new action route in both `doGet` and `doPost` payload routing blocks:
++```javascript
++if (payload.action === "uploadImage") return gymlog_handleUploadImage(payload);
++```
++
++Add new handler function `gymlog_handleUploadImage(payload)`:
++```javascript
++function gymlog_handleUploadImage(payload) {
++  verifyAdminPin(payload);
++  const { baseName, base64Data, mimeType, filename } = payload;
++  if (!baseName || !base64Data) return err("Missing baseName or base64Data");
++
++  const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
++  const decoded = Utilities.base64Decode(base64Data);
++  const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename || (baseName + '.jpg'));
++  const file = folder.createFile(blob);
++  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
++
++  const fileUrl = 'https://drive.google.com/uc?export=view&id=' + file.getId();
++
++  // Update the fileReference column in the Exercises sheet
++  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
++  const lastRow = exSheet.getLastRow();
++  if (lastRow > 1) {
++    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
++    for (let i = 0; i < names.length; i++) {
++      if (String(names[i][0]).trim().toLowerCase() === String(baseName).trim().toLowerCase()) {
++        const fileRefCol = EXERCISES_HEADERS.indexOf("File Reference") + 1;
++        exSheet.getRange(i + 2, fileRefCol).setValue(fileUrl);
++        break;
++      }
++    }
++  }
++  return ok({ url: fileUrl });
++}
++```
++
++### 2. `gymlog-react/src/hooks/useGymAPI.js`
++Add a new `uploadImage(baseName, base64Data, mimeType, filename, pin)` function:
++```javascript
++const uploadImage = useCallback((baseName, base64Data, mimeType, filename, pin) => {
++    return sheetsPost({
++        action: "uploadImage",
++        baseName,
++        base64Data,
++        mimeType,
++        filename,
++        pin
++    });
++}, [sheetsPost]);
++```
++Add `uploadImage` to the return object.
++
++### 3. `gymlog-react/src/components/WorkoutCard.jsx`
++- Import `useGymAPI` and destructure `uploadImage` from it (it already imports `useGymAPI`).
++- Add state: `const [uploadingImage, setUploadingImage] = useState(false);`
++- Add a hidden file input ref using `React.useRef`.
++- Update `imgSrc` (lines 145-147) to handle both local paths and full URLs:
++  ```javascript
++  const imgSrc = ex.fileReference
++      ? (ex.fileReference.startsWith('http')
++          ? ex.fileReference
++          : `${import.meta.env.BASE_URL}images/${ex.fileReference}`)
++      : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
++  ```
++- Add an `handleImageUpload` async function:
++  ```javascript
++  const handleImageUpload = async (e) => {
++      const file = e.target.files[0];
++      if (!file) return;
++      const pin = window.prompt("Enter Admin PIN to upload image:");
++      if (!pin) return;
++      setUploadingImage(true);
++      try {
++          const reader = new FileReader();
++          reader.onload = async (ev) => {
++              const base64 = ev.target.result.split(',')[1];
++              const result = await uploadImage(ex.name, base64, file.type, file.name, pin);
++              // Update exercise fileReference in local state via saveExercise
++              await saveExercise({ ...ex, fileReference: result.url });
++              setToast("Image uploaded!");
++              setTimeout(() => setToast(""), 3000);
++              setUploadingImage(false);
++          };
++          reader.readAsDataURL(file);
++      } catch (err) {
++          alert("Upload failed: " + err.message);
++          setUploadingImage(false);
++      }
++  };
++  ```
++- Add a hidden file input and an upload button in the admin features section of the card:
++  ```jsx
++  <input
++      type="file"
++      accept="image/*"
++      capture="environment"
++      ref={fileInputRef}
++      style={{ display: 'none' }}
++      onChange={handleImageUpload}
++  />
++  <button
++      className="btn-ghost"
++      onClick={() => fileInputRef.current?.click()}
++      disabled={uploadingImage}
++      style={{ fontSize: 11, padding: '4px 8px' }}
++  >
++      {uploadingImage ? "Uploading..." : "📷 Upload Image"}
++  </button>
++  ```
++  Place this button inside the existing `showAdminFeatures` block so it only appears for admins.
++
++## Verification:
++1. `npm run build` in `gymlog-react/` — zero errors.
++2. Commit with message: `feat(images): add Google Drive image upload to WorkoutCard admin panel`
++3. Output detailed Audit Log.
++
++## IMPORTANT Notes:
++- Do NOT hardcode the Drive Folder ID. It must be read from Script Properties (`DRIVE_FOLDER_ID`).
++- Do NOT modify any Google Sheets schema or spreadsheet data directly.
++- Do NOT modify any files outside `/gymlog-react/src/` and `Combined_AppScript_v2.gs`.
++- The upload button must ONLY appear when `showAdminFeatures === true`.
++
++## Post-Deploy Action Required (by human):
++Set `DRIVE_FOLDER_ID` in Google Apps Script Project Settings → Script Properties.
++Value = the Google Drive folder ID where exercise images should be stored.
++Then redeploy the Web App.
+diff --git a/gymlog-react/src/components/WorkoutCard.jsx b/gymlog-react/src/components/WorkoutCard.jsx
+index 7b30e76..83be442 100644
+--- a/gymlog-react/src/components/WorkoutCard.jsx
++++ b/gymlog-react/src/components/WorkoutCard.jsx
+@@ -1,4 +1,4 @@
+-import React, { useState, useMemo } from 'react';
++import React, { useState, useMemo, useRef } from 'react';
+ import { useAppContext } from '../context/AppContext';
+ import { useGymAPI } from '../hooks/useGymAPI';
+ import { useTargetLock } from '../hooks/useTargetLock';
+@@ -99,7 +99,7 @@ export default function WorkoutCard({
+     showBestPR = false 
+ }) {
+     const { people, activePeople, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, saveExercise } = useAppContext();
+-    const { logSet, deleteHistory } = useGymAPI();
++    const { logSet, deleteHistory, uploadImage } = useGymAPI();
+ 
+     const [mode, setMode] = useState("Standard");
+     const [isOpenState, setIsOpenState] = useState(false);
+@@ -114,6 +114,8 @@ export default function WorkoutCard({
+     const [customSwapState, setCustomSwapState] = useState(null);
+     const [showImage, setShowImage] = useState(false);
+     const [imageError, setImageError] = useState(false);
++    const [uploadingImage, setUploadingImage] = useState(false);
++    const fileInputRef = useRef(null);
+ 
+     const handleShowImage = () => {
+         setImageError(false);
+@@ -142,8 +144,10 @@ export default function WorkoutCard({
+     const isDone = status === 'done';
+     const isSkipped = status === 'skipped';
+ 
+-    const imgSrc = ex.fileReference 
+-        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
++    const imgSrc = ex.fileReference
++        ? (ex.fileReference.startsWith('http')
++            ? ex.fileReference
++            : `${import.meta.env.BASE_URL}images/${ex.fileReference}`)
+         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+ 
+     const uniqueCategories = useMemo(() => {
+@@ -260,6 +264,30 @@ export default function WorkoutCard({
+         }
+     };
+ 
++    const handleImageUpload = async (e) => {
++        const file = e.target.files[0];
++        if (!file) return;
++        const pin = window.prompt("Enter Admin PIN to upload image:");
++        if (!pin) return;
++        setUploadingImage(true);
++        try {
++            const reader = new FileReader();
++            reader.onload = async (ev) => {
++                const base64 = ev.target.result.split(',')[1];
++                const result = await uploadImage(ex.name, base64, file.type, file.name, pin);
++                // Update exercise fileReference in local state via saveExercise
++                await saveExercise({ ...ex, fileReference: result.url });
++                setToast("Image uploaded!");
++                setTimeout(() => setToast(""), 3000);
++                setUploadingImage(false);
++            };
++            reader.readAsDataURL(file);
++        } catch (err) {
++            alert("Upload failed: " + err.message);
++            setUploadingImage(false);
++        }
++    };
++
+     const handleOpenEdit = (type) => {
+         if (type === 'circuit') {
+             handleSaveInlineEdit('circuit');
+@@ -572,49 +600,69 @@ export default function WorkoutCard({
+                                     )}
+ 
+                                     {showAdminFeatures && (
+-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+-                                            {editMode ? (
+-                                                <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+-                                                    {editMode === 'rename' && (
+-                                                        <input 
+-                                                            value={editValue} onChange={e => setEditValue(e.target.value)} 
+-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+-                                                            autoFocus
+-                                                        />
+-                                                    )}
+-                                                    {editMode === 'category' && (
+-                                                        <select 
+-                                                            value={editValue} onChange={e => setEditValue(e.target.value)}
+-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+-                                                        >
+-                                                            <option value="">Select Category...</option>
+-                                                            {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+-                                                            <option value="ADD_NEW">+ Add new...</option>
+-                                                        </select>
+-                                                    )}
+-                                                    {editMode === 'location' && (
+-                                                        <select 
+-                                                            value={editValue} onChange={e => setEditValue(e.target.value)}
+-                                                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+-                                                        >
+-                                                            <option value="Anywhere">Anywhere</option>
+-                                                            {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+-                                                            <option value="ADD_NEW">+ Add new...</option>
+-                                                        </select>
+-                                                    )}
+-                                                    <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+-                                                    <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+-                                                </div>
+-                                            ) : (
+-                                                <>
+-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+-                                                    <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+-                                                    <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+-                                                        {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+-                                                    </button>
+-                                                </>
+-                                            )}
++                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
++                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
++                                                {editMode ? (
++                                                    <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
++                                                        {editMode === 'rename' && (
++                                                            <input 
++                                                                value={editValue} onChange={e => setEditValue(e.target.value)} 
++                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
++                                                                autoFocus
++                                                            />
++                                                        )}
++                                                        {editMode === 'category' && (
++                                                            <select 
++                                                                value={editValue} onChange={e => setEditValue(e.target.value)}
++                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
++                                                            >
++                                                                <option value="">Select Category...</option>
++                                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
++                                                                <option value="ADD_NEW">+ Add new...</option>
++                                                            </select>
++                                                        )}
++                                                        {editMode === 'location' && (
++                                                            <select 
++                                                                value={editValue} onChange={e => setEditValue(e.target.value)}
++                                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
++                                                            >
++                                                                <option value="Anywhere">Anywhere</option>
++                                                                {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
++                                                                <option value="ADD_NEW">+ Add new...</option>
++                                                            </select>
++                                                        )}
++                                                        <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
++                                                        <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
++                                                    </div>
++                                                ) : (
++                                                    <>
++                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
++                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
++                                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
++                                                        <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
++                                                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
++                                                        </button>
++                                                    </>
++                                                )}
++                                            </div>
++                                            <div style={{ marginTop: 4 }}>
++                                                <input
++                                                    type="file"
++                                                    accept="image/*"
++                                                    capture="environment"
++                                                    ref={fileInputRef}
++                                                    style={{ display: 'none' }}
++                                                    onChange={handleImageUpload}
++                                                />
++                                                <button
++                                                    className="btn-ghost"
++                                                    onClick={() => fileInputRef.current?.click()}
++                                                    disabled={uploadingImage}
++                                                    style={{ fontSize: 11, padding: '4px 8px' }}
++                                                >
++                                                    {uploadingImage ? "Uploading..." : "📷 Upload Image"}
++                                                </button>
++                                            </div>
+                                         </div>
+                                     )}
+                                 </div>
+diff --git a/gymlog-react/src/hooks/useGymAPI.js b/gymlog-react/src/hooks/useGymAPI.js
+index a7a4834..13d4be6 100644
+--- a/gymlog-react/src/hooks/useGymAPI.js
++++ b/gymlog-react/src/hooks/useGymAPI.js
+@@ -193,6 +193,26 @@ export function useGymAPI() {
+         });
+     }, [sheetsPost]);
+ 
++    /**
++     * Upload an image to Google Drive and update fileReference on the exercise.
++     * @param {string} baseName
++     * @param {string} base64Data
++     * @param {string} mimeType
++     * @param {string} filename
++     * @param {string} pin
++     * @returns {Promise<any>}
++     */
++    const uploadImage = useCallback((baseName, base64Data, mimeType, filename, pin) => {
++        return sheetsPost({
++            action: "uploadImage",
++            baseName,
++            base64Data,
++            mimeType,
++            filename,
++            pin
++        });
++    }, [sheetsPost]);
++
+     return {
+         syncAll,
+         logSet,
+@@ -202,6 +222,7 @@ export function useGymAPI() {
+         sheetsPost,
+         deleteExercise,
+         saveSettings,
+-        saveExerciseNote
++        saveExerciseNote,
++        uploadImage
+     };
+ }
+-- 
+2.54.0.windows.1
+

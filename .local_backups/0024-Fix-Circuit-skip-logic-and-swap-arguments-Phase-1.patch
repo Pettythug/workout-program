@@ -1,0 +1,29 @@
+From 2ae415540db94bb3c4954dd3e018bcf3354a5874 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Wed, 1 Jul 2026 13:29:39 -0700
+Subject: [PATCH 24/24] Fix Circuit skip logic and swap arguments (Phase 1)
+
+---
+ gymlog-react/src/components/CircuitView.jsx | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/gymlog-react/src/components/CircuitView.jsx b/gymlog-react/src/components/CircuitView.jsx
+index 42d29c7..3296af7 100644
+--- a/gymlog-react/src/components/CircuitView.jsx
++++ b/gymlog-react/src/components/CircuitView.jsx
+@@ -514,12 +514,10 @@ export default function CircuitView() {
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                 {circuit.map((ex, idx) => {
+                                     const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
+-
+                                     const wrappedHandleLogSetSaved = (entries) => {
+                                         handleLogSetSaved(ex.name, entries);
+                                         document.activeElement?.blur();
+                                     };
+-
+                                     const wrappedHandleSkip = () => {
+                                         handleSkip(ex.name);
+                                     };
+-- 
+2.54.0.windows.1
+

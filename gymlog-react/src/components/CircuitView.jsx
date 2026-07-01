@@ -350,10 +350,6 @@ export default function CircuitView() {
     const handleDeleteSet = async (exName, setIdx) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-        if (pin !== "5050") {
-            alert("Incorrect Admin PIN.");
-            return;
-        }
 
         const currentData = completedMap[exName];
         if (!currentData || typeof currentData === 'string') return;
@@ -386,10 +382,6 @@ export default function CircuitView() {
     const handleDeleteHistoryEntry = async (entry) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-        if (pin !== "5050") {
-            alert("Incorrect Admin PIN.");
-            return;
-        }
 
         const exName = entry.exercise;
         if (!exName) {

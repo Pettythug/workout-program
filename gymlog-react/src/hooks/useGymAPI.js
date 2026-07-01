@@ -108,8 +108,7 @@ export function useGymAPI() {
         return sheetsPost({
             action: "logSet",
             exercise: exName,
-            entries: entries,
-            pin: "5050"
+            entries: entries
         });
     }, [sheetsPost]);
 
@@ -132,12 +131,12 @@ export function useGymAPI() {
      * @param {Object} metadata 
      * @returns {Promise<any>}
      */
-    const saveExercise = useCallback((metadata) => {
+    const saveExercise = useCallback((metadata, pin) => {
         return sheetsPost({
             action: "saveExercise",
             exercise: metadata.name || metadata.exercise,
             ...metadata,
-            pin: "5050"
+            pin: pin
         });
     }, [sheetsPost]);
 
@@ -162,11 +161,11 @@ export function useGymAPI() {
      * @param {string} name 
      * @returns {Promise<any>}
      */
-    const deleteExercise = useCallback(async (name) => {
+    const deleteExercise = useCallback(async (name, pin) => {
         return sheetsPost({
             action: "exec",
             args: ["deleteExercise", name],
-            pin: "5050"
+            pin: pin
         });
     }, [sheetsPost]);
 
@@ -178,8 +177,7 @@ export function useGymAPI() {
     const saveSettings = useCallback(async (data) => {
         return sheetsPost({
             action: "exec",
-            args: ["saveSettings", data],
-            pin: "5050"
+            args: ["saveSettings", data]
         });
     }, [sheetsPost]);
 
@@ -191,8 +189,7 @@ export function useGymAPI() {
     const saveExerciseNote = useCallback(async (data) => {
         return sheetsPost({
             action: "exec",
-            args: ["saveExerciseNote", data],
-            pin: "5050"
+            args: ["saveExerciseNote", data]
         });
     }, [sheetsPost]);
 

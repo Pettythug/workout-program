@@ -1,0 +1,150 @@
+From 44325230d95e008878da1027e8fe7f2ec3e44f8d Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sat, 27 Jun 2026 13:51:36 -0700
+Subject: [PATCH 04/24] feat: implement today's logged sets summary and
+ deletion on Plan completion screen
+
+---
+ gymlog-react/src/components/PlanView.jsx | 98 +++++++++++++++++++++---
+ 1 file changed, 87 insertions(+), 11 deletions(-)
+
+diff --git a/gymlog-react/src/components/PlanView.jsx b/gymlog-react/src/components/PlanView.jsx
+index b2b226e..22697be 100644
+--- a/gymlog-react/src/components/PlanView.jsx
++++ b/gymlog-react/src/components/PlanView.jsx
+@@ -1,12 +1,14 @@
+ import React, { useState, useMemo } from 'react';
+ import { useAppContext } from '../context/AppContext';
++import { useGymAPI } from '../hooks/useGymAPI';
+ import WorkoutCard from './WorkoutCard';
+ import AccessoryBlock from './AccessoryBlock';
+ import SettingsModal from './SettingsModal';
+ import HelpDrawer from './HelpDrawer';
+ 
+ export default function PlanView() {
+-    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus } = useAppContext();
++    const { deleteHistory } = useGymAPI();
++    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, deleteSetFromLocalHistory } = useAppContext();
+     const [workoutType, setWorkoutType] = useState(() => {
+         return localStorage.getItem('gymlog_workoutType') || 'Pull';
+     });
+@@ -210,12 +212,16 @@ export default function PlanView() {
+     };
+ 
+     const completeWorkout = () => {
++        if (!window.confirm("Are you sure you want to finish today's workout and advance to the next day?")) return;
++
+         // Increment the counters for the groups we just used so they rotate next time
+-        plannedExercises.forEach(ex => {
+-            if (ex && ex.rotationKey) {
+-                const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
+-                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, currentIdx + 1);
+-            }
++        plannedExercises.forEach(group => {
++            Object.values(group.variations || {}).forEach(v => {
++                if (v && v.rotationKey) {
++                    const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + v.rotationKey) || '0', 10);
++                    localStorage.setItem('gymlog_rotation_' + v.rotationKey, currentIdx + 1);
++                }
++            });
+         });
+ 
+         // Clear exercise status for all variations in today's rotation
+@@ -232,6 +238,45 @@ export default function PlanView() {
+         setView('tracker');
+     };
+ 
++    const getTodaysLoggedSets = () => {
++        const logged = [];
++        plannedExercises.forEach(group => {
++            Object.values(group.variations || {}).forEach(v => {
++                if (v.history && v.history.length > 0) {
++                    const todays = v.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
++                    if (todays.length > 0) {
++                        logged.push({ exercise: v, sets: todays });
++                    }
++                }
++            });
++        });
++        return logged;
++    };
++
++    const handleDeleteHistoryEntry = async (entry) => {
++        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
++        if (pin === null) return;
++        if (pin !== "5050") {
++            alert("Incorrect Admin PIN.");
++            return;
++        }
++
++        const exName = entry.exercise;
++        if (!exName) {
++            alert("Exercise name is missing in history entry.");
++            return;
++        }
++
++        try {
++            await deleteHistory(entry, pin);
++            deleteSetFromLocalHistory(exName, entry);
++            alert("Set deleted successfully.");
++        } catch (e) {
++            console.error("Error deleting history entry:", e);
++            alert("Failed to delete history entry: " + e.message);
++        }
++    };
++
+     const getRepRange = (day) => {
+         const position = ((day - 1) % 16);
+         if (position < 4) return '8-12';
+@@ -281,12 +326,43 @@ export default function PlanView() {
+                 const isWorkoutComplete = activeIdx >= plannedExercises.length;
+ 
+                 if (isWorkoutComplete) {
++                    const todaysLogs = getTodaysLoggedSets();
+                     return (
+-                        <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+-                            <div style={{ fontSize: 40 }}>🎉</div>
+-                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Complete!</h2>
+-                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
+-                            <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
++                        <div style={{ padding: 16, background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16 }}>
++                            <div style={{ textAlign: 'center', padding: '20px 0' }}>
++                                <div style={{ fontSize: 40 }}>🎉</div>
++                                <h2 style={{ fontSize: 22, fontWeight: 'bold', color: 'var(--success)' }}>Workout Complete!</h2>
++                                <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>Great job finishing today's routine.</p>
++                            </div>
++
++                            <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
++                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Today's Logged Sets</div>
++                                {todaysLogs.length === 0 ? (
++                                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, padding: 12 }}>No sets logged today</div>
++                                ) : (
++                                    todaysLogs.map((logGroup, idx) => (
++                                        <div key={idx} style={{ marginBottom: idx < todaysLogs.length - 1 ? 16 : 0, borderBottom: idx < todaysLogs.length - 1 ? '1px solid #222' : 'none', paddingBottom: idx < todaysLogs.length - 1 ? 12 : 0 }}>
++                                            <div style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--accent)', marginBottom: 6 }}>{logGroup.exercise.name}</div>
++                                            {logGroup.sets.map((set, sIdx) => (
++                                                <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingLeft: 8 }}>
++                                                    <div style={{ fontSize: 11, color: 'white' }}>
++                                                        <span style={{ color: 'var(--muted)' }}>Set {set.setNum || (sIdx + 1)} ({set.person.toUpperCase()}):</span> {set.timed ? `${set.reps}` : `${set.reps}x${set.weight || 0} lbs`}
++                                                    </div>
++                                                    <button 
++                                                        onClick={() => handleDeleteHistoryEntry({ ...set, exercise: logGroup.exercise.name })}
++                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 13, padding: '0 4px' }}
++                                                        title="Delete Set"
++                                                    >
++                                                        🗑
++                                                    </button>
++                                                </div>
++                                            ))}
++                                        </div>
++                                    ))
++                                )}
++                            </div>
++
++                            <button className="btn-success" onClick={completeWorkout} style={{ width: '100%', padding: 16, fontWeight: 'bold', fontSize: 14 }}>
+                                 Finish Workout
+                             </button>
+                         </div>
+-- 
+2.54.0.windows.1
+

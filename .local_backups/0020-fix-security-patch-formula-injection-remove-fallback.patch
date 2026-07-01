@@ -1,0 +1,65 @@
+From f7a5d65edfa41b327b25ab29f8c1a2c4862f1224 Mon Sep 17 00:00:00 2001
+From: Brian Wance <brian.wance@gaf.com>
+Date: Sun, 28 Jun 2026 17:57:26 -0700
+Subject: [PATCH 20/24] fix(security): patch formula injection, remove fallback
+ PIN, increase lock timeout
+
+---
+ Combined_AppScript_v2.gs | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/Combined_AppScript_v2.gs b/Combined_AppScript_v2.gs
+index 269264f..b7e462c 100644
+--- a/Combined_AppScript_v2.gs
++++ b/Combined_AppScript_v2.gs
+@@ -27,8 +27,10 @@
+ 
+ const SHEET_ID    = "1Y9xiUf-2w_Ko_YVIxj3KPIjFc8UDNg8U1wPc9fXSqx4";
+ // SECURITY: Set the ADMIN_PIN Script Property in Apps Script Project Settings > Script Properties
+-// to complete security hardening. The fallback '5050' is used only if the property is not yet configured.
+-const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN') || '5050';
++const ADMIN_PIN   = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
++if (!ADMIN_PIN) {
++  throw new Error("FATAL: ADMIN_PIN Script Property is not configured. Backend locked.");
++}
+ const HISTORY_TAB = "GymLog_History";
+ const BEST_TAB    = "GymLog";          // same tab name as before, schema changes after migration
+ const PEOPLE_TAB  = "GymLog_People";   // new tab
+@@ -60,7 +62,7 @@ const WB_LOG_TAB       = "Log";
+ function withLock(handler, payload) {
+   const lock = LockService.getScriptLock();
+   try {
+-    lock.waitLock(10000); // Wait up to 10 seconds for the lock
++    lock.waitLock(30000); // Wait up to 30 seconds for the lock
+     return handler(payload);
+   } catch (e) {
+     return err("Server is busy due to concurrent writes. Please try again.");
+@@ -69,6 +71,11 @@ function withLock(handler, payload) {
+   }
+ }
+ 
++function sanitizeInput(str) {
++  if (typeof str !== 'string') return str;
++  return str.replace(/^[=+\-@]/, '');
++}
++
+ /**
+  * GET handler.
+  * - If ?payload= is present → GymLog write op tunneled through GET.
+@@ -309,10 +316,10 @@ function gymlog_handleLogSet(payload) {
+       entry.date,
+       entry.person,
+       exercise,
+-      entry.reps,
+-      entry.weight,
++      sanitizeInput(entry.reps),
++      sanitizeInput(entry.weight),
+       normalizeRange(entry.range),   // remap r15_20 → r13_plus on write
+-      entry.note   || "",
++      sanitizeInput(entry.note   || ""),
+       entry.setNum || ""
+     ]);
+   });
+-- 
+2.54.0.windows.1
+
