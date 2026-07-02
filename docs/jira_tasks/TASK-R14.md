@@ -29,10 +29,10 @@
            "Explosive",
            "Knee Dominant",
            "Hip Dominant",
-           "Vertical Push",
            "Horizontal Push",
-           "Vertical Pull",
            "Horizontal Pull",
+           "Vertical Push",
+           "Vertical Pull",
            "Rotational Core",
            "Plank Core",
            "Accessory"
