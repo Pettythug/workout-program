@@ -187,6 +187,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         });
     };
 
+    const clearLogInputs = () => {
+        const cleared = {};
+        people.forEach(p => {
+            cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+        });
+        setLogInputs(cleared);
+    };
+
     // Auto-initialize when opened
     React.useEffect(() => {
         if (isOpen) {
@@ -210,6 +218,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const handleSaveSet = async () => {
         if (isSaving) return;
         setIsSaving(true);
+        console.log("handleSaveSet CALLED", { ex, logInputs });
         
         try {
             const todayStr = new Date().toLocaleString('en-US');
@@ -298,12 +307,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 if (onLogSet) {
                     onLogSet();
                 }
-                initLogInputs(); // Clear inputs on success
+                clearLogInputs(); // Force-clear inputs after successful log
             }
         } catch (e) {
-            console.error(e);
-            setToast("Error saving set");
-            setTimeout(() => setToast(""), 2000);
+            console.error("Error in handleSaveSet:", e);
+            alert("Failed to log set: " + e.message);
         } finally {
             setIsSaving(false);
         }

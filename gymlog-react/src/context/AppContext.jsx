@@ -88,8 +88,10 @@ export function AppProvider({ children }) {
                 if (error.name === 'AbortError' || controller.signal.aborted) return;
                 console.error("Error loading initial data:", error);
             } finally {
-                setLoading(false);
-                setIsSyncing(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                    setIsSyncing(false);
+                }
             }
         };
 
