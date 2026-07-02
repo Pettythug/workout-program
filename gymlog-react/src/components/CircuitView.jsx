@@ -6,6 +6,19 @@ import CircuitCard from './CircuitCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
+const CATEGORY_ORDER = [
+    "Explosive",
+    "Knee Dominant",
+    "Hip Dominant",
+    "Horizontal Push",
+    "Horizontal Pull",
+    "Vertical Push",
+    "Vertical Pull",
+    "Rotational Core",
+    "Plank Core",
+    "Accessory"
+];
+
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
@@ -164,6 +177,14 @@ export default function CircuitView() {
             newCircuit.push(pickRandom(grouped[cat]));
         });
 
+        newCircuit.sort((a, b) => {
+            const idxA = CATEGORY_ORDER.indexOf(a.category);
+            const idxB = CATEGORY_ORDER.indexOf(b.category);
+            const valA = idxA === -1 ? 999 : idxA;
+            const valB = idxB === -1 ? 999 : idxB;
+            return valA - valB;
+        });
+
         updateCircuitState(newCircuit, {});
         setView('tracker');
     };
@@ -196,6 +217,14 @@ export default function CircuitView() {
             alert("Please select at least one category.");
             return;
         }
+
+        newCircuit.sort((a, b) => {
+            const idxA = CATEGORY_ORDER.indexOf(a.category);
+            const idxB = CATEGORY_ORDER.indexOf(b.category);
+            const valA = idxA === -1 ? 999 : idxA;
+            const valB = idxB === -1 ? 999 : idxB;
+            return valA - valB;
+        });
 
         updateCircuitState(newCircuit, {});
         setView('tracker');
