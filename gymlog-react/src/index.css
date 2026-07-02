@@ -245,3 +245,9 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* Quality of life fixes */
+.btn-no-translate:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+

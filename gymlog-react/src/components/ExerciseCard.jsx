@@ -4,6 +4,26 @@ import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
 import ImageModal from './ImageModal';
 
+const formatLogDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const today = new Date();
+        if (d.toDateString() === today.toDateString()) {
+            return `Today, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        }
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) {
+            return `Yesterday, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        }
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + `, ` + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
@@ -62,8 +82,8 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
             <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
-                        Single Leg
+                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
+                        Singles
                     </label>
                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
                         <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
@@ -409,10 +429,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     <button 
                                         key={v}
                                         onClick={(e) => { e.stopPropagation(); setMode(v); }}
-                                        className="btn-ghost" 
+                                        className="btn-ghost btn-no-translate" 
                                         style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${mode===v ? 'var(--accent)' : 'transparent'}`, color: mode===v ? 'white' : 'var(--muted)' }}
                                     >
-                                        {v.toUpperCase()}
+                                        {v === 'Single' ? 'SINGLES' : v.toUpperCase()}
                                     </button>
                                 ))}
                             </div>
@@ -534,10 +554,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     </div>
                                 ) : (
                                     <>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
-                                        <button className="btn-ghost" style={{ flex: 1, fontSize: 9, padding: '4px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
-                                        <button className={ex.isCircuit ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 9, padding: '4px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                        <button className={ex.isCircuit ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
                                             {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
                                         </button>
                                     </>
@@ -568,12 +588,18 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     {todaysSets.length > 0 && (
                                         <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 8, marginTop: 8, border: '1px solid var(--border)' }}>
                                             <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 4, textTransform: 'uppercase' }}>Today's Sets</div>
-                                            {todaysSets.map((h, i) => (
-                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
-                                                    <span style={{ color: 'var(--accent)' }}>{h.person.toUpperCase()} - Set {h.setNum || i + 1}</span>
-                                                    <span>{ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}</span>
-                                                </div>
-                                            ))}
+                                            {todaysSets.map((h, i) => {
+                                                const timeStr = h.date ? new Date(h.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+                                                return (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
+                                                        <span style={{ color: 'var(--accent)' }}>
+                                                            {h.person.toUpperCase()} - Set {h.setNum || i + 1}
+                                                            {timeStr && <span style={{ color: 'var(--muted)', fontSize: 9, marginLeft: 6 }}>({timeStr})</span>}
+                                                        </span>
+                                                        <span>{ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}</span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
 
@@ -582,13 +608,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     </button>
 
                                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                                        <button className="btn-secondary" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+                                        <button className="btn-secondary" style={{ flex: 1, padding: '10px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
                                             e.stopPropagation(); 
                                             if (window.confirm(`Are you sure you want to mark "${ex.name}" as DONE?`)) {
                                                 setExerciseDone(ex.name); 
                                             }
                                         }}>DONE</button>
-                                        <button className="btn-danger" style={{ flex: 1, padding: '8px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
+                                        <button className="btn-danger" style={{ flex: 1, padding: '10px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 
                                             e.stopPropagation(); 
                                             if (window.confirm(`Are you sure you want to SKIP "${ex.name}"?`)) {
                                                 setExerciseSkipped(ex.name); 
@@ -609,7 +635,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                 <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div>
-                                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{formatLogDate(h.date)}</div>
                                                             <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

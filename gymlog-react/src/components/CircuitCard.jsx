@@ -2,6 +2,26 @@ import React, { useState } from 'react';
 import { useTargetLock } from '../hooks/useTargetLock';
 import ImageModal from './ImageModal';
 
+const formatLogDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        const today = new Date();
+        if (d.toDateString() === today.toDateString()) {
+            return `Today, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        }
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (d.toDateString() === yesterday.toDateString()) {
+            return `Yesterday, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        }
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + `, ` + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 const PersonRow = ({ person, ex, input, updateInput }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
@@ -60,8 +80,8 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
             <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Single Leg")} onChange={() => toggleNotePhrase("Single Leg")} />
-                        Single Leg
+                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
+                        Singles
                     </label>
                     <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
                         <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
@@ -197,9 +217,9 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                         </div>
                         {(hasSingle || hasAlt) && (
                             <div style={{ display: "flex", gap: 4 }}>
-                                <button onClick={(e) => { e.stopPropagation(); switchVariation('std'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='std' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='std' ? 'white' : 'var(--muted)' }}>STD</button>
-                                {hasSingle && <button onClick={(e) => { e.stopPropagation(); switchVariation('single'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='single' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='single' ? 'white' : 'var(--muted)' }}>SINGLE</button>}
-                                {hasAlt && <button onClick={(e) => { e.stopPropagation(); switchVariation('alt'); }} className="btn-ghost" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='alt' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='alt' ? 'white' : 'var(--muted)' }}>ALT</button>}
+                                <button onClick={(e) => { e.stopPropagation(); switchVariation('std'); }} className="btn-ghost btn-no-translate" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='std' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='std' ? 'white' : 'var(--muted)' }}>STD</button>
+                                {hasSingle && <button onClick={(e) => { e.stopPropagation(); switchVariation('single'); }} className="btn-ghost btn-no-translate" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='single' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='single' ? 'white' : 'var(--muted)' }}>SINGLES</button>}
+                                {hasAlt && <button onClick={(e) => { e.stopPropagation(); switchVariation('alt'); }} className="btn-ghost btn-no-translate" style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${currentMode==='alt' ? 'var(--accent)' : 'transparent'}`, color: currentMode==='alt' ? 'white' : 'var(--muted)' }}>ALT</button>}
                             </div>
                         )}
                     </div>
@@ -245,9 +265,9 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                 {isSaving ? "SAVING..." : `LOG SET ${sets.length + 1}`}
                             </button>
 
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn-secondary" style={{ flex: 1, padding: 8 }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
-                                <button className="btn-danger" style={{ flex: 1, padding: 8 }} onClick={() => onSkip(ex.name)}>SKIP</button>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                                <button className="btn-secondary" style={{ flex: 1, padding: '10px', fontSize: 12, fontWeight: 'bold' }} onClick={() => onExplicitDone(ex.name)}>DONE</button>
+                                <button className="btn-danger" style={{ flex: 1, padding: '10px', fontSize: 12, fontWeight: 'bold' }} onClick={() => onSkip(ex.name)}>SKIP</button>
                             </div>
 
                             {/* Swap UI */}
@@ -325,14 +345,14 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         <button 
                                             onClick={() => setSwapMode(ex.name)}
-                                            className="btn-ghost"
+                                            className="btn-ghost btn-no-translate"
                                             style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11 }}
                                         >
                                             🔄 SWAP
                                         </button>
                                         <button 
                                             onClick={() => setShowImage(true)}
-                                            className="btn-ghost"
+                                            className="btn-ghost btn-no-translate"
                                             style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11 }}
                                         >
                                             📸 IMAGE
@@ -351,11 +371,19 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No logged sets in this session</div>
                                 ) : (
                                     sets.map((setEntries, sIdx) => {
-                                        const summary = setEntries.map(e => `${e.person[0].toUpperCase()}:${ex.timed ? e.reps : e.reps + '@' + (e.weight || 0)}`).join('   ');
+                                        const timeStr = setEntries[0]?.date ? new Date(setEntries[0].date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+                                        const summary = setEntries.map(e => {
+                                            const formatted = ex.timed 
+                                                ? `${e.reps}${e.weight ? ` @ ${e.weight}lbs` : ''}` 
+                                                : `${e.reps}x${e.weight || 0}`;
+                                            return `${e.person[0].toUpperCase()}:${formatted}`;
+                                        }).join('   ');
                                         return (
                                             <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                                                    <span style={{ color: 'var(--accent)' }}>L{sIdx + 1}:</span> <span style={{ color: 'white' }}>{summary}</span>
+                                                    <span style={{ color: 'var(--accent)' }}>L{sIdx + 1}</span>
+                                                    {timeStr && <span style={{ color: 'var(--muted)', fontSize: 9, marginLeft: 4 }}>({timeStr})</span>}
+                                                    <span style={{ color: 'var(--muted)' }}>:</span> <span style={{ color: 'white' }}> {summary}</span>
                                                 </div>
                                                 <button 
                                                     onClick={() => onDeleteSet(ex.name, sIdx)}
@@ -379,7 +407,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div>
-                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{h.date}</div>
+                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{formatLogDate(h.date)}</div>
                                                     <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

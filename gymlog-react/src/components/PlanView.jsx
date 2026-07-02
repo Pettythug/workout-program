@@ -346,7 +346,7 @@ export default function PlanView() {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="btn-ghost" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
+                                <button className="btn-ghost btn-no-translate" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
                                     📋 FULL LIST
                                 </button>
                             </div>
