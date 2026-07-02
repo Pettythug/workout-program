@@ -21,7 +21,7 @@ const CATEGORY_ORDER = [
 
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
-    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory } = useAppContext();
+    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet } = useAppContext();
     
     const navigate = useNavigate();
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
@@ -260,76 +260,9 @@ export default function CircuitView() {
     };
 
     const handleLogSet = async (ex, logs) => {
-        console.log("handleLogSet CALLED", {ex, logs});
-
-        const newMap = { ...completedMap };
-        const currentData = newMap[ex.name] || { status: 'active', sets: [] };
-        const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        const nextSetNum = currentSets.length + 1;
-
-        const entries = [];
-        for (const person of activePeople) {
-            const key = person.toLowerCase();
-            const input = logs[key];
-            if (!input) continue;
-            
-            if (ex.timed) {
-                if (input.duration) {
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: input.duration,
-                        weight: input.weight || "",
-                        range: "r13_plus",
-                        timed: true,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
-                }
-            } else {
-                if (input.reps) {
-                    const r = parseInt(input.reps);
-                    let range = "r13_plus";
-                    if (r <= 3) range = "r1_3";
-                    else if (r <= 7) range = "r4_7";
-                    else if (r <= 12) range = "r8_12";
-
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: r,
-                        weight: input.weight || "",
-                        range: range,
-                        timed: false,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
-                }
-            }
-        }
-
-        console.log("ENTRIES:", entries);
-        if (entries.length > 0) {
-            const userPins = {};
-            for (const person of activePeople) {
-                const key = person.toLowerCase();
-                const input = logs[key];
-                if (!input) continue;
-                if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
-                    let pin = localStorage.getItem('gymlog_pin_' + key);
-                    if (!pin) {
-                        pin = window.prompt(`Enter PIN for ${person}:`);
-                        if (pin === null) return false; // User cancelled
-                        localStorage.setItem('gymlog_pin_' + key, pin);
-                    }
-                    userPins[key] = pin;
-                }
-            }
-
-            try {
-                await logSet(ex.name, entries, userPins);
-                addSetToLocalHistory(ex.name, entries);
-                
+        try {
+            const entries = await logExerciseSet(ex, logs);
+            if (entries) {
                 const newMap = { ...completedMap };
                 const currentData = newMap[ex.name] || { status: 'active', sets: [] };
                 const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
@@ -347,13 +280,11 @@ export default function CircuitView() {
                     setTimerIsCountdown(true);
                     setTimerIsRunning(true);
                 }
-
                 return true;
-            } catch (e) {
-                console.error("Error logging set:", e);
-                alert("Failed to log set: " + e.message);
-                return false;
             }
+        } catch (e) {
+            console.error("Error logging set:", e);
+            alert("Failed to log set: " + e.message);
         }
         return false;
     };

@@ -5,7 +5,7 @@ import { mergeFromSheets } from './dataMerge';
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-    const { syncAll, syncMeta, saveExercise } = useGymAPI();
+    const { syncAll, syncMeta, saveExercise, logSet } = useGymAPI();
     
     // Core state variables
     const [workoutDay, setWorkoutDay] = useState(() => {
@@ -276,6 +276,96 @@ export function AppProvider({ children }) {
         });
     };
 
+    const logExerciseSet = async (ex, logs) => {
+        console.log("logExerciseSet CALLED", { ex, logs });
+        
+        let nextSetNum = 1;
+        if (ex.history && ex.history.length > 0) {
+            const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
+            if (todaysEntries.length > 0) {
+                const maxSetNum = todaysEntries.reduce((max, h) => {
+                    const num = parseInt(h.setNum) || 0;
+                    return num > max ? num : max;
+                }, 0);
+                nextSetNum = maxSetNum + 1;
+            }
+        }
+
+        const entries = [];
+        for (const person of activePeople) {
+            const key = person.toLowerCase();
+            const input = logs[key];
+            if (!input) continue;
+
+            if (ex.timed) {
+                if (input.duration) {
+                    entries.push({
+                        date: new Date().toLocaleString('en-US'),
+                        person: key,
+                        reps: input.duration,
+                        weight: input.weight || "",
+                        range: "r13_plus",
+                        timed: true,
+                        note: input.note || "",
+                        setNum: nextSetNum
+                    });
+                }
+            } else {
+                if (input.reps) {
+                    const r = parseInt(input.reps);
+                    let range = "r13_plus";
+                    if (r <= 3) range = "r1_3";
+                    else if (r <= 7) range = "r4_7";
+                    else if (r <= 12) range = "r8_12";
+
+                    entries.push({
+                        date: new Date().toLocaleString('en-US'),
+                        person: key,
+                        reps: r,
+                        weight: input.weight || "",
+                        range: range,
+                        timed: false,
+                        note: input.note || "",
+                        setNum: nextSetNum
+                    });
+                }
+            }
+        }
+
+        console.log("ENTRIES:", entries);
+
+        if (entries.length > 0) {
+            const userPins = {};
+            let cancelled = false;
+            for (const person of activePeople) {
+                const key = person.toLowerCase();
+                const input = logs[key];
+                if (!input) continue;
+
+                if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
+                    let pin = localStorage.getItem('gymlog_pin_' + key);
+                    if (!pin) {
+                        pin = window.prompt(`Enter PIN for ${person}:`);
+                        if (pin === null) {
+                            cancelled = true;
+                            break;
+                        }
+                        localStorage.setItem('gymlog_pin_' + key, pin);
+                    }
+                    userPins[key] = pin;
+                }
+            }
+
+            if (cancelled) return null;
+
+            // API sync & local history update
+            await logSet(ex.name, entries, userPins);
+            addSetToLocalHistory(ex.name, entries);
+            return entries;
+        }
+        return null;
+    };
+
     const contextValue = {
         workoutDay,
         people,
@@ -302,7 +392,8 @@ export function AppProvider({ children }) {
         removePersonFromRoster,
         addLocationToRoster,
         createExerciseMeta,
-        removeExerciseFromLocalState
+        removeExerciseFromLocalState,
+        logExerciseSet
     };
 
     return (

@@ -102,7 +102,7 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -218,96 +218,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const handleSaveSet = async () => {
         if (isSaving) return;
         setIsSaving(true);
-        console.log("handleSaveSet CALLED", { ex, logInputs });
-        
         try {
-            const todayStr = new Date().toLocaleString('en-US');
-            let nextSetNum = 1;
-            if (ex.history && ex.history.length > 0) {
-                const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
-                if (todaysEntries.length > 0) {
-                    const maxSetNum = todaysEntries.reduce((max, h) => {
-                        const num = parseInt(h.setNum) || 0;
-                        return num > max ? num : max;
-                    }, 0);
-                    nextSetNum = maxSetNum + 1;
-                }
-            }
-
-            const entries = [];
-            for (const person of activePeople) {
-                const key = person.toLowerCase();
-                const input = logInputs[key] || {};
-                
-                if (ex.timed) {
-                    if (input.duration) {
-                        entries.push({
-                            date: new Date().toLocaleString('en-US'),
-                            person: key,
-                            reps: input.duration,
-                            weight: input.weight || "",
-                            range: "r13_plus",
-                            timed: true,
-                            note: input.note || "",
-                            setNum: nextSetNum
-                        });
-                    }
-                } else {
-                    if (input.reps) {
-                        // Match spreadsheet schema exactly
-                        const r = parseInt(input.reps);
-                        let range = "r13_plus";
-                        if (r <= 3) range = "r1_3";
-                        else if (r <= 7) range = "r4_7";
-                        else if (r <= 12) range = "r8_12";
-
-                        entries.push({
-                            date: new Date().toLocaleString('en-US'),
-                            person: key,
-                            reps: r,
-                            weight: input.weight || "",
-                            range: range,
-                            timed: false,
-                            note: input.note || "",
-                            setNum: nextSetNum
-                        });
-                    }
-                }
-            }
-
-            if (entries.length > 0) {
-                const userPins = {};
-                let cancelled = false;
-                for (const person of activePeople) {
-                    const key = person.toLowerCase();
-                    const input = logInputs[key] || {};
-                    if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
-                        let pin = localStorage.getItem('gymlog_pin_' + key);
-                        if (!pin) {
-                            pin = window.prompt(`Enter PIN for ${person}:`);
-                            if (pin === null) {
-                                cancelled = true;
-                                break;
-                            }
-                            localStorage.setItem('gymlog_pin_' + key, pin);
-                        }
-                        userPins[key] = pin;
-                    }
-                }
-
-                if (cancelled) {
-                    setIsSaving(false);
-                    return;
-                }
-
-                await logSet(ex.name, entries, userPins);
-                addSetToLocalHistory(ex.name, entries);
+            const entries = await logExerciseSet(ex, logInputs);
+            if (entries) {
+                clearLogInputs();
                 setToast("Set Saved!");
-                setTimeout(() => setToast(""), 2000);
                 if (onLogSet) {
                     onLogSet();
                 }
-                clearLogInputs(); // Force-clear inputs after successful log
             }
         } catch (e) {
             console.error("Error in handleSaveSet:", e);
