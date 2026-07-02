@@ -304,8 +304,19 @@ function sanitizeInput(str) {
 }
 
 function gymlog_handleLogSet(payload) {
-  const { exercise, entries } = payload;
+  const { exercise, entries, userPins = {} } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+
+  // Validate User PINs
+  const scriptPinsStr = PropertiesService.getScriptProperties().getProperty('USER_PINS');
+  const validPins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
+
+  for (const entry of entries) {
+    const personKey = (entry.person || "").toLowerCase();
+    if (validPins[personKey] && userPins[personKey] !== validPins[personKey]) {
+      throw new Error(`Unauthorized: Invalid PIN for ${entry.person}`);
+    }
+  }
 
   entries.forEach(entry => {
     histSheet.appendRow([

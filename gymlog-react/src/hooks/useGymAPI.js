@@ -104,11 +104,12 @@ export function useGymAPI() {
      * @param {Array} entries 
      * @returns {Promise<any>}
      */
-    const logSet = useCallback((exName, entries) => {
+    const logSet = useCallback((exName, entries, userPins) => {
         return sheetsPost({
             action: "logSet",
             exercise: exName,
-            entries: entries
+            entries: entries,
+            userPins: userPins
         });
     }, [sheetsPost]);
 

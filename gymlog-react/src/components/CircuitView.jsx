@@ -281,8 +281,20 @@ export default function CircuitView() {
 
         console.log("ENTRIES:", entries);
         if (entries.length > 0) {
+            const userPins = {};
+            for (const person of activePeople) {
+                const key = person.toLowerCase();
+                const input = logs[key];
+                if (!input) continue;
+                if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
+                    const pin = window.prompt(`Enter PIN for ${person}:`);
+                    if (pin === null) return false; // User cancelled
+                    userPins[key] = pin;
+                }
+            }
+
             try {
-                await logSet(ex.name, entries);
+                await logSet(ex.name, entries, userPins);
                 addSetToLocalHistory(ex.name, entries);
                 
                 const newMap = { ...completedMap };

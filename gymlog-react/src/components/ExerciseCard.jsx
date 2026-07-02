@@ -221,13 +221,34 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             }
 
             if (entries.length > 0) {
-                await logSet(ex.name, entries);
+                const userPins = {};
+                let cancelled = false;
+                for (const person of activePeople) {
+                    const key = person.toLowerCase();
+                    const input = logInputs[key] || {};
+                    if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
+                        const pin = window.prompt(`Enter PIN for ${person}:`);
+                        if (pin === null) {
+                            cancelled = true;
+                            break;
+                        }
+                        userPins[key] = pin;
+                    }
+                }
+
+                if (cancelled) {
+                    setIsSaving(false);
+                    return;
+                }
+
+                await logSet(ex.name, entries, userPins);
                 addSetToLocalHistory(ex.name, entries);
                 setToast("Set Saved!");
                 setTimeout(() => setToast(""), 2000);
                 if (onLogSet) {
                     onLogSet();
                 }
+                initLogInputs(); // Clear inputs on success
             }
         } catch (e) {
             console.error(e);
@@ -235,7 +256,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             setTimeout(() => setToast(""), 2000);
         } finally {
             setIsSaving(false);
-            initLogInputs(); // Clear inputs
         }
     };
 
