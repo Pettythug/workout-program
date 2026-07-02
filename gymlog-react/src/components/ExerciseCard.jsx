@@ -724,13 +724,16 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
                                                 🔄 SWAP
                                             </button>
-                                            <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                                📸 IMAGE
-                                            </button>
                                         </div>
                                     )}
                                 </div>
                             )}
+
+                            <div style={{ marginTop: group.originalBaseKey ? 0 : 16, marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                    📸 IMAGE
+                                </button>
+                            </div>
                         </div>
                     )}
                     
