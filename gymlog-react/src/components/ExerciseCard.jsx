@@ -110,6 +110,12 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const ex = variations[mode] || variations["Standard"] || Object.values(variations)[0];
     if (!ex) return null;
 
+    const todaysSets = useMemo(() => {
+        if (!ex || !ex.history || ex.history.length === 0) return [];
+        const todayStr = new Date().toDateString();
+        return ex.history.filter(h => h.date && new Date(h.date).toDateString() === todayStr);
+    }, [ex]);
+
     const hasVariations = Object.keys(variations).length > 1;
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
@@ -558,6 +564,19 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             />
                                         );
                                     })}
+
+                                    {todaysSets.length > 0 && (
+                                        <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 8, marginTop: 8, border: '1px solid var(--border)' }}>
+                                            <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 4, textTransform: 'uppercase' }}>Today's Sets</div>
+                                            {todaysSets.map((h, i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, padding: '2px 0' }}>
+                                                    <span style={{ color: 'var(--accent)' }}>{h.person.toUpperCase()} - Set {h.setNum || i + 1}</span>
+                                                    <span>{ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
                                         {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
                                     </button>
