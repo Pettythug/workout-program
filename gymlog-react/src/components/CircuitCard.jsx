@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTargetLock } from '../hooks/useTargetLock';
 import ImageModal from './ImageModal';
 
@@ -101,7 +101,24 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
 
 export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
-    const sets = typeof completedStatus === 'object' ? (completedStatus?.sets || []) : [];
+    
+    const sets = useMemo(() => {
+        if (!ex.history) return [];
+        const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
+        
+        // Group by setNum
+        const groups = {};
+        todaysEntries.forEach(h => {
+            const sNum = h.setNum || 1;
+            if (!groups[sNum]) groups[sNum] = [];
+            groups[sNum].push(h);
+        });
+        
+        // Return sorted lists
+        return Object.keys(groups)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(key => groups[key]);
+    }, [ex.history]);
 
     const isDone = status === 'done';
     const isSkipped = status === 'skipped';
@@ -397,7 +414,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                     <span style={{ color: 'var(--muted)' }}>:</span> <span style={{ color: 'white' }}> {summary}</span>
                                                 </div>
                                                 <button 
-                                                    onClick={() => onDeleteSet(ex.name, sIdx)}
+                                                    onClick={() => onDeleteSet(ex.name, setEntries)}
                                                     style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
                                                     title="Delete Set"
                                                 >

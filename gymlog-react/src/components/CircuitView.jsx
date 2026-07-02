@@ -264,12 +264,10 @@ export default function CircuitView() {
             const entries = await logExerciseSet(ex, logs);
             if (entries) {
                 const newMap = { ...completedMap };
-                const currentData = newMap[ex.name] || { status: 'active', sets: [] };
-                const currentSets = typeof currentData === 'string' ? [] : (currentData.sets || []);
+                const currentData = newMap[ex.name] || { status: 'active' };
                 
                 newMap[ex.name] = {
-                    status: typeof currentData === 'string' ? currentData : (currentData.status || 'active'),
-                    sets: [...currentSets, entries]
+                    status: typeof currentData === 'string' ? currentData : (currentData.status || 'active')
                 };
                 updateCircuitState(circuit, newMap);
 
@@ -292,9 +290,8 @@ export default function CircuitView() {
     const handleExplicitDone = (exName) => {
         if (!window.confirm(`Are you sure you want to mark "${exName}" as DONE?`)) return;
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active', sets: [] };
-        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        newMap[exName] = { status: 'done', sets };
+        const currentData = newMap[exName] || { status: 'active' };
+        newMap[exName] = { status: 'done' };
 
         // Flip any previously skipped exercises back to active
         Object.keys(newMap).forEach(key => {
@@ -309,46 +306,27 @@ export default function CircuitView() {
     const handleSkip = (exName) => {
         if (!window.confirm(`Are you sure you want to SKIP "${exName}"?`)) return;
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active', sets: [] };
-        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        newMap[exName] = { status: 'skipped', sets };
+        const currentData = newMap[exName] || { status: 'active' };
+        newMap[exName] = { status: 'skipped' };
         updateCircuitState(circuit, newMap);
     };
 
     const handleUndo = (exName) => {
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active', sets: [] };
-        const sets = typeof currentData === 'string' ? [] : (currentData.sets || []);
-        newMap[exName] = { status: 'active', sets };
+        const currentData = newMap[exName] || { status: 'active' };
+        newMap[exName] = { status: 'active' };
         updateCircuitState(circuit, newMap);
     };
 
-    const handleDeleteSet = async (exName, setIdx) => {
+    const handleDeleteSet = async (exName, setEntries) => {
         const pin = window.prompt("Enter Admin PIN to confirm deletion:");
         if (pin === null) return;
-
-        const currentData = completedMap[exName];
-        if (!currentData || typeof currentData === 'string') return;
-        
-        const sets = currentData.sets || [];
-        const setEntries = sets[setIdx];
-        if (!setEntries) return;
 
         try {
             for (const entry of setEntries) {
                 await deleteHistory({ ...entry, exercise: exName }, pin);
                 deleteSetFromLocalHistory(exName, entry);
             }
-
-            const updatedSets = sets.filter((_, idx) => idx !== setIdx);
-            const newMap = {
-                ...completedMap,
-                [exName]: {
-                    ...currentData,
-                    sets: updatedSets
-                }
-            };
-            updateCircuitState(circuit, newMap);
         } catch (e) {
             console.error("Error deleting set:", e);
             alert("Failed to delete set: " + e.message);
@@ -368,51 +346,6 @@ export default function CircuitView() {
         try {
             await deleteHistory(entry, pin);
             deleteSetFromLocalHistory(exName, entry);
-
-            if (entry.date && new Date(entry.date).toDateString() === new Date().toDateString()) {
-                const currentData = completedMap[exName];
-                if (currentData && typeof currentData !== 'string') {
-                    const sets = currentData.sets || [];
-                    let setIdxToRemove = -1;
-                    let entryIdxToRemove = -1;
-                    
-                    for (let sIdx = 0; sIdx < sets.length; sIdx++) {
-                        const setEntries = sets[sIdx];
-                        const foundIdx = setEntries.findIndex(e => 
-                            e.person === entry.person && 
-                            e.reps === entry.reps && 
-                            e.weight === entry.weight &&
-                            e.date === entry.date
-                        );
-                        if (foundIdx !== -1) {
-                            setIdxToRemove = sIdx;
-                            entryIdxToRemove = foundIdx;
-                            break;
-                        }
-                    }
-
-                    if (setIdxToRemove !== -1) {
-                        const currentSet = sets[setIdxToRemove];
-                        const updatedSet = currentSet.filter((_, idx) => idx !== entryIdxToRemove);
-                        
-                        let updatedSets;
-                        if (updatedSet.length === 0) {
-                            updatedSets = sets.filter((_, idx) => idx !== setIdxToRemove);
-                        } else {
-                            updatedSets = sets.map((s, idx) => idx === setIdxToRemove ? updatedSet : s);
-                        }
-
-                        const newMap = {
-                            ...completedMap,
-                            [exName]: {
-                                ...currentData,
-                                sets: updatedSets
-                            }
-                        };
-                        updateCircuitState(circuit, newMap);
-                    }
-                }
-            }
         } catch (e) {
             console.error("Error deleting history entry:", e);
             alert("Failed to delete history entry: " + e.message);
