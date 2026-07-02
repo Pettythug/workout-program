@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 // Default URL if not in localStorage
-const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwtpr_4LEVCXRyMv_v86796HIN0v36kdULk7DVSI2x3R2KIbjh9KGWFV0lXT7x8MZTo7g/exec";
+const DEFAULT_URL = "https://script.google.com/macros/s/AKfycbwdz0gQXlt9-Gu7D-561vhMAiVxx6DjXssnPZp5SQdGvJpJbqnuhkFJiPsysajOAFvINQ/exec";
 
 export function useGymAPI() {
     const getApiUrl = () => {
