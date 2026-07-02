@@ -1034,8 +1034,7 @@ function migrateTestingExercises() {
     if (c.includes("vertical pull")) return "Vertical Pull";
     if (c.includes("horizontal push")) return "Horizontal Push";
     if (c.includes("vertical push")) return "Vertical Push";
-    if (c.includes("rotational core")) return "Rotational Core";
-    if (c.includes("plank core")) return "Plank Core";
+    if (c.includes("core")) return "Core";
     if (c.includes("explosive")) return "Explosive";
     if (c.includes("accessory")) return "Accessory";
     return String(cat).trim(); // fallback
