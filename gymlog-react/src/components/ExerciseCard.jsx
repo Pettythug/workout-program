@@ -493,70 +493,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                         </div>
                     ) : (
                         <div style={{ marginTop: 16 }}>
-                            {group.originalBaseKey && (
-                                <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {swapMode === ex.name ? (
-                                        <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
-                                            <select 
-                                                onChange={(e) => {
-                                                    if (e.target.value === "custom") {
-                                                        setCustomSwapState({
-                                                            name: "",
-                                                            category: ex.category || "General",
-                                                            manufacturer: "",
-                                                            baseExercise: "",
-                                                            muscle: ""
-                                                        });
-                                                    } else if (e.target.value) {
-                                                        executeSwap(e.target.value);
-                                                    }
-                                                }}
-                                                style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
-                                            >
-                                                <option value="">-- Select Exercise --</option>
-                                                <option value="custom">-- New Custom Exercise --</option>
-                                                {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                                    <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
-                                                ))}
-                                            </select>
-
-                                            {customSwapState && (
-                                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
-                                                    <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
-                                                    <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
-                                                    
-                                                    <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
-
-                                                    <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
-
-                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
-
-                                                    <button 
-                                                        onClick={() => executeSwap(customSwapState)}
-                                                        className="btn-success"
-                                                        style={{ padding: "12px", marginTop: 4 }}
-                                                    >SAVE & SWAP</button>
-                                                </div>
-                                            )}
-                                            <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                            <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                                🔄 SWAP
-                                            </button>
-                                            <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                                📸 IMAGE
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
                                 {editMode ? (
                                     <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
@@ -729,6 +665,70 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             ))
                                         )}
                                     </div>
+                                </div>
+                            )}
+
+                            {group.originalBaseKey && (
+                                <div style={{ marginTop: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {swapMode === ex.name ? (
+                                        <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+                                            <select 
+                                                onChange={(e) => {
+                                                    if (e.target.value === "custom") {
+                                                        setCustomSwapState({
+                                                            name: "",
+                                                            category: ex.category || "General",
+                                                            manufacturer: "",
+                                                            baseExercise: "",
+                                                            muscle: ""
+                                                        });
+                                                    } else if (e.target.value) {
+                                                        executeSwap(e.target.value);
+                                                    }
+                                                }}
+                                                style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
+                                            >
+                                                <option value="">-- Select Exercise --</option>
+                                                <option value="custom">-- New Custom Exercise --</option>
+                                                {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
+                                                    <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                                ))}
+                                            </select>
+
+                                            {customSwapState && (
+                                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
+                                                    <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
+                                                    <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
+                                                    
+                                                    <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+
+                                                    <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+
+                                                    <button 
+                                                        onClick={() => executeSwap(customSwapState)}
+                                                        className="btn-success"
+                                                        style={{ padding: "12px", marginTop: 4 }}
+                                                    >SAVE & SWAP</button>
+                                                </div>
+                                            )}
+                                            <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                            <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                                🔄 SWAP
+                                            </button>
+                                            <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                                                📸 IMAGE
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
