@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTargetLock } from '../hooks/useTargetLock';
 import ImageModal from './ImageModal';
 
@@ -121,6 +121,19 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         });
         return initial;
     });
+
+    useEffect(() => {
+        setInputs(prev => {
+            const next = { ...prev };
+            activePeople.forEach(p => {
+                const key = p.toLowerCase();
+                if (!next[key]) {
+                    next[key] = { reps: "", weight: "", duration: "", note: "" };
+                }
+            });
+            return next;
+        });
+    }, [activePeople]);
 
     const [isSaving, setIsSaving] = useState(false);
 

@@ -175,11 +175,16 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
 
     // Initialize log inputs if empty
     const initLogInputs = () => {
-        const initial = {};
-        people.forEach(p => {
-            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+        setLogInputs(prev => {
+            const next = { ...prev };
+            people.forEach(p => {
+                const key = p.toLowerCase();
+                if (!next[key]) {
+                    next[key] = { reps: "", weight: "", duration: "", note: "" };
+                }
+            });
+            return next;
         });
-        setLogInputs(initial);
     };
 
     // Auto-initialize when opened
