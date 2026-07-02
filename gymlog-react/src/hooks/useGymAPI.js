@@ -194,6 +194,18 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Upload an image for an exercise to Google Drive.
+     * @param {Object} payload 
+     * @returns {Promise<any>}
+     */
+    const uploadImage = useCallback(async (payload) => {
+        return sheetsPost({
+            action: "uploadImage",
+            ...payload
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
@@ -203,6 +215,7 @@ export function useGymAPI() {
         sheetsPost,
         deleteExercise,
         saveSettings,
-        saveExerciseNote
+        saveExerciseNote,
+        uploadImage
     };
 }

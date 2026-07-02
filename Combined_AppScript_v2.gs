@@ -96,6 +96,7 @@ function doGet(e) {
       if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
+      if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -123,6 +124,7 @@ function doPost(e) {
     if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
+    if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -1097,6 +1099,45 @@ function migrateTestingExercises() {
 }
 
 // =============================================================================
+function gymlog_handleUploadImage(payload) {
+  verifyAdminPin(payload);
+  const { exercise, data, filename } = payload;
+  
+  if (!exercise || !data) return err("Missing exercise or image data");
+
+  // Create file in Drive
+  const folderId = "1nOc1oLanQ99cpPyOH1bGHKHW3E1Faubc";
+  const folder = DriveApp.getFolderById(folderId);
+  
+  // The data is a data URL: "data:image/jpeg;base64,/9j/4AAQSkZJR..."
+  const base64Data = data.split(",")[1];
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), MimeType.JPEG, String(exercise).trim().replace(/\//g, " ") + ".jpg");
+  const file = folder.createFile(blob);
+  const fileId = file.getId();
+
+  // Update GymLog_Exercises file reference column
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  const lastRow = exSheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow > 1) {
+    const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < names.length; i++) {
+      if (String(names[i][0]).trim().toLowerCase() === String(exercise).trim().toLowerCase()) {
+        rowIndex = i + 2;
+        break;
+      }
+    }
+  }
+
+  if (rowIndex > -1) {
+    exSheet.getRange(rowIndex, 10).setValue(fileId); // Column 10 is File Reference
+  } else {
+    return err("Exercise metadata not found to attach image");
+  }
+
+  return ok({ fileId: fileId });
+}
+
 // ONE-TIME SCRIPT: Map Google Drive Images to File Reference Column
 // =============================================================================
 function mapDriveImagesToSheet() { 

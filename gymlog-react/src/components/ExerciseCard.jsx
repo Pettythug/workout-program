@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
+import ImageModal from './ImageModal';
 
 const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
     const key = person.toLowerCase();
@@ -619,35 +620,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 </div>
             )}
 
-            {showImage && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={() => setShowImage(false)}>
-                    <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                            <div style={{ fontSize: 16, fontWeight: 700 }}>{group.baseName}</div>
-                            <button className="btn-ghost" onClick={() => setShowImage(false)} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-                            {ex.fileReference ? (
-                                <img 
-                                    src={imgSrc} 
-                                    alt={group.baseName} 
-                                    style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 8 }}
-                                    onError={(e) => { 
-                                        if (!e.target.dataset.retried) {
-                                            e.target.dataset.retried = true;
-                                            const safeName = (ex.name || "").replace(/\s*\/\s*/g, " ");
-                                            e.target.src = `${import.meta.env.BASE_URL}images/${safeName}.jpg`;
-                                        } else {
-                                            e.target.style.display = 'none'; 
-                                            e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); 
-                                        }
-                                    }}
-                                />
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ImageModal 
+                ex={ex} 
+                baseName={group.baseName} 
+                isOpen={showImage} 
+                onClose={() => setShowImage(false)} 
+                setToast={setToast} 
+            />
         </div>
     );
 }
