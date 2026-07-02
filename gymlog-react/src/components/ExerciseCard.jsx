@@ -136,6 +136,20 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         return ex.history.filter(h => h.date && new Date(h.date).toDateString() === todayStr);
     }, [ex]);
 
+    const groupedSets = useMemo(() => {
+        const groups = {};
+        todaysSets.forEach(h => {
+            const sNum = h.setNum || 1;
+            if (!groups[sNum]) {
+                groups[sNum] = [];
+            }
+            groups[sNum].push(h);
+        });
+        return Object.keys(groups)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .map(key => groups[key]);
+    }, [todaysSets]);
+
     const hasVariations = Object.keys(variations).length > 1;
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
@@ -355,6 +369,25 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             await deleteHistory({ exercise: ex.name, ...entry }, pin);
             deleteSetFromLocalHistory(ex.name, entry);
             setToast("Entry deleted!");
+            setTimeout(() => setToast(""), 2000);
+        } catch (e) {
+            console.error(e);
+            setToast("Error deleting");
+            setTimeout(() => setToast(""), 2000);
+        }
+    };
+
+    const handleDeleteLoggedSet = async (setEntries) => {
+        if (!setEntries || setEntries.length === 0) return;
+        const pin = prompt("Admin PIN required:");
+        if (pin === null) return;
+        try {
+            setToast("Deleting set...");
+            for (const entry of setEntries) {
+                await deleteHistory({ exercise: ex.name, ...entry }, pin);
+                deleteSetFromLocalHistory(ex.name, entry);
+            }
+            setToast("Set deleted!");
             setTimeout(() => setToast(""), 2000);
         } catch (e) {
             console.error(e);
@@ -626,6 +659,37 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
 
                             {activeTab === "HISTORY" && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>LOGGED SETS</div>
+                                        {groupedSets.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No logged sets in this session</div>
+                                        ) : (
+                                            groupedSets.map((setEntries, sIdx) => {
+                                                const timeStr = setEntries[0]?.date ? new Date(setEntries[0].date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+                                                const summary = setEntries.map(e => {
+                                                    const formatted = ex.timed ? `${e.reps} ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
+                                                    return `${e.person[0].toUpperCase()}:${formatted}`;
+                                                }).join('   ');
+                                                return (
+                                                    <div key={sIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                                            <span style={{ color: 'var(--accent)' }}>L{sIdx + 1}</span>
+                                                            {timeStr && <span style={{ color: 'var(--muted)', fontSize: 9, marginLeft: 4 }}>({timeStr})</span>}
+                                                            <span style={{ color: 'var(--muted)' }}>:</span> <span style={{ color: 'white' }}> {summary}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => handleDeleteLoggedSet(setEntries)}
+                                                            style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                            title="Delete Set"
+                                                        >
+                                                            🗑
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+
                                     <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
                                         <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
                                         {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
