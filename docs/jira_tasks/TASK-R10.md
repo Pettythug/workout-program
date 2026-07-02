@@ -25,6 +25,9 @@
     1. READ: Target files.
     2. MODIFY: In `CircuitCard.jsx` line ~354 (`LOGGED SETS`), the string interpolation is currently hardcoded to use `@` (e.g. `e.reps + '@' + (e.weight || 0)`). Update this to use the exact same ternary logic used in the RECENT HISTORY block (i.e. `ex.timed ? \`${e.reps} ${e.weight ? \`@ ${e.weight}lbs\` : ''}\` : \`${e.reps}x${e.weight || 0}\``).
     3. AUDIT: Generate `audit_log_R10.md` documenting the exact changes.
+    4. EXECUTE: Run `git push origin TASK-R10` to push the branch to the remote repository.
+    5. EXECUTE: Run `git checkout main` and `git merge TASK-R10` to merge your changes.
+    6. EXECUTE: Run `git push origin main` to deploy the changes.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```

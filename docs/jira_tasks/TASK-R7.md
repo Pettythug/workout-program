@@ -27,6 +27,9 @@
     3. MODIFY: Fix any overlapping button paddings at the bottom of the cards.
     4. MODIFY: Add human-readable timestamps to the history logs.
     5. AUDIT: Generate `audit_log_R7.md` documenting the exact changes.
+    6. EXECUTE: Run `git push origin TASK-R7` to push the branch to the remote repository.
+    7. EXECUTE: Run `git checkout main` and `git merge TASK-R7` to merge your changes.
+    8. EXECUTE: Run `git push origin main` to deploy the changes.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
