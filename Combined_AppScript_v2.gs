@@ -7,6 +7,9 @@
 // Changes from v2:
 //   - Purged all legacy 'Workout Builder' (wb_) routes and functions.
 //   - Backend is now strictly optimized for the GymLog Ultimate SPA.
+//   - Security: Implemented sanitizeInput() regex to prevent Sheets formula injection.
+//   - Security: Removed legacy '5050' fallback PIN. Backend now locks if property is missing.
+//   - Performance: Increased waitLock timeout to 30s to prevent concurrent write crashes.
 //
 // Changes from v1 (Combined_AppScript.gs):
 //   - Rep range r15_20 → r13_plus (any reps >= 13, no upper limit)
