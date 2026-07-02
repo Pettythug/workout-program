@@ -28,8 +28,6 @@
     4. MODIFY: Since `ExerciseCard` does not maintain a temporary `sets` array like `CircuitCard`, populate this `LOGGED SETS` block by filtering `ex.history` for today's date (identical to the logic used for the `todaysSets` block on the main tab).
     5. AUDIT: Generate `audit_log_R11.md` documenting the exact changes.
     6. EXECUTE: Run `git push origin TASK-R11` to push the branch to the remote repository.
-    7. EXECUTE: Run `git checkout main` and `git merge TASK-R11` to merge your changes.
-    8. EXECUTE: Run `git push origin main` to deploy the changes.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
