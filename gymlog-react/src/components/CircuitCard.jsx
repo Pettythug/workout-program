@@ -373,9 +373,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     sets.map((setEntries, sIdx) => {
                                         const timeStr = setEntries[0]?.date ? new Date(setEntries[0].date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
                                         const summary = setEntries.map(e => {
-                                            const formatted = ex.timed 
-                                                ? `${e.reps}${e.weight ? ` @ ${e.weight}lbs` : ''}` 
-                                                : `${e.reps}x${e.weight || 0}`;
+                                            const formatted = ex.timed ? `${e.reps} ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
                                             return `${e.person[0].toUpperCase()}:${formatted}`;
                                         }).join('   ');
                                         return (
