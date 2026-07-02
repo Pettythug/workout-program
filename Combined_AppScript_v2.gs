@@ -61,11 +61,19 @@ const WB_LOG_TAB       = "Log";
 
 function withLock(handler, payload) {
   const lock = LockService.getScriptLock();
+  
+  // 1. Attempt to acquire lock
   try {
     lock.waitLock(30000); // Wait up to 30 seconds for the lock
-    return handler(payload);
   } catch (e) {
     return err("Server is busy due to concurrent writes. Please try again.");
+  }
+
+  // 2. Execute handler and release lock safely
+  try {
+    return handler(payload);
+  } catch (e) {
+    return err(e.message);
   } finally {
     lock.releaseLock();
   }
