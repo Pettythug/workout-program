@@ -228,10 +228,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                     const key = person.toLowerCase();
                     const input = logInputs[key] || {};
                     if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
-                        const pin = window.prompt(`Enter PIN for ${person}:`);
-                        if (pin === null) {
-                            cancelled = true;
-                            break;
+                        let pin = localStorage.getItem('gymlog_pin_' + key);
+                        if (!pin) {
+                            pin = window.prompt(`Enter PIN for ${person}:`);
+                            if (pin === null) {
+                                cancelled = true;
+                                break;
+                            }
+                            localStorage.setItem('gymlog_pin_' + key, pin);
                         }
                         userPins[key] = pin;
                     }

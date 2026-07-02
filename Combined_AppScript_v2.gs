@@ -315,7 +315,10 @@ function gymlog_handleLogSet(payload) {
 
   for (const entry of entries) {
     const personKey = (entry.person || "").toLowerCase();
-    if (validPins[personKey] && userPins[personKey] !== validPins[personKey]) {
+    if (!validPins[personKey]) {
+      throw new Error(`Unauthorized: No PIN configured on the server for ${entry.person}`);
+    }
+    if (userPins[personKey] !== validPins[personKey]) {
       throw new Error(`Unauthorized: Invalid PIN for ${entry.person}`);
     }
   }

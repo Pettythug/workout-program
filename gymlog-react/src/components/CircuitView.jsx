@@ -287,8 +287,12 @@ export default function CircuitView() {
                 const input = logs[key];
                 if (!input) continue;
                 if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
-                    const pin = window.prompt(`Enter PIN for ${person}:`);
-                    if (pin === null) return false; // User cancelled
+                    let pin = localStorage.getItem('gymlog_pin_' + key);
+                    if (!pin) {
+                        pin = window.prompt(`Enter PIN for ${person}:`);
+                        if (pin === null) return false; // User cancelled
+                        localStorage.setItem('gymlog_pin_' + key, pin);
+                    }
                     userPins[key] = pin;
                 }
             }
