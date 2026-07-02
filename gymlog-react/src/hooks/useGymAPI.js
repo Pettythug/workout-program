@@ -73,12 +73,16 @@ export function useGymAPI() {
      * @param {boolean} forceRefresh 
      * @returns {Promise<any>}
      */
-    const syncAll = useCallback(async (forceRefresh = false) => {
+    const syncAll = useCallback(async (forceRefresh = false, externalSignal = null) => {
         const url = getApiUrl();
         const fetchUrl = url + (url.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
         
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        if (externalSignal) {
+            externalSignal.addEventListener('abort', () => controller.abort());
+        }
 
         try {
             const res = await fetch(fetchUrl, { 

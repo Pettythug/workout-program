@@ -51,6 +51,7 @@ export function AppProvider({ children }) {
 
     // Initial Load
     useEffect(() => {
+        const controller = new AbortController();
         const loadInitialData = async () => {
             setIsSyncing(true);
             // Cache check
@@ -66,7 +67,7 @@ export function AppProvider({ children }) {
                 if (!cachedExercises || !cachedPeople) {
                     setLoading(true);
                 }
-                const data = await syncAll();
+                const data = await syncAll(false, controller.signal);
                 
                 // Merge data
                 const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
@@ -84,6 +85,7 @@ export function AppProvider({ children }) {
                 localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
 
             } catch (error) {
+                if (error.name === 'AbortError' || controller.signal.aborted) return;
                 console.error("Error loading initial data:", error);
             } finally {
                 setLoading(false);
@@ -92,6 +94,7 @@ export function AppProvider({ children }) {
         };
 
         loadInitialData();
+        return () => controller.abort();
     }, [syncAll]);
 
     // State Modifiers
