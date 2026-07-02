@@ -175,18 +175,25 @@ export default function PlanView() {
         return vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
     };
 
-    // Effect to recycle skipped exercises back to active if all are done/skipped
+    const prevDoneCountRef = React.useRef(0);
+
+    // Effect to recycle skipped exercises back to active if all are done/skipped OR a new exercise is done
     React.useEffect(() => {
         if (!plannedExercises || plannedExercises.length === 0) return;
         
         let allDoneOrSkipped = true;
         let hasSkipped = false;
         let skippedVariations = [];
+        let currentDoneCount = 0;
         
         plannedExercises.forEach(group => {
             const vars = Object.values(group.variations || {});
             const doneOrSkipped = vars.some(v => exerciseStatus[v.name] === 'done' || exerciseStatus[v.name] === 'skipped');
             const skipped = vars.some(v => exerciseStatus[v.name] === 'skipped');
+            
+            vars.forEach(v => {
+                if (exerciseStatus[v.name] === 'done') currentDoneCount++;
+            });
             
             if (!doneOrSkipped) allDoneOrSkipped = false;
             if (skipped) {
@@ -199,7 +206,10 @@ export default function PlanView() {
             }
         });
 
-        if (allDoneOrSkipped && hasSkipped) {
+        const justFinishedOne = currentDoneCount > prevDoneCountRef.current;
+        prevDoneCountRef.current = currentDoneCount;
+
+        if ((allDoneOrSkipped || justFinishedOne) && hasSkipped) {
             // Reset the skipped ones back to active
             skippedVariations.forEach(varName => {
                 resetExerciseStatus(varName);
