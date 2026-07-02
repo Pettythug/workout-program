@@ -47,10 +47,12 @@ export function AppProvider({ children }) {
         return localStorage.getItem('builder_primary_user') || "Brian";
     });
     const [loading, setLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(true);
 
     // Initial Load
     useEffect(() => {
         const loadInitialData = async () => {
+            setIsSyncing(true);
             // Cache check
             const cachedExercises = localStorage.getItem('gymlog_exercises');
             const cachedPeople = localStorage.getItem('gymlog_people');
@@ -85,6 +87,7 @@ export function AppProvider({ children }) {
                 console.error("Error loading initial data:", error);
             } finally {
                 setLoading(false);
+                setIsSyncing(false);
             }
         };
 
@@ -278,6 +281,7 @@ export function AppProvider({ children }) {
         exerciseStatus,
         dailySwaps,
         loading,
+        isSyncing,
         locations,
         activeLocation,
         updateWorkoutDay,
