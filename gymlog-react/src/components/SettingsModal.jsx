@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function SettingsModal({ isOpen, onClose }) {
-    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -309,6 +309,18 @@ export default function SettingsModal({ isOpen, onClose }) {
                         style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', marginBottom: 8 }}
                     />
                     <button className="btn-success" style={{ width: '100%' }} onClick={handleSaveApiUrl}>SAVE URL</button>
+                    <button 
+                        className="btn-danger" 
+                        onClick={() => {
+                            if (window.confirm("Are you sure you want to clear all completed/skipped checkmarks for today?")) {
+                                clearAllExerciseStatus();
+                                alert("Checkmarks cleared.");
+                            }
+                        }}
+                        style={{ width: "100%", padding: 12, marginTop: 16 }}
+                    >
+                        ⚠️ RESET TODAY'S CHECKMARKS
+                    </button>
                 </div>
 
             </div>

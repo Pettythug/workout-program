@@ -21,7 +21,7 @@ const CATEGORY_ORDER = [
 
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
-    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet } = useAppContext();
+    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus } = useAppContext();
     
     const navigate = useNavigate();
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
@@ -165,6 +165,7 @@ export default function CircuitView() {
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
     const startFullBodyCircuit = () => {
+        clearAllExerciseStatus();
         const grouped = {};
         machines.forEach(ex => {
             if (!ex.category) return;
@@ -190,6 +191,7 @@ export default function CircuitView() {
     };
 
     const startHitEveryMachine = () => {
+        clearAllExerciseStatus();
         updateCircuitState([...machines], {});
         setView('tracker');
     };
@@ -199,6 +201,7 @@ export default function CircuitView() {
     };
 
     const startMimicCircuit = () => {
+        clearAllExerciseStatus();
         const grouped = {};
         machines.forEach(ex => {
             if (!ex.category) return;
@@ -301,6 +304,7 @@ export default function CircuitView() {
         });
 
         updateCircuitState(circuit, newMap);
+        setExerciseDone(exName);
     };
 
     const handleSkip = (exName) => {
@@ -309,6 +313,7 @@ export default function CircuitView() {
         const currentData = newMap[exName] || { status: 'active' };
         newMap[exName] = { status: 'skipped' };
         updateCircuitState(circuit, newMap);
+        setExerciseSkipped(exName);
     };
 
     const handleUndo = (exName) => {
@@ -316,6 +321,7 @@ export default function CircuitView() {
         const currentData = newMap[exName] || { status: 'active' };
         newMap[exName] = { status: 'active' };
         updateCircuitState(circuit, newMap);
+        resetExerciseStatus(exName);
     };
 
     const handleDeleteSet = async (exName, setEntries) => {
@@ -326,6 +332,20 @@ export default function CircuitView() {
             for (const entry of setEntries) {
                 await deleteHistory({ ...entry, exercise: exName }, pin);
                 deleteSetFromLocalHistory(exName, entry);
+            }
+            const ex = exercises.find(e => e.name === exName);
+            if (ex && ex.history) {
+                const remainingTodays = ex.history.filter(h => {
+                    const isToday = h.date && new Date(h.date).toDateString() === new Date().toDateString();
+                    if (!isToday) return false;
+                    const isDeleted = setEntries.some(del => del.date === h.date && del.person === h.person && del.reps === h.reps && del.weight === h.weight);
+                    return !isDeleted;
+                });
+                if (remainingTodays.length === 0) {
+                    resetExerciseStatus(exName);
+                }
+            } else {
+                resetExerciseStatus(exName);
             }
         } catch (e) {
             console.error("Error deleting set:", e);

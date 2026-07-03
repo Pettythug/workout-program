@@ -6,13 +6,16 @@ import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
 export default function PlanView() {
-    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, resetExerciseStatus } = useAppContext();
+    const { exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, locations, activeLocation, updateActiveLocation, exerciseStatus, resetExerciseStatus, clearAllExerciseStatus } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [view, setView] = useState('tracker'); // 'tracker' | 'full-list'
+    const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
+        return localStorage.getItem('gymlog_plan_complete') === 'true';
+    });
 
     const plannedExercises = useMemo(() => {
         if (!exercises || exercises.length === 0) return [];
@@ -226,7 +229,12 @@ export default function PlanView() {
     };
 
     const completeWorkout = () => {
-        // Increment the counters for the groups we just used so they rotate next time
+        setIsWorkoutComplete(true);
+        localStorage.setItem('gymlog_plan_complete', 'true');
+    };
+
+    const startNextWorkout = () => {
+        // 1. Increment rotations
         plannedExercises.forEach(ex => {
             if (ex && ex.rotationKey) {
                 const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
@@ -234,17 +242,18 @@ export default function PlanView() {
             }
         });
 
-        // Clear exercise status for all variations in today's rotation
-        plannedExercises.forEach(group => {
-            Object.values(group.variations || {}).forEach(v => {
-                resetExerciseStatus(v.name);
-            });
-        });
+        // 2. Clear global checkmarks
+        clearAllExerciseStatus();
 
+        // 3. Progress day and swap type
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
         setWorkoutType(newType);
         localStorage.setItem('gymlog_workoutType', newType);
         updateWorkoutDay(workoutDay + 1);
+
+        // 4. Reset completion state
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_plan_complete', 'false');
         setView('tracker');
     };
 
@@ -287,6 +296,19 @@ export default function PlanView() {
             </div>
 
             {view === 'tracker' && (() => {
+                if (isWorkoutComplete) {
+                    return (
+                        <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                            <div style={{ fontSize: 40 }}>🎉</div>
+                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Day Complete!</h2>
+                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
+                            <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
+                                START NEXT WORKOUT
+                            </button>
+                        </div>
+                    );
+                }
+
                 let activeIdx = 0;
                 while (activeIdx < plannedExercises.length) {
                     const group = plannedExercises[activeIdx];
@@ -294,16 +316,14 @@ export default function PlanView() {
                     activeIdx++;
                 }
 
-                const isWorkoutComplete = activeIdx >= plannedExercises.length;
-
-                if (isWorkoutComplete) {
+                if (activeIdx >= plannedExercises.length) {
                     return (
                         <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                            <div style={{ fontSize: 40 }}>🎉</div>
-                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Complete!</h2>
-                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
+                            <div style={{ fontSize: 40 }}>✅</div>
+                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All Exercises Done!</h2>
+                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout.</p>
                             <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
-                                Finish Workout
+                                Complete Workout
                             </button>
                         </div>
                     );

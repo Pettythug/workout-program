@@ -158,6 +158,11 @@ export function AppProvider({ children }) {
         });
     };
 
+    const clearAllExerciseStatus = () => {
+        setExerciseStatus({});
+        localStorage.setItem('gymlog_exerciseStatus', JSON.stringify({}));
+    };
+
     const addSetToLocalHistory = (exName, entries) => {
         setExercises(prev => {
             const next = prev.map(ex => {
@@ -393,7 +398,8 @@ export function AppProvider({ children }) {
         addLocationToRoster,
         createExerciseMeta,
         removeExerciseFromLocalState,
-        logExerciseSet
+        logExerciseSet,
+        clearAllExerciseStatus
     };
 
     return (
