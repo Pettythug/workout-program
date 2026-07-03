@@ -11,3 +11,6 @@
   3. `EXECUTE`: `INVOKE_SUBAGENT(Developer, target=TASK-*.md)`
   4. `AUDIT`: `CTO_CODE_REVIEW(Audit_Log, git_diff)`
   5. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
+
+## Error Formatting Overrides:
+- `OVERRIDE_OUTPUT(Model_Alignment_Error)`: `OUTPUT("Model Alignment Error: Request Switch -> Expected [Required_Tier] but running [Active_Model]")`
