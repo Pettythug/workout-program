@@ -253,7 +253,34 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                             </div>
                         )}
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`https://www.google.com/search?q=${encodeURIComponent(ex.name + ' exercise tutorial')}`, '_blank');
+                            }}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--accent)',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0.7,
+                                transition: 'opacity 0.2s'
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = 0.7}
+                            title="Search exercise info"
+                        >
+                            ℹ️
+                        </button>
+                    </div>
                 </div>
             </div>
 
