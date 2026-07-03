@@ -62,14 +62,17 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
                     <>
                         <input 
                             placeholder="reps" 
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={input.reps || ""} 
                             onChange={e => updateInput(key, "reps", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateInput(key, "weight", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
@@ -155,10 +158,22 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const [isSaving, setIsSaving] = useState(false);
 
     const updateInput = (personKey, field, value) => {
-        setInputs(prev => ({
-            ...prev,
-            [personKey]: { ...prev[personKey], [field]: value }
-        }));
+        setInputs(prev => {
+            let sanitizedValue = value;
+            if (field === 'reps') {
+                sanitizedValue = value.replace(/[^0-9]/g, '');
+            } else if (field === 'weight') {
+                sanitizedValue = value.replace(/[^0-9.]/g, '');
+                const parts = sanitizedValue.split('.');
+                if (parts.length > 2) {
+                    sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+                }
+            }
+            return {
+                ...prev,
+                [personKey]: { ...prev[personKey], [field]: sanitizedValue }
+            };
+        });
     };
 
     const handleSave = async () => {

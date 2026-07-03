@@ -64,14 +64,17 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
                     <>
                         <input 
                             placeholder="reps" 
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             value={input.reps || ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
@@ -154,6 +157,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
 
+    const isGroupDone = useMemo(() => {
+        return Object.values(variations).some(v => exerciseStatus[v.name] === 'done');
+    }, [variations, exerciseStatus]);
+
+    const isGroupSkipped = useMemo(() => {
+        return Object.values(variations).some(v => exerciseStatus[v.name] === 'skipped');
+    }, [variations, exerciseStatus]);
+
     const imgSrc = ex.fileReference 
         ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
         : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
@@ -209,10 +220,24 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     };
 
     const updateLogInput = (personKey, field, value) => {
-        setLogInputs(prev => ({
-            ...prev,
-            [personKey]: { ...prev[personKey], [field]: value }
-        }));
+        setLogInputs(prev => {
+            const next = { ...prev };
+            if (!next[personKey]) {
+                next[personKey] = { reps: "", weight: "", duration: "", note: "" };
+            }
+            let sanitizedValue = value;
+            if (field === 'reps') {
+                sanitizedValue = value.replace(/[^0-9]/g, ''); // Digits only
+            } else if (field === 'weight') {
+                sanitizedValue = value.replace(/[^0-9.]/g, ''); // Digits and decimal points
+                const parts = sanitizedValue.split('.');
+                if (parts.length > 2) {
+                    sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+                }
+            }
+            next[personKey] = { ...next[personKey], [field]: sanitizedValue };
+            return next;
+        });
     };
 
     const handleSaveSet = async () => {
@@ -372,10 +397,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     return (
         <div style={{ 
             background: '#111', 
-            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
+            border: `1px solid ${isGroupDone ? 'var(--success)' : isGroupSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 12, 
-            opacity: isSkipped ? 0.5 : 1,
-            boxShadow: isDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
+            opacity: isGroupSkipped && !isGroupDone ? 0.5 : 1,
+            boxShadow: isGroupDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
             overflow: 'hidden',
             marginBottom: 16
         }}>
@@ -405,7 +430,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
-                        {isDone && (
+                        {isGroupDone && (
                             <span style={{ 
                                 background: 'rgba(34, 197, 94, 0.15)', 
                                 color: 'var(--success)', 
@@ -416,7 +441,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                 letterSpacing: 0.5 
                             }}>COMPLETED</span>
                         )}
-                        {isSkipped && (
+                        {(isGroupSkipped && !isGroupDone) && (
                             <span style={{ 
                                 background: 'rgba(239, 68, 68, 0.15)', 
                                 color: 'var(--skip)', 
