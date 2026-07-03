@@ -7,7 +7,6 @@ export default function SettingsModal({ isOpen, onClose }) {
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
-    const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('gym_api_url') || '');
 
     const [exName, setExName] = useState('');
     const [exTimed, setExTimed] = useState(false);
@@ -26,14 +25,6 @@ export default function SettingsModal({ isOpen, onClose }) {
     }, [exercises]);
 
     if (!isOpen) return null;
-
-    const handleSaveApiUrl = () => {
-        if (apiUrl) {
-            localStorage.setItem('gym_api_url', apiUrl);
-            alert("API URL saved. Reloading...");
-            window.location.reload();
-        }
-    };
 
     const handleAddPerson = () => {
         if (!newPerson.trim()) return;
@@ -301,14 +292,6 @@ export default function SettingsModal({ isOpen, onClose }) {
                 </div>
 
                 <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                    <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>API SYNC URL</label>
-                    <input 
-                        placeholder="https://script.google.com/.../exec" 
-                        value={apiUrl} 
-                        onChange={e => setApiUrl(e.target.value)}
-                        style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', marginBottom: 8 }}
-                    />
-                    <button className="btn-success" style={{ width: '100%' }} onClick={handleSaveApiUrl}>SAVE URL</button>
                     <button 
                         className="btn-danger" 
                         onClick={() => {
@@ -317,7 +300,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 alert("Checkmarks cleared.");
                             }
                         }}
-                        style={{ width: "100%", padding: 12, marginTop: 16 }}
+                        style={{ width: "100%", padding: 12 }}
                     >
                         ⚠️ RESET TODAY'S CHECKMARKS
                     </button>

@@ -51,6 +51,11 @@ export function AppProvider({ children }) {
 
     // Initial Load
     useEffect(() => {
+        // Auto-cleanup legacy custom URL overrides to ensure fallback to corrected built-in default
+        if (localStorage.getItem('gym_api_url')) {
+            localStorage.removeItem('gym_api_url');
+        }
+
         const controller = new AbortController();
         const loadInitialData = async () => {
             setIsSyncing(true);
