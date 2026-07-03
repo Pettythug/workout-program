@@ -233,7 +233,8 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
             background: '#111', 
             border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 12, 
-            opacity: isDone || isSkipped ? 0.6 : 1,
+            opacity: isSkipped ? 0.5 : 1,
+            boxShadow: isDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
             overflow: 'hidden'
         }}>
             <div 
@@ -253,8 +254,30 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                             </div>
                         )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
+                        {isDone && (
+                            <span style={{ 
+                                background: 'rgba(34, 197, 94, 0.15)', 
+                                color: 'var(--success)', 
+                                fontSize: 9, 
+                                fontWeight: 800, 
+                                padding: '2px 6px', 
+                                borderRadius: 4, 
+                                letterSpacing: 0.5 
+                            }}>COMPLETED</span>
+                        )}
+                        {isSkipped && (
+                            <span style={{ 
+                                background: 'rgba(239, 68, 68, 0.15)', 
+                                color: 'var(--skip)', 
+                                fontSize: 9, 
+                                fontWeight: 800, 
+                                padding: '2px 6px', 
+                                borderRadius: 4, 
+                                letterSpacing: 0.5 
+                            }}>SKIPPED</span>
+                        )}
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
