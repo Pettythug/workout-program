@@ -26,8 +26,8 @@ body {
     --success-light: rgba(34, 197, 94, 0.1);
     --warning: #f59e0b;
     --warning-light: rgba(245, 158, 11, 0.1);
-    --skip: #444444;
-    --skip-light: #161616;
+    --skip: #ef4444;
+    --skip-light: rgba(239, 68, 68, 0.1);
     --push: #f97316;
     --pull: #c084fc;
     --mono: 'DM Mono', monospace;
