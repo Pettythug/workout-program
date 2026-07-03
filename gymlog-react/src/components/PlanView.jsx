@@ -302,9 +302,17 @@ export default function PlanView() {
                             <div style={{ fontSize: 40 }}>🎉</div>
                             <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Day Complete!</h2>
                             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
-                            <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
-                                START NEXT WORKOUT
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: '240px' }}>
+                                <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
+                                    START NEXT WORKOUT
+                                </button>
+                                <button className="btn-ghost" onClick={() => {
+                                    setIsWorkoutComplete(false);
+                                    localStorage.setItem('gymlog_plan_complete', 'false');
+                                }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                                    UNDO COMPLETION
+                                </button>
+                            </div>
                         </div>
                     );
                 }
