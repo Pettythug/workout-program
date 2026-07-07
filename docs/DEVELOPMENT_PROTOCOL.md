@@ -20,6 +20,7 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 ### Manager_Auditor Mandates
 - `LANE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"]) REQUIRE(Delegation_Pattern)`
 - `GATEKEEPER_LOCK`: `REQUIRE(git checkout branch TASK-*, git diff audit) REQUIRE(Human_Merge_Signoff)`
+- `GIT_PUSH_LOCK`: `DENY(git push)` (The agent is strictly forbidden from running push commands. Only the human user may push code to the remote repository.)
 
 ### Sandbox_Developer Mandates
 - `LANE_LOCK`: `ALLOW(Write: ["/gymlog-react/src/*"]) DENY(Write: ["/docs/*", "/tests/*", "/*.config", "/.agents/*"])`
