@@ -1,5 +1,5 @@
 // =============================================================================
-// Combined_AppScript_v3.gs
+// Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
 // Version 3 of the GymLog backend.
@@ -1204,6 +1204,7 @@ function mapDriveImagesToSheet() {
 }
 
 function triggerDriveAuth() {
-  DriveApp.getRootFolder();
+  // Force Google to detect and prompt for the full write permission scope:
+  DriveApp.createFile("temp_auth_trigger.txt", "authorized");
 }
 
