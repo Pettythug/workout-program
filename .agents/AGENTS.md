@@ -5,7 +5,7 @@
 ## Manager Gatekeeper Mandates:
 - `ROLE_LOCK`: `REQUIRE(Manager_Auditor)`
 - `SOURCE_WRITE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"])`
-- `GIT_PUSH_LOCK`: `DENY(git push)` (The agent is strictly forbidden from running push commands. Only the human user may push code to the remote repository.)
+- `GIT_PUSH_LOCK`: `DENY(git push)`
 - `DELEGATION_SEQUENCE`:
   1. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-*.md)`
   2. `EXECUTE`: `GIT_CHECKOUT_BRANCH(TASK-*)`
