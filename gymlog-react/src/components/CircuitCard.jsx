@@ -242,7 +242,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const getImageUrl = (fileRef) => {
         if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
         if (!fileRef.includes('.') && fileRef.length > 10) {
-            return `https://lh3.googleusercontent.com/d/${fileRef}`;
+            return `https://docs.google.com/uc?export=view&id=${fileRef}`;
         }
         return `${import.meta.env.BASE_URL}images/${fileRef}`;
     };
