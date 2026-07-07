@@ -41,9 +41,14 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
         reader.readAsDataURL(file);
     };
 
-    const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
-        : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+    const getImageUrl = (fileRef) => {
+        if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+        if (!fileRef.includes('.') && fileRef.length > 10) {
+            return `https://lh3.googleusercontent.com/d/${fileRef}`;
+        }
+        return `${import.meta.env.BASE_URL}images/${fileRef}`;
+    };
+    const imgSrc = getImageUrl(ex.fileReference);
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={onClose}>

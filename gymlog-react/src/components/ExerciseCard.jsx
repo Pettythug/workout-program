@@ -165,9 +165,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         return Object.values(variations).some(v => exerciseStatus[v.name] === 'skipped');
     }, [variations, exerciseStatus]);
 
-    const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
-        : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+    const getImageUrl = (fileRef) => {
+        if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+        if (!fileRef.includes('.') && fileRef.length > 10) {
+            return `https://lh3.googleusercontent.com/d/${fileRef}`;
+        }
+        return `${import.meta.env.BASE_URL}images/${fileRef}`;
+    };
+    const imgSrc = getImageUrl(ex.fileReference);
 
     const getNextSetNumber = () => {
         let nextSetNum = 1;

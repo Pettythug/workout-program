@@ -1124,6 +1124,7 @@ function gymlog_handleUploadImage(payload) {
   const base64Data = data.split(",")[1];
   const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), MimeType.JPEG, String(exercise).trim().replace(/\//g, " ") + ".jpg");
   const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const fileId = file.getId();
 
   // Update GymLog_Exercises file reference column
@@ -1203,8 +1204,5 @@ function mapDriveImagesToSheet() {
   Logger.log(`SUCCESS: Updated ${updatedCount} rows in the spreadsheet!`);
 }
 
-function triggerDriveAuth() {
-  // Force Google to detect and prompt for the full write permission scope:
-  DriveApp.createFile("temp_auth_trigger.txt", "authorized");
-}
+
 

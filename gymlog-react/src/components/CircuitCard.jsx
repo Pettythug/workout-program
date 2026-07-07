@@ -239,9 +239,14 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const allManufacturers = [...new Set((allExercises || []).map(e => e.manufacturer).filter(Boolean))].sort();
     const allMuscles = [...new Set((allExercises || []).map(e => e.muscle).filter(Boolean))].sort();
 
-    const imgSrc = ex.fileReference 
-        ? `${import.meta.env.BASE_URL}images/${ex.fileReference}` 
-        : `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+    const getImageUrl = (fileRef) => {
+        if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
+        if (!fileRef.includes('.') && fileRef.length > 10) {
+            return `https://lh3.googleusercontent.com/d/${fileRef}`;
+        }
+        return `${import.meta.env.BASE_URL}images/${fileRef}`;
+    };
+    const imgSrc = getImageUrl(ex.fileReference);
 
     return (
         <div style={{ 
