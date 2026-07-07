@@ -34,14 +34,12 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 - `MANAGER_EXECUTION_SEQUENCE`:
   1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
   2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
-  3. `OUTPUT_TO_HUMAN: "Ready for development. Proceed?"`
-  4. `AWAIT: USER_DEPLOYMENT_APPROVAL`
-  5. `EXECUTE: INVOKE_SUBAGENT(Developer, target=TASK-*.md)`
-  6. `AWAIT: SUBAGENT_COMPLETION_MESSAGE`
-  7. `EVALUATE: CTO_CODE_REVIEW(Audit_Log)`
-  8. `OUTPUT_TO_HUMAN: "Code review complete. Merge?"`
-  9. `AWAIT: USER_MERGE_APPROVAL`
-  10. `EXECUTE: GIT_MERGE_TO_MAIN`
+  3. `OUTPUT_TO_USER: "Ready for development. Copy these instructions for the IDE developer..."`
+  4. `AWAIT: USER_SIGNAL(Developer has completed changes)`
+  5. `EVALUATE: CTO_CODE_REVIEW(git_diff)`
+  6. `OUTPUT_TO_HUMAN: "Code review complete. Merge?"`
+  7. `AWAIT: USER_MERGE_APPROVAL`
+  8. `EXECUTE: GIT_MERGE_TO_MAIN`
 
 ---
 
