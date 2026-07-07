@@ -14,4 +14,4 @@
   6. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
 
 ## Error Formatting Overrides:
-- `OVERRIDE_OUTPUT(Model_Alignment_Error)`: `OUTPUT("Model Alignment Error: Request Switch -> Expected [Required_Tier] but running [Active_Model]. Please switch to: Gemini 3.5 Flash (High), Gemini 3.1 Pro (Low), Claude Sonnet 4.6 (Thinking), or GPT-OSS 120B (Medium).")`
+- `OVERRIDE_OUTPUT(Model_Alignment_Error)`: `OUTPUT("Model Alignment Error: Request Switch -> Expected [Required_Tier] but running [Active_Model]. Please switch to: (For HIGH: Gemini 3.1 Pro (High) or Claude Opus; For MEDIUM: Gemini 3.5 Flash (High) or Gemini 3.1 Pro (Low)).")`
