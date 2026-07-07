@@ -1203,3 +1203,7 @@ function mapDriveImagesToSheet() {
   Logger.log(`SUCCESS: Updated ${updatedCount} rows in the spreadsheet!`);
 }
 
+function triggerDriveAuth() {
+  DriveApp.getRootFolder();
+}
+
