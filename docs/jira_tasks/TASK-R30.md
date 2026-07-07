@@ -1,6 +1,6 @@
-# TASK-R30: Remove Custom API URL Settings & Auto-Clean Legacy Storage
+# TASK-R30: Prompt for Admin PIN on Exercise Creation and Custom Swaps
 
-> **For Human Readers:** This task simplifies the settings interface and eliminates browser storage corruption bugs by removing custom API URL configuration inputs from the Settings modal and injecting an auto-cleanup command on boot inside the AppContext loader.
+> **For Human Readers:** This task adds Admin PIN prompts when creating exercises manually or swapping to new custom exercises. This ensures the backend Google Apps Script compiles rows inside the `Exercises` sheet, enabling successful image uploads and linking set history.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -16,35 +16,47 @@
     - TARGET_BRANCH: `TASK-R30`
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
-    Remove custom API URL inputs from SettingsModal.jsx and add auto-cleanup for gym_api_url in AppContext.jsx.
+    Inject Admin PIN prompting into manual exercise creation and custom swaps, and propagate the PIN parameter to saveExercise.
   </OBJECTIVE>
   <RESOURCES>
     - Target Files:
-      - `gymlog-react/src/components/SettingsModal.jsx`
       - `gymlog-react/src/context/AppContext.jsx`
+      - `gymlog-react/src/components/SettingsModal.jsx`
+      - `gymlog-react/src/components/ExerciseCard.jsx`
+      - `gymlog-react/src/components/CircuitView.jsx`
   </RESOURCES>
   <SEQUENCE>
     1. READ: Target files.
 
-    2. MODIFY `gymlog-react/src/components/SettingsModal.jsx`:
-       - Remove `const [apiUrl, setApiUrl] = useState(...)` from hooks.
-       - Remove `const handleSaveApiUrl = () => { ... }` function.
-       - Locate and completely remove the "API Configuration" block from the JSX layout (including the input field, the SAVE URL button, and its container).
+    2. MODIFY `gymlog-react/src/context/AppContext.jsx`:
+       - Update the `createExerciseMeta` signature to accept `pin` as the second parameter:
+         `const createExerciseMeta = async (exerciseData, pin) => { ... }`
+       - Propagate `pin` into the `saveExercise` call inside the creation loop:
+         `await saveExercise(meta, pin);`
 
-    3. MODIFY `gymlog-react/src/context/AppContext.jsx`:
-       - Inside the main loading `useEffect` (around line 60), add a cleanup line that purges any legacy `gym_api_url` variables from local storage:
-         ```javascript
-         useEffect(() => {
-             // Auto-cleanup legacy custom URL overrides to ensure fallback to corrected built-in default
-             if (localStorage.getItem('gym_api_url')) {
-                 localStorage.removeItem('gym_api_url');
-             }
-             // ... rest of the existing code ...
-         ```
+    3. MODIFY `gymlog-react/src/components/SettingsModal.jsx`:
+       - In `handleCreateExercise`, prompt for the Admin PIN:
+         `const pin = prompt("Enter Admin PIN to create this exercise:");`
+         `if (pin === null) return;`
+       - Wrap the `await createExerciseMeta` block in a `try/catch` statement to alert the user if the server rejects the PIN. Pass `pin` as the second parameter.
 
-    4. AUDIT: Generate `audit_log_R30.md` detailing the UI cleanup and auto-migration command.
-    5. VERIFY: Run `npm run build` to confirm compilation is successful.
-    6. EXECUTE: Run `git push origin TASK-R30` to push the branch to the remote repository.
+    4. MODIFY `gymlog-react/src/components/ExerciseCard.jsx`:
+       - In `executeSwap`, if the exercise is not found in the local list (`if (!targetEx)`), prompt for the Admin PIN:
+         `const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");`
+         `if (pin === null) return;`
+       - Pass `pin` to `saveExercise(targetEx, pin)`.
+       - Wrap `saveExercise` in the try/catch block, print any error message via `alert()`, and `return` (aborting the swap) if the save fails.
+
+    5. MODIFY `gymlog-react/src/components/CircuitView.jsx`:
+       - In `handleSwap`, if `isNew` is true, prompt for the Admin PIN:
+         `const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");`
+         `if (pin === null) return;`
+       - Pass `pin` to `saveExercise(targetEx, pin)`.
+       - Wrap `saveExercise` in a try/catch block, display any error message via `alert()`, and `return` (aborting the swap) if the save fails.
+
+    6. AUDIT: Generate `audit_log_R30.md` detailing the implemented prompts.
+    7. VERIFY: Run `npm run build` to confirm compilation is successful.
+    8. EXECUTE: Run `git push origin TASK-R30` to push the branch to the remote repository.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
