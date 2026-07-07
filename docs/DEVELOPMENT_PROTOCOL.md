@@ -36,7 +36,7 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
   1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
   2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
   3. `OUTPUT_TO_USER: Exact template: "Please run \`git fetch && git checkout origin/main -b TASK-*\` to sync your sandbox. Then, read \`docs/jira_tasks/TASK-*.md\` and execute the instructions exactly as they are written."`
-  4. `AWAIT: USER_SIGNAL(Developer has completed changes)`
+  4. `AWAIT_SIGNAL`: `TASK_COMPLETE`
   5. `EVALUATE: CTO_CODE_REVIEW(git_diff)`
   6. `OUTPUT_TO_HUMAN: "Code review complete. Merge?"`
   7. `AWAIT: USER_MERGE_APPROVAL`
