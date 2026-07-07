@@ -266,7 +266,8 @@ function gymlog_doGet() {
       const name = String(r[0]).trim();
       const safeName = name.replace(/\//g, " ");
       let fileRef = String(r[9] || "").trim();
-      if (fileRef && !fileRef.includes('.jpg')) {
+      const isDriveId = fileRef && !fileRef.includes('.') && fileRef.length > 10;
+      if (fileRef && !isDriveId && !fileRef.includes('.jpg')) {
           fileRef = `${safeName}.jpg`;
       }
       return {
