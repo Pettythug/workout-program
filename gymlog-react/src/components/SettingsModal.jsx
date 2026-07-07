@@ -58,23 +58,29 @@ export default function SettingsModal({ isOpen, onClose }) {
             alert("Please enter an exercise name.");
             return;
         }
-        await createExerciseMeta({
-            baseName: exName.trim(),
-            timed: exTimed,
-            category: exCategory,
-            location: exLocation,
-            createSingle: exCreateSingle,
-            createAlt: exCreateAlt,
-            isCircuit: exIsCircuit
-        });
-        alert("Exercise(s) created and syncing to backend.");
-        setExName('');
-        setExTimed(false);
-        setExCategory('');
-        setExLocation('Anywhere');
-        setExCreateSingle(false);
-        setExCreateAlt(false);
-        setExIsCircuit(false);
+        const pin = prompt("Enter Admin PIN to create this exercise:");
+        if (pin === null) return;
+        try {
+            await createExerciseMeta({
+                baseName: exName.trim(),
+                timed: exTimed,
+                category: exCategory,
+                location: exLocation,
+                createSingle: exCreateSingle,
+                createAlt: exCreateAlt,
+                isCircuit: exIsCircuit
+            }, pin);
+            alert("Exercise(s) created and syncing to backend.");
+            setExName('');
+            setExTimed(false);
+            setExCategory('');
+            setExLocation('Anywhere');
+            setExCreateSingle(false);
+            setExCreateAlt(false);
+            setExIsCircuit(false);
+        } catch (err) {
+            alert("Failed to create exercise: " + err.message);
+        }
     };
 
     const handleDeleteExercise = async () => {

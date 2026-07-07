@@ -244,7 +244,7 @@ export function AppProvider({ children }) {
         localStorage.setItem('gymlog_activeLocation', loc);
     };
 
-    const createExerciseMeta = async (exerciseData) => {
+    const createExerciseMeta = async (exerciseData, pin) => {
         const { baseName, createSingle, createAlt, category, location, timed, isCircuit } = exerciseData;
         
         const variationsToCreate = [
@@ -256,7 +256,7 @@ export function AppProvider({ children }) {
 
         // Save each via API 
         for (const meta of variationsToCreate) {
-            await saveExercise(meta);
+            await saveExercise(meta, pin);
         }
 
         // Append to local state

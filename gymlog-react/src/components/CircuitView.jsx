@@ -241,6 +241,18 @@ export default function CircuitView() {
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
+        if (isNew) {
+            const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
+            if (pin === null) return;
+            try {
+                await saveExercise(targetEx, pin);
+            } catch (e) {
+                console.error("Error saving new swap exercise to backend", e);
+                alert("Failed to save swap exercise: " + e.message);
+                return;
+            }
+        }
+
         const oldName = circuit[index].name;
         const newCircuit = [...circuit];
         newCircuit[index] = targetEx;
@@ -252,14 +264,6 @@ export default function CircuitView() {
         }
         
         updateCircuitState(newCircuit, newMap);
-
-        if (isNew) {
-            try {
-                await saveExercise(targetEx);
-            } catch (e) {
-                console.error("Error saving new swap exercise to backend", e);
-            }
-        }
     };
 
     const handleLogSet = async (ex, logs) => {

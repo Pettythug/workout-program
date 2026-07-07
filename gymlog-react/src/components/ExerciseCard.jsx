@@ -368,6 +368,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         let targetEx = (exercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
         
         if (!targetEx) {
+            const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
+            if (pin === null) return;
             targetEx = { 
                 name: stdName, 
                 category: isCustom ? swapPayload.category : (ex.category || "General"),
@@ -379,9 +381,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 isCircuit: false
             };
             try {
-                await saveExercise(targetEx);
+                await saveExercise(targetEx, pin);
             } catch (e) {
                 console.error("Error saving new swap exercise to backend", e);
+                alert("Failed to save swap exercise: " + e.message);
+                return;
             }
         }
         

@@ -1,19 +1,22 @@
 # Audit Log: TASK-R30
 
-## Objective
-Remove custom API URL configuration inputs from the Settings modal and inject an auto-cleanup command on boot inside the AppContext loader.
+## Implemented Admin PIN Prompts
 
-## Changes Made
-1. **`gymlog-react/src/components/SettingsModal.jsx`**:
-   - Removed `apiUrl` state initialization (`const [apiUrl, setApiUrl] = useState(...)`).
-   - Removed `handleSaveApiUrl` function.
-   - Removed the "API SYNC URL" section from the JSX rendering, which included the label, input field, and "SAVE URL" button.
-   - Kept the "RESET TODAY'S CHECKMARKS" button intact in the Settings UI block.
+1. **`gymlog-react/src/context/AppContext.jsx`**:
+   - Updated `createExerciseMeta` signature to accept `pin` as the second parameter.
+   - Passed `pin` to `saveExercise(meta, pin)` for all variations created.
 
-2. **`gymlog-react/src/context/AppContext.jsx`**:
-   - Added auto-cleanup logic inside the main `useEffect` for initial loading. 
-   - The logic checks for the existence of `gym_api_url` in `localStorage` and removes it if present, ensuring a fallback to the corrected built-in default.
+2. **`gymlog-react/src/components/SettingsModal.jsx`**:
+   - In `handleCreateExercise`, added a `prompt("Enter Admin PIN to create this exercise:")`.
+   - Wrapped `createExerciseMeta` in a `try/catch` block, alerting the user on failure.
+   - Passed the inputted `pin` to `createExerciseMeta`.
 
-## Verification
-- Code successfully compiled (`npm run build`).
-- `gym_api_url` auto-cleanup ensures deprecated URLs are no longer loaded into the application state.
+3. **`gymlog-react/src/components/ExerciseCard.jsx`**:
+   - In `executeSwap`, if a custom exercise is created, added `prompt("Enter Admin PIN to register this custom exercise on the database:")`.
+   - Passed `pin` to `saveExercise(targetEx, pin)`.
+   - Wrapped `saveExercise` in a `try/catch` block, alerting the user on failure and aborting the swap via `return`.
+
+4. **`gymlog-react/src/components/CircuitView.jsx`**:
+   - In `handleSwap`, when `isNew` is true, added `prompt("Enter Admin PIN to register this custom exercise on the database:")`.
+   - Passed `pin` to `saveExercise(targetEx, pin)`.
+   - Wrapped `saveExercise` in a `try/catch` block, alerting the user and aborting the swap via `return` on failure.
