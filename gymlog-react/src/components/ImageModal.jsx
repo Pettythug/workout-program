@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) {
@@ -41,14 +41,48 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
         reader.readAsDataURL(file);
     };
 
-    const getImageUrl = (fileRef) => {
-        if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
-        if (!fileRef.includes('.') && fileRef.length > 10) {
-            return `https://docs.google.com/uc?export=view&id=${fileRef}`;
+    const [proxiedSrc, setProxiedSrc] = useState(null);
+    const [imageLoading, setImageLoading] = useState(false);
+    const [imageError, setImageError] = useState(false);
+
+    const isDriveId = (ref) => ref && !ref.includes('.') && ref.length > 10;
+
+    useEffect(() => {
+        if (!isOpen || !ex.fileReference) return;
+
+        if (isDriveId(ex.fileReference)) {
+            // Check sessionStorage cache first
+            const cacheKey = 'gymlog_img_' + ex.fileReference;
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                setProxiedSrc(cached);
+                setImageError(false);
+                return;
+            }
+
+            setImageLoading(true);
+            setImageError(false);
+            setProxiedSrc(null);
+            sheetsPost({ action: "getImage", fileId: ex.fileReference })
+                .then(res => {
+                    if (res?.data?.imageData) {
+                        setProxiedSrc(res.data.imageData);
+                        // Cache in sessionStorage for this browser session
+                        try { sessionStorage.setItem(cacheKey, res.data.imageData); } catch (e) { /* quota exceeded, skip cache */ }
+                    } else {
+                        setImageError(true);
+                    }
+                })
+                .catch(() => setImageError(true))
+                .finally(() => setImageLoading(false));
         }
-        return `${import.meta.env.BASE_URL}images/${fileRef}`;
-    };
-    const imgSrc = getImageUrl(ex.fileReference);
+    }, [isOpen, ex.fileReference, sheetsPost]);
+
+    const imgSrc = isDriveId(ex.fileReference)
+        ? proxiedSrc
+        : ex.fileReference
+            ? `${import.meta.env.BASE_URL}images/${ex.fileReference}`
+            : null;
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={onClose}>
@@ -58,21 +92,23 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
                     <button className="btn-ghost" onClick={onClose} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
                 </div>
                 
-                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-                    {ex.fileReference ? (
-                        <img 
-                            src={imgSrc} 
-                            alt={baseName} 
+                <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+                    {imageLoading ? (
+                        <div style={{ color: 'var(--muted)', padding: 32, textAlign: 'center' }}>
+                            Loading image...
+                        </div>
+                    ) : imageError ? (
+                        <div style={{ color: 'var(--muted)', padding: 32, textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 8 }}>
+                            Image not found for this exercise.
+                        </div>
+                    ) : imgSrc ? (
+                        <img
+                            src={imgSrc}
+                            alt={baseName}
                             style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: 8 }}
-                            onError={(e) => { 
-                                if (!e.target.dataset.retried) {
-                                    e.target.dataset.retried = true;
-                                    const safeName = (ex.name || "").replace(/\s*\/\s*/g, " ");
-                                    e.target.src = `${import.meta.env.BASE_URL}images/${safeName}.jpg`;
-                                } else {
-                                    e.target.style.display = 'none'; 
-                                    e.target.insertAdjacentHTML('afterend', '<div style=\"color: var(--muted); padding: 32px; text-align: center; border: 1px dashed var(--border); border-radius: 8px;\">Image not found for this exercise.</div>'); 
-                                }
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                setImageError(true);
                             }}
                         />
                     ) : (

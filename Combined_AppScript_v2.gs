@@ -105,6 +105,7 @@ function doGet(e) {
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
       if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
+      if (payload.action === "getImage")      return gymlog_handleGetImage(payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -133,6 +134,7 @@ function doPost(e) {
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
     if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
+    if (payload.action === "getImage")      return gymlog_handleGetImage(payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -1149,6 +1151,42 @@ function gymlog_handleUploadImage(payload) {
   }
 
   return ok({ fileId: fileId });
+}
+
+// ── Get Image (base64 proxy) ───────────────────────────────────────────
+// Security: Validates file belongs to the images folder and is an image MIME type.
+function gymlog_handleGetImage(payload) {
+  const fileId = payload.fileId;
+  if (!fileId) return err("Missing fileId");
+
+  try {
+    const file = DriveApp.getFileById(fileId);
+
+    // Security: Verify file is inside the designated images folder
+    const IMAGE_FOLDER_ID = "1nOc1oLanQ99cpPyOH1bGHKHW3E1Faubc";
+    const parents = file.getParents();
+    let inFolder = false;
+    while (parents.hasNext()) {
+      if (parents.next().getId() === IMAGE_FOLDER_ID) {
+        inFolder = true;
+        break;
+      }
+    }
+    if (!inFolder) return err("Access denied: file is not in the images folder");
+
+    // Security: Verify MIME type is an image
+    const blob = file.getBlob();
+    const mimeType = blob.getContentType() || "image/jpeg";
+    if (!mimeType.startsWith("image/")) return err("Access denied: not an image file");
+
+    // Size guard: reject files over 5MB to prevent Apps Script timeout
+    if (blob.getBytes().length > 5 * 1024 * 1024) return err("Image too large (max 5MB)");
+
+    const base64 = Utilities.base64Encode(blob.getBytes());
+    return ok({ imageData: "data:" + mimeType + ";base64," + base64 });
+  } catch (e) {
+    return err("Image not found: " + e.message);
+  }
 }
 
 // ONE-TIME SCRIPT: Map Google Drive Images to File Reference Column
