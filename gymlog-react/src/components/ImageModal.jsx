@@ -65,10 +65,10 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
             setProxiedSrc(null);
             sheetsPost({ action: "getImage", fileId: ex.fileReference })
                 .then(res => {
-                    if (res?.data?.imageData) {
-                        setProxiedSrc(res.data.imageData);
+                    if (res?.imageData) {
+                        setProxiedSrc(res.imageData);
                         // Cache in sessionStorage for this browser session
-                        try { sessionStorage.setItem(cacheKey, res.data.imageData); } catch (e) { /* quota exceeded, skip cache */ }
+                        try { sessionStorage.setItem(cacheKey, res.imageData); } catch (e) { /* quota exceeded, skip cache */ }
                     } else {
                         setImageError(true);
                     }
