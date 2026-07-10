@@ -20,8 +20,8 @@ const CATEGORY_ORDER = [
 ];
 
 export default function CircuitView() {
-    const { logSet, deleteHistory, saveExercise } = useGymAPI();
-    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus } = useAppContext();
+    const { logSet, deleteHistory, saveExercise, sheetsPost } = useGymAPI();
+    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus, updateExerciseInLocalState } = useAppContext();
     
     const navigate = useNavigate();
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
@@ -264,6 +264,32 @@ export default function CircuitView() {
         }
         
         updateCircuitState(newCircuit, newMap);
+    };
+
+    const handleRemoveExerciseFromCircuit = async (exName) => {
+        const exObj = exercises.find(e => e.name === exName);
+        if (!exObj) return;
+        
+        // 1. Save metadata to Sheets (setting isCircuit to false)
+        const pin = window.prompt("Admin PIN required to modify exercise metadata:");
+        if (pin === null) return;
+        
+        await sheetsPost({
+            action: "saveExercise",
+            exercise: exObj.name,
+            timed: exObj.timed,
+            category: exObj.category,
+            location: exObj.location,
+            isCircuit: false,
+            pin: pin
+        });
+        
+        // 2. Update local state
+        const newCircuit = circuit.filter(e => e.name !== exName);
+        const newCompletedMap = { ...completedMap };
+        delete newCompletedMap[exName];
+        updateCircuitState(newCircuit, newCompletedMap);
+        updateExerciseInLocalState(exName, { isCircuit: false });
     };
 
     const handleLogSet = async (ex, logs) => {
@@ -564,6 +590,7 @@ export default function CircuitView() {
                                     onToggle={() => {}}
                                     onSwap={handleSwap}
                                     allExercises={exercises}
+                                    onRemove={handleRemoveExerciseFromCircuit}
                                 />
                                 
                                 <button 
