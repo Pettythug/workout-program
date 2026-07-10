@@ -18,7 +18,8 @@ export function AppProvider({ children }) {
     });
     const [activePeople, setActivePeople] = useState(() => {
         const cached = localStorage.getItem('gymlog_activePeople');
-        return cached ? JSON.parse(cached) : [];
+        const parsed = cached ? JSON.parse(cached) : [];
+        return [...new Set(parsed)];
     });
     const [exercises, setExercises] = useState(() => {
         const cached = localStorage.getItem('gymlog_exercises');
@@ -123,27 +124,27 @@ export function AppProvider({ children }) {
 
     const togglePersonActive = (person) => {
         if (person === deviceOwner && activePeople.includes(person)) {
-            // Do not allow the device owner to be deactivated
             return;
         }
         setActivePeople(prev => {
             const next = prev.includes(person)
                 ? prev.filter(p => p !== person)
                 : [...prev, person];
-            localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
-            return next;
+            const uniqueNext = [...new Set(next)];
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(uniqueNext));
+            return uniqueNext;
         });
     };
 
     const updateDeviceOwner = (newOwner) => {
         setDeviceOwner(newOwner);
         localStorage.setItem('builder_primary_user', newOwner);
-        // Force them into active roster if not already there
         setActivePeople(prev => {
             if (!prev.includes(newOwner)) {
                 const next = [...prev, newOwner];
-                localStorage.setItem('gymlog_activePeople', JSON.stringify(next));
-                return next;
+                const uniqueNext = [...new Set(next)];
+                localStorage.setItem('gymlog_activePeople', JSON.stringify(uniqueNext));
+                return uniqueNext;
             }
             return prev;
         });
@@ -313,8 +314,12 @@ export function AppProvider({ children }) {
         }
 
         const entries = [];
+        const seenKeys = new Set();
         for (const person of activePeople) {
             const key = person.toLowerCase();
+            if (seenKeys.has(key)) continue;
+            seenKeys.add(key);
+
             const input = logs[key];
             if (!input) continue;
 
@@ -358,8 +363,12 @@ export function AppProvider({ children }) {
         if (entries.length > 0) {
             const userPins = {};
             let cancelled = false;
+            const seenPinKeys = new Set();
             for (const person of activePeople) {
                 const key = person.toLowerCase();
+                if (seenPinKeys.has(key)) continue;
+                seenPinKeys.add(key);
+
                 const input = logs[key];
                 if (!input) continue;
 
@@ -390,7 +399,7 @@ export function AppProvider({ children }) {
     const contextValue = {
         workoutDay,
         people,
-        activePeople: activePeople.filter(p => people.includes(p)),
+        activePeople: [...new Set(activePeople)].filter(p => people.includes(p)),
         deviceOwner,
         updateDeviceOwner,
         exercises,
