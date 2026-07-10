@@ -298,6 +298,19 @@ export function AppProvider({ children }) {
         });
     };
 
+    const updateExerciseInLocalState = (exName, updates) => {
+        setExercises(prev => {
+            const next = prev.map(ex => {
+                if (ex.name === exName) {
+                    return { ...ex, ...updates };
+                }
+                return ex;
+            });
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+    };
+
     const logExerciseSet = async (ex, logs) => {
         console.log("logExerciseSet CALLED", { ex, logs });
         
@@ -423,6 +436,7 @@ export function AppProvider({ children }) {
         addLocationToRoster,
         createExerciseMeta,
         removeExerciseFromLocalState,
+        updateExerciseInLocalState,
         logExerciseSet,
         clearAllExerciseStatus
     };
