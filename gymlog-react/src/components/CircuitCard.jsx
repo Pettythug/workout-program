@@ -52,15 +52,25 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                 {ex.timed ? (
-                    <input 
-                        placeholder="secs" 
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={input.duration || ""} 
-                        onChange={e => updateInput(key, "duration", e.target.value)}
-                        style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 80, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
-                    />
+                    <>
+                        <input 
+                            placeholder="secs" 
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={input.duration || ""} 
+                            onChange={e => updateInput(key, "duration", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                        <input 
+                            placeholder="lbs" 
+                            type="text"
+                            inputMode="decimal"
+                            value={input.weight || ""} 
+                            onChange={e => updateInput(key, "weight", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                    </>
                 ) : (
                     <>
                         <input 
