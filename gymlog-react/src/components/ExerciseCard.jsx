@@ -119,7 +119,7 @@ const PersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
@@ -281,6 +281,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     };
 
     const handleOpenEdit = (type) => {
+        if (type === 'timed') {
+            handleSaveInlineEdit('timed');
+            return;
+        }
         if (type === 'circuit') {
             handleSaveInlineEdit('circuit');
             return;
@@ -298,7 +302,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
         let finalValue = editValue;
 
-        if (typeToSave === 'circuit') {
+        if (typeToSave === 'timed') {
+            const confirmMsg = ex.timed 
+                ? `Convert '${ex.name}' to Reps-based tracking?`
+                : `Convert '${ex.name}' to Timed tracking?`;
+            if (!window.confirm(confirmMsg)) return;
+            payload.timed = !ex.timed;
+        } else if (typeToSave === 'circuit') {
             const confirmMsg = ex.isCircuit 
                 ? `Remove '${ex.name}' from Circuit Generator?`
                 : `Add '${ex.name}' to Circuit Generator?`;
@@ -329,8 +339,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             setToast("Updating metadata...");
             setEditMode(null);
             await saveExercise(payload, pin);
-            setToast("Updated! Reload to see changes.");
-            setTimeout(() => setToast(""), 3000);
+            updateExerciseInLocalState(ex.name, { 
+                timed: payload.timed !== undefined ? payload.timed : ex.timed 
+            });
+            setToast("Updated!");
         } catch (e) {
             console.error(e);
             setToast("Error updating");
@@ -345,7 +357,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             await deleteHistory({ exercise: ex.name, ...entry }, pin);
             deleteSetFromLocalHistory(ex.name, entry);
             setToast("Entry deleted!");
-            setTimeout(() => setToast(""), 2000);
         } catch (e) {
             console.error(e);
             setToast("Error deleting");
@@ -364,7 +375,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                 deleteSetFromLocalHistory(ex.name, entry);
             }
             setToast("Set deleted!");
-            setTimeout(() => setToast(""), 2000);
         } catch (e) {
             console.error(e);
             setToast("Error deleting");
@@ -556,6 +566,9 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                         <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
                                         <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
                                         <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                        <button className={ex.timed ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.timed ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('timed')}>
+                                            {ex.timed ? "⏱️ TIMED" : "🏋️ REPS"}
+                                        </button>
                                         <button className={ex.isCircuit ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
                                             {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
                                         </button>
