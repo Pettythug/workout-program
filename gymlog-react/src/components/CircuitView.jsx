@@ -511,11 +511,21 @@ export default function CircuitView() {
                         }
 
                         if (activeIdx >= circuit.length) {
+                            const lastExName = circuit[circuit.length - 1]?.name;
                             return (
-                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)' }}>
+                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <h2>🎉 Circuit Complete!</h2>
                                     <p>Great job finishing the workout.</p>
-                                    <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12 }}>Finish</button>
+                                    <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12, width: '200px' }}>Finish</button>
+                                    {lastExName && (
+                                        <button 
+                                            className="btn-ghost" 
+                                            onClick={() => handleUndo(lastExName)} 
+                                            style={{ border: '1px solid var(--border)', padding: 12, width: '200px', color: 'white', fontSize: 13 }}
+                                        >
+                                            &larr; Undo Last Submission
+                                        </button>
+                                    )}
                                 </div>
                             );
                         }
