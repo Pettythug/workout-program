@@ -36,6 +36,24 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
             }
         }
 
+        const localHistory = ex.history || [];
+        const mergedHistory = [...sheetHistory];
+        
+        localHistory.forEach(lh => {
+            // Check if local history entry is from today
+            const isToday = lh.date && new Date(lh.date).toDateString() === new Date().toDateString();
+            if (!isToday) return;
+
+            const isDuplicate = sheetHistory.some(sh => 
+                sh.person === lh.person && 
+                String(sh.reps) === String(lh.reps) && 
+                String(sh.weight) === String(lh.weight)
+            );
+            if (!isDuplicate) {
+                mergedHistory.push(lh);
+            }
+        });
+
         return {
             ...ex,
             fileReference,
@@ -43,7 +61,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
             category:  sheetExInfo?.category  ?? ex.category  ?? "",
             location:  sheetExInfo?.location  ?? ex.location  ?? "Anywhere",
             isCircuit: sheetExInfo?.isCircuit ?? ex.isCircuit ?? false,
-            history:   sheetHistory,
+            history:   mergedHistory,
             best:      sheetBest || makeBest(),
         };
     });
@@ -64,13 +82,30 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
                     }
                 }
 
+                const localHistory = sheetEx.history || [];
+                const mergedHistory = [...sheetHistory];
+                
+                localHistory.forEach(lh => {
+                    const isToday = lh.date && new Date(lh.date).toDateString() === new Date().toDateString();
+                    if (!isToday) return;
+
+                    const isDuplicate = sheetHistory.some(sh => 
+                        sh.person === lh.person && 
+                        String(sh.reps) === String(lh.reps) && 
+                        String(sh.weight) === String(lh.weight)
+                    );
+                    if (!isDuplicate) {
+                        mergedHistory.push(lh);
+                    }
+                });
+
                 merged.push({
                     ...sheetEx,
                     fileReference,
                     timed: sheetEx.timed ?? false,
                     category: sheetEx.category ?? "",
                     location: sheetEx.location ?? "Anywhere",
-                    history: sheetHistory,
+                    history: mergedHistory,
                     best: sheetBest || makeBest(),
                 });
             }

@@ -22,11 +22,12 @@ const formatLogDate = (dateStr) => {
     }
 };
 
-const PersonRow = ({ person, ex, input, updateInput }) => {
+const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
     const toggleNotePhrase = (phrase) => {
+        if (toast) setToast("");
         let prev = input.note || "";
         if (prev.includes(phrase)) {
             updateInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
@@ -171,6 +172,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const [isSaving, setIsSaving] = useState(false);
 
     const updateInput = (personKey, field, value) => {
+        if (toast) setToast("");
         setInputs(prev => {
             let sanitizedValue = value;
             if (field === 'reps') {
@@ -204,6 +206,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                 cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
             });
             setInputs(cleared);
+            setToast("Set Saved!");
         }
         setIsSaving(false);
     };
@@ -381,7 +384,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                     {activeTab === "LOG" && (
                         <div>
                             {activePeople.map(p => (
-                                <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} />
+                                <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} toast={toast} setToast={setToast} />
                             ))}
 
                             <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>

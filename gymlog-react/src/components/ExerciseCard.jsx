@@ -24,11 +24,12 @@ const formatLogDate = (dateStr) => {
     }
 };
 
-const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
+const PersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
     const toggleNotePhrase = (phrase) => {
+        if (toast) setToast("");
         let prev = input.note || "";
         if (prev.includes(phrase)) {
             updateLogInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
@@ -238,6 +239,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     };
 
     const updateLogInput = (personKey, field, value) => {
+        if (toast) setToast("");
         setLogInputs(prev => {
             const next = { ...prev };
             if (!next[personKey]) {
@@ -578,6 +580,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                 ex={ex} 
                                                 input={input} 
                                                 updateLogInput={updateLogInput} 
+                                                toast={toast}
+                                                setToast={setToast}
                                             />
                                         );
                                     })}
