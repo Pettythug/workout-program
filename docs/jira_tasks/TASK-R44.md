@@ -19,13 +19,27 @@
   </OBJECTIVE>
   <RESOURCES>
     - Frontend:
+      - `gymlog-react/src/context/AppContext.jsx`
       - `gymlog-react/src/components/CircuitCard.jsx`
       - `gymlog-react/src/components/CircuitView.jsx`
   </RESOURCES>
   <SEQUENCE>
     1. READ target files.
 
-    2. MODIFY `gymlog-react/src/components/CircuitCard.jsx`:
+    2. MODIFY `gymlog-react/src/context/AppContext.jsx`:
+       - Implement `updateExerciseInLocalState` inside `AppProvider`:
+         ```javascript
+         const updateExerciseInLocalState = (name, updates) => {
+             setExercises(prev => {
+                 const next = prev.map(ex => ex.name === name ? { ...ex, ...updates } : ex);
+                 localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+                 return next;
+             });
+         };
+         ```
+       - Export `updateExerciseInLocalState` in the `contextValue` object and return value.
+
+    3. MODIFY `gymlog-react/src/components/CircuitCard.jsx`:
        - Add `onRemove` callback prop to `CircuitCard`.
        - Inside the button footer (around line 445), add a REMOVE button:
          ```jsx
@@ -50,7 +64,7 @@
          };
          ```
 
-    3. MODIFY `gymlog-react/src/components/CircuitView.jsx`:
+    4. MODIFY `gymlog-react/src/components/CircuitView.jsx`:
        - Add a handler `handleRemoveExerciseFromCircuit(exName)`:
          ```javascript
          const handleRemoveExerciseFromCircuit = async (exName) => {
@@ -78,8 +92,8 @@
          ```
        - Pass `handleRemoveExerciseFromCircuit` to `CircuitCard` as `onRemove` prop (inside the card generator mapping, around line 541).
 
-    4. AUDIT: Generate `audit_log_R44.md` detailing the inline exercise removal implementation.
-    5. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to confirm compilation succeeds cleanly.
+    5. AUDIT: Generate `audit_log_R44.md` detailing the inline exercise removal implementation.
+    6. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to confirm compilation succeeds cleanly.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
