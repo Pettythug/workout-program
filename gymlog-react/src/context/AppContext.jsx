@@ -56,6 +56,17 @@ export function AppProvider({ children }) {
             localStorage.removeItem('gym_api_url');
         }
 
+        const lastActiveDate = localStorage.getItem('gymlog_lastActiveDate');
+        const today = new Date().toDateString();
+        if (lastActiveDate && lastActiveDate !== today) {
+            // New day detected: reset daily statuses and swaps
+            localStorage.setItem('gymlog_exerciseStatus', JSON.stringify({}));
+            localStorage.setItem('gymlog_dailySwaps', JSON.stringify({}));
+            setExerciseStatus({});
+            setDailySwaps({});
+        }
+        localStorage.setItem('gymlog_lastActiveDate', today);
+
         const controller = new AbortController();
         const loadInitialData = async () => {
             setIsSyncing(true);
