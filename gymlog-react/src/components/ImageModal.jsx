@@ -6,8 +6,6 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-    if (!isOpen) return null;
-
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -83,6 +81,8 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
         : ex.fileReference
             ? `${import.meta.env.BASE_URL}images/${ex.fileReference}`
             : null;
+
+    if (!isOpen) return null;
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={onClose}>
