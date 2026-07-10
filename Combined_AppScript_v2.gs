@@ -511,43 +511,59 @@ function gymlog_handleSyncAll(payload) {
 
 function gymlog_handleSaveExercise(payload) {
   verifyAdminPin(payload);
-  const { exercise, timed, category, location } = payload;
+  const exercise = payload.exercise || payload.name;
   if (!exercise) return err("No exercise name provided");
 
   const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
 
-  // Upsert: update existing row or append new one
+  // Find existing row
   const lastRow = exSheet.getLastRow();
   let rowIndex  = -1;
+  let existingRow = [];
   if (lastRow > 1) {
     const names = exSheet.getRange(2, 1, lastRow - 1, 1).getValues();
     for (let i = 0; i < names.length; i++) {
       if (String(names[i][0]).trim().toLowerCase() === String(exercise).trim().toLowerCase()) {
         rowIndex = i + 2;
+        existingRow = exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).getValues()[0];
         break;
       }
     }
   }
 
-  const row = [
-    exercise, 
-    timed ? true : false, 
-    category || "", 
-    location || "Anywhere", 
-    payload.note || "", 
-    payload.manufacturer || "", 
-    payload.modelSeries || "", 
-    payload.baseExercise || "", 
-    payload.muscleGroups || "", 
-    payload.fileReference || "",
-    payload.isCircuit ? true : false
+  // Map properties falling back to existing row cells if undefined in payload
+  const getVal = (payloadVal, existingIdx, defaultVal = "") => {
+    if (payloadVal !== undefined && payloadVal !== null) return payloadVal;
+    if (rowIndex > -1 && existingRow[existingIdx] !== undefined && existingRow[existingIdx] !== null) {
+      return existingRow[existingIdx];
+    }
+    return defaultVal;
+  };
+
+  const finalTimed = getVal(payload.timed, 1, false);
+  const finalIsCircuit = getVal(payload.isCircuit, 10, false);
+
+  const newRow = [
+    exercise,
+    finalTimed === true || String(finalTimed).toLowerCase() === "true",
+    getVal(payload.category, 2, ""),
+    getVal(payload.location, 3, "Anywhere"),
+    getVal(payload.note, 4, ""),
+    getVal(payload.manufacturer, 5, ""),
+    getVal(payload.modelSeries, 6, ""),
+    getVal(payload.baseExercise, 7, ""),
+    getVal(payload.muscleGroups, 8, ""),
+    getVal(payload.fileReference, 9, ""),
+    finalIsCircuit === true || String(finalIsCircuit).toLowerCase() === "true"
   ];
-  if (rowIndex > 0) {
-    exSheet.getRange(rowIndex, 1, 1, EXERCISES_HEADERS.length).setValues([row]);
+
+  if (rowIndex > -1) {
+    exSheet.getRange(rowIndex, 1, 1, newRow.length).setValues([newRow]);
   } else {
-    exSheet.appendRow(row);
+    exSheet.appendRow(newRow);
   }
 
+  gymlog_recalculateBestForExercise(exercise);
   return ok({ saved: exercise });
 }
 

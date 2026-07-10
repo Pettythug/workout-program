@@ -299,7 +299,20 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         const typeToSave = explicitType || editMode;
         if (!typeToSave) return;
 
-        let payload = { name: ex.name, exercise: ex.name, category: ex.category, location: ex.location, isCircuit: ex.isCircuit };
+        let payload = {
+            name: ex.name,
+            exercise: ex.name,
+            timed: ex.timed,
+            category: ex.category || "",
+            location: ex.location || "Anywhere",
+            isCircuit: ex.isCircuit,
+            note: ex.note || "",
+            manufacturer: ex.manufacturer || "",
+            modelSeries: ex.modelSeries || "",
+            baseExercise: ex.baseExercise || "",
+            muscleGroups: ex.muscleGroups || "",
+            fileReference: ex.fileReference || ""
+        };
         let finalValue = editValue;
 
         if (typeToSave === 'timed') {

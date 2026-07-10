@@ -278,9 +278,15 @@ export default function CircuitView() {
             action: "saveExercise",
             exercise: exObj.name,
             timed: exObj.timed,
-            category: exObj.category,
-            location: exObj.location,
+            category: exObj.category || "",
+            location: exObj.location || "Anywhere",
             isCircuit: false,
+            note: exObj.note || "",
+            manufacturer: exObj.manufacturer || "",
+            modelSeries: exObj.modelSeries || "",
+            baseExercise: exObj.baseExercise || "",
+            muscleGroups: exObj.muscleGroups || "",
+            fileReference: exObj.fileReference || "",
             pin: pin
         });
         
