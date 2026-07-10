@@ -55,7 +55,10 @@ const PersonLogSection = ({ person, ex, input, updateLogInput }) => {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                 {ex.timed ? (
                     <input 
-                        placeholder="mm:ss" 
+                        placeholder="secs" 
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={input.duration || ""} 
                         onChange={e => updateLogInput(key, "duration", e.target.value)}
                         style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 80, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
@@ -362,7 +365,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         const validKeys = Object.keys(ex.best[personKey]).filter(k => ex.best[personKey][k] !== null);
         if (validKeys.length === 0) return "No data";
         const b = ex.best[personKey][validKeys[0]];
-        return ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
+        return ex.timed ? `${b.reps}s` : `${b.reps}x${b.weight}`;
     };
 
     const executeSwap = async (swapPayload) => {
@@ -580,7 +583,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                             {h.person.toUpperCase()} - Set {h.setNum || i + 1}
                                                             {timeStr && <span style={{ color: 'var(--muted)', fontSize: 9, marginLeft: 6 }}>({timeStr})</span>}
                                                         </span>
-                                                        <span>{ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}</span>
+                                                        <span>{ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}</span>
                                                     </div>
                                                 );
                                             })}
@@ -618,7 +621,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             groupedSets.map((setEntries, sIdx) => {
                                                 const timeStr = setEntries[0]?.date ? new Date(setEntries[0].date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
                                                 const summary = setEntries.map(e => {
-                                                    const formatted = ex.timed ? `${e.reps} ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
+                                                    const formatted = ex.timed ? `${e.reps}s ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
                                                     return `${e.person[0].toUpperCase()}:${formatted}`;
                                                 }).join('   ');
                                                 return (
@@ -655,7 +658,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                         </div>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                             <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
-                                                                {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                                {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
                                                             </div>
                                                             <button 
                                                                 onClick={() => handleDeleteHistory(h)}

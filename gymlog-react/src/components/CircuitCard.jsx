@@ -53,7 +53,10 @@ const PersonRow = ({ person, ex, input, updateInput }) => {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
                 {ex.timed ? (
                     <input 
-                        placeholder="mm:ss" 
+                        placeholder="secs" 
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={input.duration || ""} 
                         onChange={e => updateInput(key, "duration", e.target.value)}
                         style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 80, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
@@ -473,7 +476,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                     sets.map((setEntries, sIdx) => {
                                         const timeStr = setEntries[0]?.date ? new Date(setEntries[0].date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
                                         const summary = setEntries.map(e => {
-                                            const formatted = ex.timed ? `${e.reps} ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
+                                            const formatted = ex.timed ? `${e.reps}s ${e.weight ? `@ ${e.weight}lbs` : ''}` : `${e.reps}x${e.weight || 0}`;
                                             return `${e.person[0].toUpperCase()}:${formatted}`;
                                         }).join('   ');
                                         return (
@@ -510,7 +513,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
-                                                        {ex.timed ? `${h.reps} ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                        {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
                                                     </div>
                                                     <button 
                                                         onClick={() => onDeleteHistoryEntry({ ...h, exercise: ex.name })}
