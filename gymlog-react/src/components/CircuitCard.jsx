@@ -116,7 +116,7 @@ const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
     );
 };
 
-export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises, onRemove }) {
+export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
     
     const sets = useMemo(() => {
@@ -250,15 +250,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         setCustomSwapState(null);
     };
 
-    const handleRemoveClick = async () => {
-        if (window.confirm(`Are you sure you want to remove "${ex.name}" from the Circuit Generator permanently?`)) {
-            try {
-                await onRemove(ex.name);
-            } catch (err) {
-                alert("Failed to remove exercise from circuit: " + err.message);
-            }
-        }
-    };
+
 
     // Calculate generic selections for custom swap
     const allCategories = [...new Set((allExercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -483,13 +475,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                         >
                                             📸 IMAGE
                                         </button>
-                                        <button 
-                                            onClick={handleRemoveClick}
-                                            className="btn-ghost btn-no-translate"
-                                            style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11, color: 'var(--skip)', borderColor: 'var(--skip)' }}
-                                        >
-                                            ❌ REMOVE
-                                        </button>
+
                                     </div>
                                 )}
                             </div>
