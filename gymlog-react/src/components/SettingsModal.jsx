@@ -297,7 +297,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                     )}
                 </div>
 
-                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', gap: 12 }}>
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <button 
                         className="btn-danger" 
                         onClick={() => {
@@ -306,7 +306,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 alert("Checkmarks cleared.");
                             }
                         }}
-                        style={{ flex: 1, padding: 12 }}
+                        style={{ width: "100%", padding: 12 }}
                     >
                         ⚠️ RESET CHECKMARKS
                     </button>
@@ -322,7 +322,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 alert("Stored PINs cleared from device.");
                             }
                         }}
-                        style={{ flex: 1, padding: 12, border: '1px solid var(--border)', color: 'white' }}
+                        style={{ width: "100%", padding: 12, border: '1px solid var(--border)', color: 'white' }}
                     >
                         🔑 CLEAR CACHED PINS
                     </button>
