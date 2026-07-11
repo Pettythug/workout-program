@@ -33,10 +33,11 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 ## 3. Gated Orchestration Protocol
 - `ROUTING_NODE`: `REQUIRE(Manager_Auditor)`
 - `TASK_ASSIGNMENT_METHOD`: `REQUIRE(invoke_subagent)`
+- `HANDOFF_FORMAT`: `ALLOW(AI_Direct_Language: [XML_Tagging, System_Block_Format])`
 - `MANAGER_EXECUTION_SEQUENCE`:
   1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
   2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
-  3. `OUTPUT_TO_USER (MANAGER ONLY - DEVELOPERS MUST NOT COPY): Exact template: "Please run \`git fetch && git checkout origin/main -b TASK-*\` to sync your sandbox. Then, read \`docs/jira_tasks/TASK-*\` and execute the instructions exactly as they are written."`
+  3. `OUTPUT_TO_USER (MANAGER ONLY - DEVELOPERS MUST NOT COPY): Exact template: "Please run \`git fetch && git checkout origin/main -b TASK-*\` to sync your sandbox. Then, read \`docs/jira_tasks/TASK-*\` and execute the instructions exactly as they are written." or matching direct AI structured format.`
   4. `AWAIT_SIGNAL: IMPLEMENTATION_PLAN_READY` -> `AUDIT: READ(implementation_plan.md)` -> `TRIGGER: PROCEED`
   5. `AWAIT_SIGNAL`: `TASK_COMPLETE`
   6. `EVALUATE: CTO_CODE_REVIEW(git_diff)`
