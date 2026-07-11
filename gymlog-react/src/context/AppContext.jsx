@@ -50,6 +50,90 @@ export function AppProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(true);
 
+    // Global Timer State
+    const [timerMode, setTimerMode] = useState(() => {
+        return localStorage.getItem('gym-global-timer-mode') || 'stopwatch';
+    });
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const [timerIsRunning, setTimerIsRunning] = useState(false);
+    const [timerIsCountdown, setTimerIsCountdown] = useState(false);
+
+    // Sync timer mode to localStorage and set initial time
+    useEffect(() => {
+        localStorage.setItem('gym-global-timer-mode', timerMode);
+        setTimerIsRunning(false);
+        if (timerMode === 'stopwatch') {
+            setTimerSeconds(0);
+            setTimerIsCountdown(false);
+        } else {
+            setTimerSeconds(parseInt(timerMode, 10));
+            setTimerIsCountdown(true);
+        }
+    }, [timerMode]);
+
+    // Timer interval effect
+    useEffect(() => {
+        let interval = null;
+        if (timerIsRunning) {
+            interval = setInterval(() => {
+                setTimerSeconds(prev => {
+                    if (timerIsCountdown) {
+                        if (prev <= 1) {
+                            setTimerIsRunning(false);
+                            // Visual and sound alert (native Web Audio API beep)
+                            try {
+                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                                const osc = ctx.createOscillator();
+                                const gain = ctx.createGain();
+                                osc.connect(gain);
+                                gain.connect(ctx.destination);
+                                osc.frequency.value = 800; // 800Hz
+                                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                                osc.start();
+                                osc.stop(ctx.currentTime + 0.15);
+                            } catch (e) {
+                                console.error("Beep error:", e);
+                            }
+                            return 0;
+                        }
+                        return prev - 1;
+                    } else {
+                        return prev + 1;
+                    }
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [timerIsRunning, timerIsCountdown]);
+
+    const formatTimerTime = (totalSeconds) => {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const toggleTimer = () => {
+        setTimerIsRunning(prev => !prev);
+    };
+
+    const resetTimer = () => {
+        setTimerIsRunning(false);
+        if (timerMode === 'stopwatch') {
+            setTimerSeconds(0);
+        } else {
+            setTimerSeconds(parseInt(timerMode, 10));
+        }
+    };
+
+    const startRestTimer = (seconds) => {
+        if (!isNaN(seconds) && seconds > 0) {
+            setTimerSeconds(seconds);
+            setTimerIsCountdown(true);
+            setTimerIsRunning(true);
+        }
+    };
+
+
     // Initial Load
     useEffect(() => {
         // Auto-cleanup legacy custom URL overrides to ensure fallback to corrected built-in default
@@ -438,7 +522,19 @@ export function AppProvider({ children }) {
         removeExerciseFromLocalState,
         updateExerciseInLocalState,
         logExerciseSet,
-        clearAllExerciseStatus
+        clearAllExerciseStatus,
+        timerMode,
+        setTimerMode,
+        timerSeconds,
+        setTimerSeconds,
+        timerIsRunning,
+        setTimerIsRunning,
+        timerIsCountdown,
+        setTimerIsCountdown,
+        formatTimerTime,
+        toggleTimer,
+        resetTimer,
+        startRestTimer
     };
 
     return (
