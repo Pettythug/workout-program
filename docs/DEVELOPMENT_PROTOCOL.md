@@ -34,14 +34,15 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 - `ROUTING_NODE`: `REQUIRE(Manager_Auditor)`
 - `TASK_ASSIGNMENT_METHOD`: `REQUIRE(invoke_subagent)`
 - `HANDOFF_FORMAT`: `ALLOW(AI_Direct_Language: [XML_Tagging, System_Block_Format])`
+- `BRANCH_LIFECYCLE`: `REQUIRE(Branch_Persistence: "Task branches must remain active and cannot be deleted or merged into main until the final code review audit has been approved by the user.")`
 - `MANAGER_EXECUTION_SEQUENCE`:
   1. `EXECUTE: CREATE_FILE(docs/jira_tasks/TASK-*.md)`
   2. `EXECUTE: GIT_CHECKOUT_BRANCH(TASK-*)`
-  3. `OUTPUT_TO_USER (MANAGER ONLY - DEVELOPERS MUST NOT COPY): Exact template: "Please run \`git fetch && git checkout origin/main -b TASK-*\` to sync your sandbox. Then, read \`docs/jira_tasks/TASK-*\` and execute the instructions exactly as they are written." or matching direct AI structured format.`
+  3. `OUTPUT_TO_USER (MANAGER ONLY - DEVELOPERS MUST NOT COPY): Exact template: "Please run \`git fetch && git checkout TASK-*\` to sync your sandbox. Then, read \`docs/jira_tasks/TASK-*\` and execute the instructions exactly as they are written." or matching direct AI structured format.`
   4. `AWAIT_SIGNAL: IMPLEMENTATION_PLAN_READY` -> `AUDIT: READ(implementation_plan.md)` -> `TRIGGER: PROCEED`
   5. `AWAIT_SIGNAL`: `TASK_COMPLETE`
   6. `EVALUATE: CTO_CODE_REVIEW(git_diff)`
-  7. `EXECUTE: GIT_MERGE_TO_MAIN`
+  7. `EXECUTE: GIT_MERGE_TO_MAIN` -> `EXECUTE: GIT_DELETE_BRANCH(TASK-*)`
 
 ---
 
