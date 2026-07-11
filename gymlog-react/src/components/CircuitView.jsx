@@ -21,7 +21,14 @@ const CATEGORY_ORDER = [
 
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise, sheetsPost } = useGymAPI();
-    const { exercises, people, activePeople, loading, addSetToLocalHistory, deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus, updateExerciseInLocalState } = useAppContext();
+    const { 
+        exercises, people, activePeople, loading, addSetToLocalHistory, 
+        deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, 
+        setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus, 
+        updateExerciseInLocalState,
+        timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
+        formatTimerTime, toggleTimer, resetTimer, startRestTimer
+    } = useAppContext();
     
     const navigate = useNavigate();
     const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
@@ -37,80 +44,7 @@ export default function CircuitView() {
     const circuit = circuitState.circuit || [];
     const completedMap = circuitState.completedMap || {};
 
-    // Timer states
-    const [timerMode, setTimerMode] = useState(() => {
-        return localStorage.getItem('gym-timer-mode') || 'stopwatch';
-    });
-    const [timerSeconds, setTimerSeconds] = useState(0);
-    const [timerIsRunning, setTimerIsRunning] = useState(false);
-    const [timerIsCountdown, setTimerIsCountdown] = useState(false);
 
-    // Sync timer mode to localStorage and set initial time
-    useEffect(() => {
-        localStorage.setItem('gym-timer-mode', timerMode);
-        setTimerIsRunning(false);
-        if (timerMode === 'stopwatch') {
-            setTimerSeconds(0);
-            setTimerIsCountdown(false);
-        } else {
-            setTimerSeconds(parseInt(timerMode, 10));
-            setTimerIsCountdown(true);
-        }
-    }, [timerMode]);
-
-    // Timer interval effect
-    useEffect(() => {
-        let interval = null;
-        if (timerIsRunning) {
-            interval = setInterval(() => {
-                setTimerSeconds(prev => {
-                    if (timerIsCountdown) {
-                        if (prev <= 1) {
-                            setTimerIsRunning(false);
-                            // Visual and sound alert (native Web Audio API beep)
-                            try {
-                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                const osc = ctx.createOscillator();
-                                const gain = ctx.createGain();
-                                osc.connect(gain);
-                                gain.connect(ctx.destination);
-                                osc.frequency.value = 800; // 800Hz
-                                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                                osc.start();
-                                osc.stop(ctx.currentTime + 0.15);
-                            } catch (e) {
-                                console.error("Beep error:", e);
-                            }
-                            return 0;
-                        }
-                        return prev - 1;
-                    } else {
-                        return prev + 1;
-                    }
-                });
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [timerIsRunning, timerIsCountdown]);
-
-    const formatTimerTime = (totalSeconds) => {
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = totalSeconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const toggleTimer = () => {
-        setTimerIsRunning(!timerIsRunning);
-    };
-
-    const resetTimer = () => {
-        setTimerIsRunning(false);
-        if (timerMode === 'stopwatch') {
-            setTimerSeconds(0);
-        } else {
-            setTimerSeconds(parseInt(timerMode, 10));
-        }
-    };
 
     // Accordion state
     const [openCardIndex, setOpenCardIndex] = useState(0);
@@ -310,13 +244,7 @@ export default function CircuitView() {
                 };
                 updateCircuitState(circuit, newMap);
 
-                // Auto-start rest timer if a countdown is configured
-                const duration = parseInt(timerMode, 10);
-                if (!isNaN(duration) && duration > 0) {
-                    setTimerSeconds(duration);
-                    setTimerIsCountdown(true);
-                    setTimerIsRunning(true);
-                }
+                startRestTimer(parseInt(timerMode, 10));
                 return true;
             }
         } catch (e) {
