@@ -486,7 +486,17 @@ export function AppProvider({ children }) {
             if (cancelled) return null;
 
             // API sync & local history update
-            await logSet(ex.name, entries, userPins);
+            try {
+                await logSet(ex.name, entries, userPins);
+            } catch (err) {
+                if (err.message && err.message.toLowerCase().includes("invalid pin")) {
+                    // Clean up stored localStorage keys to force re-prompt
+                    activePeople.forEach(p => {
+                        localStorage.removeItem('gymlog_pin_' + p.toLowerCase());
+                    });
+                }
+                throw err;
+            }
             addSetToLocalHistory(ex.name, entries);
             return entries;
         }

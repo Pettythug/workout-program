@@ -297,7 +297,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                     )}
                 </div>
 
-                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', gap: 12 }}>
                     <button 
                         className="btn-danger" 
                         onClick={() => {
@@ -306,9 +306,25 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 alert("Checkmarks cleared.");
                             }
                         }}
-                        style={{ width: "100%", padding: 12 }}
+                        style={{ flex: 1, padding: 12 }}
                     >
-                        ⚠️ RESET TODAY'S CHECKMARKS
+                        ⚠️ RESET CHECKMARKS
+                    </button>
+                    <button 
+                        className="btn-ghost btn-no-translate" 
+                        onClick={() => {
+                            if (window.confirm("Are you sure you want to clear your stored PIN numbers from this device? You will be prompted to enter them again next time you log a set.")) {
+                                Object.keys(localStorage).forEach(key => {
+                                    if (key.startsWith('gymlog_pin_')) {
+                                        localStorage.removeItem(key);
+                                    }
+                                });
+                                alert("Stored PINs cleared from device.");
+                            }
+                        }}
+                        style={{ flex: 1, padding: 12, border: '1px solid var(--border)', color: 'white' }}
+                    >
+                        🔑 CLEAR CACHED PINS
                     </button>
                 </div>
 
