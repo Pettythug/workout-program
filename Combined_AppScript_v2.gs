@@ -213,6 +213,27 @@ function formatBest(b) {
 
 function gymlog_doGet() {
   try {
+    const file = DriveApp.getFileById(SHEET_ID);
+    const lastUpdated = file.getLastUpdated().getTime().toString();
+
+    const cache = CacheService.getScriptCache();
+    const cachedKey = "gymlog_sync_key";
+    const cachedVal = cache.get(cachedKey);
+
+    // If cache matches the current file modification timestamp, reassemble and return
+    if (cachedVal === lastUpdated) {
+      const chunkCount = parseInt(cache.get("gymlog_sync_chunks") || "0", 10);
+      let reassembled = "";
+      for (let i = 0; i < chunkCount; i++) {
+        const chunk = cache.get("gymlog_sync_chunk_" + i);
+        if (chunk) reassembled += chunk;
+      }
+      if (reassembled.length > 0) {
+        return cors(ContentService.createTextOutput(reassembled));
+      }
+    }
+
+    // Cache miss or stale: Read sheets from scratch
     const histSheet   = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
     const bestSheet   = getOrCreateSheet(BEST_TAB,    BEST_HEADERS);
     const peopleSheet = getOrCreateSheet(PEOPLE_TAB,  PEOPLE_HEADERS);
@@ -292,14 +313,30 @@ function gymlog_doGet() {
       exercisesMeta.map(e => e.location).filter(l => l && l !== "Anywhere")
     )];
 
-    return ok({
-      history,
-      best,
-      people:    people.length > 0 ? people : DEFAULT_PEOPLE,
-      exercises: exercisesMeta,
-      locations: derivedLocations,
-      settings:  gymlog_getSettingsInternal()
-    });
+    const responseObj = {
+      status: "ok",
+      data: {
+        history,
+        best,
+        people:    people.length > 0 ? people : DEFAULT_PEOPLE,
+        exercises: exercisesMeta,
+        locations: derivedLocations,
+        settings:  gymlog_getSettingsInternal()
+      }
+    };
+
+    const responseString = JSON.stringify(responseObj);
+
+    // Save to Cache (split into chunks of 90KB to bypass 100KB limit)
+    const chunkSize = 90 * 1024;
+    const chunkCount = Math.ceil(responseString.length / chunkSize);
+    for (let i = 0; i < chunkCount; i++) {
+      cache.put("gymlog_sync_chunk_" + i, responseString.substring(i * chunkSize, (i + 1) * chunkSize), 21600); // 6 hours
+    }
+    cache.put("gymlog_sync_chunks", chunkCount.toString(), 21600);
+    cache.put(cachedKey, lastUpdated, 21600);
+
+    return cors(ContentService.createTextOutput(responseString));
 
   } catch (e) {
     return err(e.message);
