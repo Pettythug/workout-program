@@ -178,11 +178,13 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
             if (field === 'reps') {
                 sanitizedValue = value.replace(/[^0-9]/g, '');
             } else if (field === 'weight') {
-                sanitizedValue = value.replace(/[^0-9.]/g, '');
-                const parts = sanitizedValue.split('.');
+                const isNegative = value.startsWith('-');
+                let cleaned = value.replace(/[^0-9.]/g, '');
+                const parts = cleaned.split('.');
                 if (parts.length > 2) {
-                    sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+                    cleaned = parts[0] + '.' + parts.slice(1).join('');
                 }
+                sanitizedValue = (isNegative ? '-' : '') + cleaned;
             }
             return {
                 ...prev,
