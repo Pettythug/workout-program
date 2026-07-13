@@ -410,7 +410,12 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
         
-        let targetEx = (exercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+        let targetEx = (exercises || []).find(e => {
+            const cleanedE = e.name.trim().toLowerCase();
+            const cleanedStd = stdName.trim().toLowerCase();
+            return cleanedE === cleanedStd || getBaseName(e.name).trim().toLowerCase() === cleanedStd;
+        });
         
         if (!targetEx) {
             const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");

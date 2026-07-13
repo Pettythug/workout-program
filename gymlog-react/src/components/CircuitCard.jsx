@@ -231,7 +231,12 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
         
-        let targetEx = (allExercises || []).find(e => e.name.toLowerCase() === stdName.toLowerCase());
+        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+        let targetEx = (allExercises || []).find(e => {
+            const cleanedE = e.name.trim().toLowerCase();
+            const cleanedStd = stdName.trim().toLowerCase();
+            return cleanedE === cleanedStd || getBaseName(e.name).trim().toLowerCase() === cleanedStd;
+        });
         let isNew = false;
         if (!targetEx) {
             isNew = true;
