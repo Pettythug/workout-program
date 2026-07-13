@@ -137,6 +137,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
     const [showImage, setShowImage] = useState(false);
+    const [showEditPanel, setShowEditPanel] = useState(false);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -548,53 +549,55 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                         </div>
                     ) : (
                         <div style={{ marginTop: 16 }}>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
-                                {editMode ? (
-                                    <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
-                                        {editMode === 'rename' && (
-                                            <input 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)} 
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                                autoFocus
-                                            />
-                                        )}
-                                        {editMode === 'category' && (
-                                            <select 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                            >
-                                                <option value="">Select Category...</option>
-                                                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                                <option value="ADD_NEW">+ Add new...</option>
-                                            </select>
-                                        )}
-                                        {editMode === 'location' && (
-                                            <select 
-                                                value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
-                                            >
-                                                <option value="Anywhere">Anywhere</option>
-                                                {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
-                                                <option value="ADD_NEW">+ Add new...</option>
-                                            </select>
-                                        )}
-                                        <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
-                                        <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
-                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
-                                        <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
-                                        <button className={ex.timed ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.timed ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('timed')}>
-                                            {ex.timed ? "⏱️ TIMED" : "🏋️ REPS"}
-                                        </button>
-                                        <button className={ex.isCircuit ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
-                                            {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
-                                        </button>
-                                    </>
-                                )}
-                            </div>
+                            {showEditPanel && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, borderTop: group.originalBaseKey ? 'none' : '1px solid var(--border)', paddingTop: group.originalBaseKey ? 0 : 8 }}>
+                                    {editMode ? (
+                                        <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                            {editMode === 'rename' && (
+                                                <input 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)} 
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                    autoFocus
+                                                />
+                                            )}
+                                            {editMode === 'category' && (
+                                                <select 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                >
+                                                    <option value="">Select Category...</option>
+                                                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                    <option value="ADD_NEW">+ Add new...</option>
+                                                </select>
+                                            )}
+                                            {editMode === 'location' && (
+                                                <select 
+                                                    value={editValue} onChange={e => setEditValue(e.target.value)}
+                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                >
+                                                    <option value="Anywhere">Anywhere</option>
+                                                    {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
+                                                    <option value="ADD_NEW">+ Add new...</option>
+                                                </select>
+                                            )}
+                                            <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
+                                            <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('rename')}>RENAME</button>
+                                            <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('category')}>CATEGORY</button>
+                                            <button className="btn-ghost btn-no-translate" style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: 'var(--muted)' }} onClick={() => handleOpenEdit('location')}>LOCATION</button>
+                                            <button className={ex.timed ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.timed ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('timed')}>
+                                                {ex.timed ? "⏱️ TIMED" : "🏋️ REPS"}
+                                            </button>
+                                            <button className={ex.isCircuit ? "btn-accent btn-no-translate" : "btn-ghost btn-no-translate"} style={{ flex: 1, fontSize: 10, padding: '6px 8px', color: ex.isCircuit ? '#000' : 'var(--muted)' }} onClick={() => handleOpenEdit('circuit')}>
+                                                {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
 
                             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                                 <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
@@ -728,70 +731,70 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                 </div>
                             )}
 
-                            {group.originalBaseKey && (
+                            {group.originalBaseKey && swapMode === ex.name && (
                                 <div style={{ marginTop: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {swapMode === ex.name ? (
-                                        <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
-                                            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
-                                            <select 
-                                                onChange={(e) => {
-                                                    if (e.target.value === "custom") {
-                                                        setCustomSwapState({
-                                                            name: "",
-                                                            category: ex.category || "General",
-                                                            manufacturer: "",
-                                                            baseExercise: "",
-                                                            muscle: ""
-                                                        });
-                                                    } else if (e.target.value) {
-                                                        executeSwap(e.target.value);
-                                                    }
-                                                }}
-                                                style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
-                                            >
-                                                <option value="">-- Select Exercise --</option>
-                                                <option value="custom">-- New Custom Exercise --</option>
-                                                {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                                    <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
-                                                ))}
-                                            </select>
+                                    <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
+                                        <select 
+                                            onChange={(e) => {
+                                                if (e.target.value === "custom") {
+                                                    setCustomSwapState({
+                                                        name: "",
+                                                        category: ex.category || "General",
+                                                        manufacturer: "",
+                                                        baseExercise: "",
+                                                        muscle: ""
+                                                    });
+                                                } else if (e.target.value) {
+                                                    executeSwap(e.target.value);
+                                                }
+                                            }}
+                                            style={{ width: "100%", background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, marginBottom: 8 }}
+                                        >
+                                            <option value="">-- Select Exercise --</option>
+                                            <option value="custom">-- New Custom Exercise --</option>
+                                            {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
+                                                <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                            ))}
+                                        </select>
 
-                                            {customSwapState && (
-                                                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
-                                                    <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
-                                                    <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
-                                                    
-                                                    <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
+                                        {customSwapState && (
+                                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8, padding: 8, border: "1px solid #333", borderRadius: 4 }}>
+                                                <div style={{ fontSize: 10, color: "var(--muted)" }}>Custom Exercise Details</div>
+                                                <input placeholder="Exercise Name" value={customSwapState.name} onChange={e => setCustomSwapState({...customSwapState, name: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "white", padding: 8, borderRadius: 4, fontSize: 14 }} />
+                                                
+                                                <input list="category-list" placeholder="Category" value={customSwapState.category} onChange={e => setCustomSwapState({...customSwapState, category: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="category-list">{allCategories.map(c => <option key={c} value={c} />)}</datalist>
 
-                                                    <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
+                                                <input list="manufacturer-list" placeholder="Manufacturer" value={customSwapState.manufacturer} onChange={e => setCustomSwapState({...customSwapState, manufacturer: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="manufacturer-list">{allManufacturers.map(m => <option key={m} value={m} />)}</datalist>
 
-                                                    <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
-                                                    <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
+                                                <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
+                                                <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
 
-                                                    <button 
-                                                        onClick={() => executeSwap(customSwapState)}
-                                                        className="btn-success"
-                                                        style={{ padding: "12px", marginTop: 4 }}
-                                                    >SAVE & SWAP</button>
-                                                </div>
-                                            )}
-                                            <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
-                                        </div>
-                                    ) : (
-                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                            <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
-                                                🔄 SWAP
-                                            </button>
-                                        </div>
-                                    )}
+                                                <button 
+                                                    onClick={() => executeSwap(customSwapState)}
+                                                    className="btn-success"
+                                                    style={{ padding: "12px", marginTop: 4 }}
+                                                >SAVE & SWAP</button>
+                                            </div>
+                                        )}
+                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                    </div>
                                 </div>
                             )}
 
-                            <div style={{ marginTop: group.originalBaseKey ? 0 : 16, marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, minWidth: '75px', textAlign: 'center', fontSize: 11, padding: '10px 4px' }}>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 16 }}>
+                                {group.originalBaseKey && (
+                                    <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, fontSize: 11, padding: '10px 4px' }}>
+                                        🔄 SWAP
+                                    </button>
+                                )}
+                                <button onClick={() => setShowImage(true)} className="btn-ghost" style={{ flex: 1, fontSize: 11, padding: '10px 4px' }}>
                                     📸 IMAGE
+                                </button>
+                                <button onClick={() => setShowEditPanel(!showEditPanel)} className={showEditPanel ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 11, padding: '10px 4px', color: showEditPanel ? '#000' : 'white' }}>
+                                    ⚙️ EDIT EXERCISE
                                 </button>
                             </div>
                         </div>
