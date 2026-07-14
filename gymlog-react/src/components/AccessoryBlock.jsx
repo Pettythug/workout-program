@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 
-export default function AccessoryBlock() {
+export default function AccessoryBlock({ excludeNames = [], accessoriesList, setAccessoriesList }) {
     const { exercises, activeLocation } = useAppContext();
-    const [accessoriesList, setAccessoriesList] = useState([]);
  
     const handleAddAccessory = () => {
         if (!exercises) return;
@@ -15,12 +14,34 @@ export default function AccessoryBlock() {
         });
         if (accessories.length === 0) return;
  
-        const randomIdx = Math.floor(Math.random() * accessories.length);
-        const accessory = accessories[randomIdx];
+        let selected = null;
+        let retries = 0;
+        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+
+        while (retries < 10) {
+            const randomIdx = Math.floor(Math.random() * accessories.length);
+            const candidate = accessories[randomIdx];
+            const candidateBase = getBaseName(candidate.name).toLowerCase();
+
+            const isPlanned = excludeNames.some(name => getBaseName(name).toLowerCase() === candidateBase);
+            const isAlreadySelected = accessoriesList.some(item => getBaseName(item.baseName).toLowerCase() === candidateBase);
+
+            if (!isPlanned && !isAlreadySelected) {
+                selected = candidate;
+                break;
+            }
+            retries++;
+        }
+
+        // Fallback: If no unique exercise is found after 10 retries, pick any random candidate
+        if (!selected) {
+            selected = accessories[Math.floor(Math.random() * accessories.length)];
+        }
+
         const group = {
-            baseName: accessory.name,
-            category: accessory.category,
-            variations: { "Standard": accessory }
+            baseName: selected.name,
+            category: selected.category,
+            variations: { "Standard": selected }
         };
         setAccessoriesList(prev => [...prev, group]);
     };
@@ -34,12 +55,34 @@ export default function AccessoryBlock() {
         });
         if (accessories.length === 0) return;
 
-        const randomIdx = Math.floor(Math.random() * accessories.length);
-        const accessory = accessories[randomIdx];
+        let selected = null;
+        let retries = 0;
+        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+
+        while (retries < 10) {
+            const randomIdx = Math.floor(Math.random() * accessories.length);
+            const candidate = accessories[randomIdx];
+            const candidateBase = getBaseName(candidate.name).toLowerCase();
+
+            const isPlanned = excludeNames.some(name => getBaseName(name).toLowerCase() === candidateBase);
+            const isAlreadySelected = accessoriesList.some(item => getBaseName(item.baseName).toLowerCase() === candidateBase);
+
+            if (!isPlanned && !isAlreadySelected) {
+                selected = candidate;
+                break;
+            }
+            retries++;
+        }
+
+        // Fallback: If no unique exercise is found after 10 retries, pick any random candidate
+        if (!selected) {
+            selected = accessories[Math.floor(Math.random() * accessories.length)];
+        }
+
         const group = {
-            baseName: accessory.name,
-            category: accessory.category,
-            variations: { "Standard": accessory }
+            baseName: selected.name,
+            category: selected.category,
+            variations: { "Standard": selected }
         };
 
         setAccessoriesList(prev => {
