@@ -1,6 +1,6 @@
-# TASK-R60: Post-Completion Access and Multi-Accessory Workflows
+# TASK-R62: Persist Bonus Accessories Session State
 
-This plan describes the implementation to enable completion list navigation and multi-accessory list state logging.
+This plan describes the implementation to lift and persist `accessoriesList` state in `PlanView.jsx` to prevent state loss on view toggles.
 
 ## Proposed Changes
 
@@ -8,22 +8,27 @@ This plan describes the implementation to enable completion list navigation and 
 
 #### [MODIFY] [PlanView.jsx](file:///C:/Users/wance/Documents/Git/workout-program/gymlog-react/src/components/PlanView.jsx)
 
-- Locate the `activeIdx >= plannedExercises.length` completion block (around line 252).
-- Render `<AccessoryBlock />` immediately below the completion container.
-- Add a `📋 VIEW LIST` button next to `Complete Workout` inside the completion container that switches the view to `"full-list"` (`setView('full-list')`).
+- Lift the state from `AccessoryBlock` and initialize it from/persist it to `localStorage`:
+  ```javascript
+  const [accessoriesList, setAccessoriesList] = useState(() => {
+      try {
+          const saved = localStorage.getItem('gymlog_session_accessories');
+          return saved ? JSON.parse(saved) : [];
+      } catch (e) {
+          return [];
+      }
+  });
 
-### React Accessory Block
-
-#### [MODIFY] [AccessoryBlock.jsx](file:///C:/Users/wance/Documents/Git/workout-program/gymlog-react/src/components/AccessoryBlock.jsx)
-
-- Replace the singular `selectedAccessory` state hook with an array state hook:
-  `const [accessoriesList, setAccessoriesList] = useState([]);`
-- Update `handleGenerate` to append the new group object to `accessoriesList`.
-- Implement `handleSwapAccessory(index)` to generate a random replacement and swap the accessory at the specified index in the state array.
-- Render UI:
-  - If `accessoriesList.length === 0`, show the primary dashed button: `Got More in the Tank? +`.
-  - If `accessoriesList.length > 0`, map through `accessoriesList` and render an `ExerciseCard` for each one with a `Swap Bonus` button.
-  - Below the list, render a clean secondary button: `➕ Add Another Accessory` to append additional cards.
+  useEffect(() => {
+      localStorage.setItem('gymlog_session_accessories', JSON.stringify(accessoriesList));
+  }, [accessoriesList]);
+  ```
+- Clear `gymlog_session_accessories` inside `completeWorkout()`:
+  ```javascript
+  localStorage.removeItem('gymlog_session_accessories');
+  setAccessoriesList([]);
+  ```
+- Pass `accessoriesList`, `setAccessoriesList`, and `excludeNames={plannedExercises.map(e => e.baseName)}` props to all `<AccessoryBlock />` render elements.
 
 ---
 
@@ -33,8 +38,4 @@ This plan describes the implementation to enable completion list navigation and 
 - Run `npm run build` in `/gymlog-react` to verify there are no compilation errors.
 
 ### Manual Verification
-- Complete all exercises in the tracker.
-- Verify the completion card displays the `📋 VIEW LIST` button and the `Got More in the Tank? +` accessory block below it.
-- Click `📋 VIEW LIST` to navigate back to the exercise list, verify checkmarks can be reset, and return to tracker.
-- Click `Got More in the Tank? +` on the completion card to generate a bonus exercise. Verify the card logs sets successfully.
-- Verify a `➕ Add Another Accessory` button appears below the first card. Click it to add multiple sequential accessory exercises.
+- Verify that added accessories do not disappear when switching to "View List" and back.

@@ -1,6 +1,6 @@
-# TASK-R62: Persist Bonus Accessories Session State
+# TASK-R62: Persist Bonus Accessories Session State and Defensive Prop Fallback
 
-> **For Human Readers:** This task lifts and persists the `accessoriesList` state in `PlanView.jsx` and `localStorage` so that added bonus accessories are not lost when switching between the active card view, the full checklist view, or other navigation tabs during a workout session.
+> **For Human Readers:** This task lifts and persists the `accessoriesList` state in `PlanView.jsx` and adds defensive prop default parameters to `AccessoryBlock.jsx` to resolve the runtime render crash and prevent state loss.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -16,7 +16,7 @@
     - TARGET_BRANCH: `TASK-R62`
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
-    Persist the active session's bonus accessories array to local storage to prevent state loss on tab/view changes.
+    Lift accessories state to PlanView.jsx and add defensive default parameters in AccessoryBlock.jsx to resolve the TypeError crash.
   </OBJECTIVE>
   <RESOURCES>
     - Plan View: `gymlog-react/src/components/PlanView.jsx`
@@ -25,7 +25,11 @@
   <SEQUENCE>
     1. READ target files.
 
-    2. MODIFY `gymlog-react/src/components/PlanView.jsx`:
+    2. MODIFY `gymlog-react/src/components/AccessoryBlock.jsx`:
+       - Add a defensive default parameter to `accessoriesList` in the component signature to prevent runtime TypeError if props are not passed:
+         `export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList }) {`
+
+    3. MODIFY `gymlog-react/src/components/PlanView.jsx`:
        a. Lift the state from `AccessoryBlock`. Retrieve/initialize `accessoriesList` from `localStorage` using a lazy initializer state hook:
           ```javascript
           const [accessoriesList, setAccessoriesList] = useState(() => {
@@ -50,15 +54,10 @@
             localStorage.removeItem('gymlog_session_accessories');
             setAccessoriesList([]);
             ```
-       d. Pass `accessoriesList` and `setAccessoriesList` as props to both `<AccessoryBlock />` render instances:
-          `<AccessoryBlock accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />`
+       d. Pass `accessoriesList`, `setAccessoriesList`, and `excludeNames` props to both `<AccessoryBlock />` render instances (lines 266 and 351):
+          `<AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />`
 
-    3. MODIFY `gymlog-react/src/components/AccessoryBlock.jsx`:
-       a. Remove the local `useState` hook for `accessoriesList` (line 7).
-       b. Accept `accessoriesList` and `setAccessoriesList` as component props:
-          `export default function AccessoryBlock({ accessoriesList, setAccessoriesList }) {`
-
-    4. AUDIT: Generate `/audit_log_R62.md` in the workspace root detailing state lifting and session persistence changes.
+    4. AUDIT: Generate `/audit_log_R62.md` in the workspace root detailing changes.
     5. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to verify compilation.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
