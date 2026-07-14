@@ -15,12 +15,24 @@ export default function StickyRestBanner() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    const [headerHeight, setHeaderHeight] = useState(60);
+
+    useEffect(() => {
+        const header = document.querySelector('.header');
+        if (!header) return;
+        const update = () => setHeaderHeight(header.getBoundingClientRect().height);
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(header);
+        return () => ro.disconnect();
+    }, []);
+
     if (!showStickyTimer || !timerIsRunning || !timerIsCountdown || timerSeconds <= 0) return null;
 
     return (
         <div style={{
             position: 'fixed',
-            top: '60px',
+            top: `${headerHeight}px`,
             left: '16px',
             right: '16px',
             background: 'rgba(17, 17, 17, 0.9)',

@@ -52,11 +52,35 @@ Extract the duplicated sticky rest timer banner JSX from `PlanView.jsx` and `Cir
 
 ---
 
-## Git Commit
+## Hotfix — Mobile Banner Positioning (Amendment)
+
+### Root Cause
+`top: '60px'` was hardcoded in the banner's inline style. On mobile, the sticky `.header` element is taller (~100–110px), causing the banner to render partially behind or clipped under it.
+
+### Fix Applied — `gymlog-react/src/components/StickyRestBanner.jsx`
+- Added `const [headerHeight, setHeaderHeight] = useState(60);` as a fallback-safe default.
+- Added a `useEffect` that:
+  - Queries `document.querySelector('.header')` on mount.
+  - Reads the actual rendered height via `getBoundingClientRect().height` and stores it.
+  - Attaches a `ResizeObserver` to track any subsequent resize (e.g., orientation change) and keeps `headerHeight` in sync.
+  - Properly disconnects the observer on unmount.
+- Replaced `top: '60px'` with `` top: `${headerHeight}px` `` so the banner always clears the real header height on any viewport.
+
+---
+
+## Verification (Amendment)
+
+- `npm run build` re-executed inside `gymlog-react`.
+- **Result: ✓ built in 3.12s** — 40 modules transformed, zero errors or warnings.
+
+---
+
+## Git Commits
 
 ```
-git add gymlog-react/src/components/StickyRestBanner.jsx \
-        gymlog-react/src/components/PlanView.jsx \
-        gymlog-react/src/components/CircuitView.jsx
+# Original extraction commit
 git commit -m "refactor(R65): extract StickyRestBanner into shared component"
+
+# Hotfix commit
+git commit -m "fix(R65): dynamic header height in StickyRestBanner for mobile"
 ```
