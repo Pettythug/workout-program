@@ -251,14 +251,22 @@ export default function PlanView() {
 
                 if (activeIdx >= plannedExercises.length) {
                     return (
-                        <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                            <div style={{ fontSize: 40 }}>✅</div>
-                            <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All Exercises Done!</h2>
-                            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout.</p>
-                            <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
-                                Complete Workout
-                            </button>
-                        </div>
+                        <>
+                            <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                                <div style={{ fontSize: 40 }}>✅</div>
+                                <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All Exercises Done!</h2>
+                                <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout.</p>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                    <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
+                                        Complete Workout
+                                    </button>
+                                    <button className="btn-ghost btn-no-translate" onClick={() => setView('full-list')} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, border: '1px solid var(--border)' }}>
+                                        📋 VIEW LIST
+                                    </button>
+                                </div>
+                            </div>
+                            <AccessoryBlock />
+                        </>
                     );
                 }
 
