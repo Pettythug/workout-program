@@ -7,12 +7,15 @@
 - `SOURCE_WRITE_LOCK`: `DENY(Direct_Write_Code: ["/gymlog-react/src/*"])`
 - `GIT_PUSH_LOCK`: `DENY(git push)`
 - `DELEGATION_SEQUENCE`:
-  1. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-*.md)`
+  1. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-*.md)` (Developer specification)
   2. `EXECUTE`: `GIT_CHECKOUT_BRANCH(TASK-*)`
-  3. `OUTPUT_TO_USER (MANAGER ONLY - DEVELOPERS MUST NOT COPY)`: Exact template: "Please run `git fetch && git checkout origin/main -b TASK-*` to sync your sandbox. Then, read `docs/jira_tasks/TASK-*.md` and execute the instructions exactly as they are written."
-  4. `AWAIT_SIGNAL`: `TASK_COMPLETE`
-  5. `AUDIT`: `CTO_CODE_REVIEW(git_diff)`
-  6. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
+  3. `OUTPUT_TO_USER (MANAGER ONLY)`: Handoff to Developer.
+  4. `AWAIT_SIGNAL`: `DEVELOPMENT_TASK_COMPLETE`
+  5. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-QA-*.md)` (QA verification specification)
+  6. `OUTPUT_TO_USER (MANAGER ONLY)`: Handoff to QA Agent.
+  7. `AWAIT_SIGNAL`: `QA_VERIFICATION_PASS`
+  8. `AUDIT`: `CTO_CODE_REVIEW(git_diff)`
+  9. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
 
 ## Developer Role Isolation:
 - `ROLE(Sandbox_Developer)`: `STRICTLY_DENY(Mimicking, copying, or outputting template messages belonging to the Manager_Auditor. Specifically: you MUST NOT output 'Please run git fetch...' under any circumstances. Focus strictly on executing the code edits described in the JIRA task.)`
