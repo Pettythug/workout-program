@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
@@ -22,6 +22,19 @@ export default function PlanView() {
     const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
         return localStorage.getItem('gymlog_plan_complete') === 'true';
     });
+
+    const [accessoriesList, setAccessoriesList] = useState(() => {
+        try {
+            const saved = localStorage.getItem('gymlog_session_accessories');
+            return saved ? JSON.parse(saved) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('gymlog_session_accessories', JSON.stringify(accessoriesList));
+    }, [accessoriesList]);
 
     const plannedExercises = useMemo(() => {
         if (!exercises || exercises.length === 0) return [];
@@ -156,6 +169,8 @@ export default function PlanView() {
     const completeWorkout = () => {
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
+        localStorage.removeItem('gymlog_session_accessories');
+        setAccessoriesList([]);
     };
 
     const startNextWorkout = () => {
@@ -265,7 +280,7 @@ export default function PlanView() {
                                     </button>
                                 </div>
                             </div>
-                            <AccessoryBlock />
+                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />
                         </>
                     );
                 }
@@ -356,7 +371,7 @@ export default function PlanView() {
                             />
                         </div>
 
-                        <AccessoryBlock />
+                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />
 
                         <button 
                             className="complete-btn" 

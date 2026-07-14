@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 
-export default function AccessoryBlock({ excludeNames = [], accessoriesList, setAccessoriesList }) {
+export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList }) {
     const { exercises, activeLocation } = useAppContext();
  
     const handleAddAccessory = () => {
