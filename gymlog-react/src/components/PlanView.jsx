@@ -4,6 +4,7 @@ import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
+import StickyRestBanner from './StickyRestBanner';
 
 export default function PlanView() {
     const { 
@@ -23,15 +24,7 @@ export default function PlanView() {
         return localStorage.getItem('gymlog_plan_complete') === 'true';
     });
 
-    const [showStickyTimer, setShowStickyTimer] = useState(false);
 
-    useEffect(() => {
-        const handleScroll = () => {
-            setShowStickyTimer(window.scrollY > 220);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     const [accessoriesList, setAccessoriesList] = useState(() => {
         try {
@@ -227,51 +220,7 @@ export default function PlanView() {
 
     return (
         <div className="main" style={{ paddingBottom: 100 }}>
-            {showStickyTimer && timerIsRunning && timerIsCountdown && timerSeconds > 0 && (
-                <div style={{
-                    position: 'fixed',
-                    top: '60px',
-                    left: '16px',
-                    right: '16px',
-                    background: 'rgba(17, 17, 17, 0.9)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '10px 16px',
-                    zIndex: 99
-                }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>
-                        ⏳ Rest: {formatTimerTime(timerSeconds)}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <button 
-                            className="btn-ghost" 
-                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} 
-                            onClick={toggleTimer}
-                        >
-                            {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
-                        </button>
-                        <button 
-                            className="btn-ghost" 
-                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} 
-                            onClick={() => startRestTimer(timerSeconds + 30)}
-                        >
-                            +30S
-                        </button>
-                        <button 
-                            className="btn-ghost" 
-                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} 
-                            onClick={resetTimer}
-                        >
-                            SKIP
-                        </button>
-                    </div>
-                </div>
-            )}
+            <StickyRestBanner />
             <div className="header" style={{ margin: '-16px -16px 16px', position: 'sticky', top: 0, zIndex: 100 }}>
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: 'var(--accent)' }}>PLAN</h1>
