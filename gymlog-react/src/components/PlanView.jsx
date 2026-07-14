@@ -169,8 +169,6 @@ export default function PlanView() {
     const completeWorkout = () => {
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
-        localStorage.removeItem('gymlog_session_accessories');
-        setAccessoriesList([]);
     };
 
     const startNextWorkout = () => {
@@ -195,6 +193,10 @@ export default function PlanView() {
         setIsWorkoutComplete(false);
         localStorage.setItem('gymlog_plan_complete', 'false');
         setView('tracker');
+
+        // 5. Clean up accessories
+        localStorage.removeItem('gymlog_session_accessories');
+        setAccessoriesList([]);
     };
 
     const getRepRange = (day) => {
