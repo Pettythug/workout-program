@@ -1,11 +1,11 @@
-# TASK-R61: Prevent Duplicate Bonus Accessory Recommendations
+# TASK-R61: Sequential Bonus Accessory Rotation
 
-> **For Human Readers:** This task prevents duplicate exercise recommendations in `AccessoryBlock.jsx` by filtering out exercises already in the active planned workout and those already added to the bonus accessories list.
+> **For Human Readers:** This task refactors the random bonus accessory generation in `AccessoryBlock.jsx` to use a sequential rotation index stored in `localStorage`, ensuring users cycle through all available accessory exercises in order without duplicates or repetitions during swaps.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
   <GATEKEEPER>
-    - TASK_CLASS: MULTI_FILE_Refactoring
+    - TASK_CLASS: SINGLE_FILE_FEATURE
     - REQUIRED_MODEL_TIER: MEDIUM_TIER
   </GATEKEEPER>
   <ROLE_DEFINITION>
@@ -16,42 +16,30 @@
     - TARGET_BRANCH: `TASK-R61`
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
-    Filter out duplicate exercises from the random accessory generation list inside AccessoryBlock.jsx.
+    Replace random accessory selection with sequential rotation based on a persistent index in AccessoryBlock.jsx.
   </OBJECTIVE>
   <RESOURCES>
-    - Plan View: `gymlog-react/src/components/PlanView.jsx`
     - Accessory Block: `gymlog-react/src/components/AccessoryBlock.jsx`
   </RESOURCES>
   <SEQUENCE>
-    1. READ target files.
+    1. READ `gymlog-react/src/components/AccessoryBlock.jsx`.
 
-    2. MODIFY `gymlog-react/src/components/PlanView.jsx`:
-       - Locate all `<AccessoryBlock />` render tags (two locations: inside normal tracker view around line 351, and inside completion card around line 266).
-       - Pass a new prop `excludeNames={plannedExercises.map(e => e.baseName)}` to both `<AccessoryBlock />` elements:
-         `<AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} />`
+    2. MODIFY `gymlog-react/src/components/AccessoryBlock.jsx`:
+       a. Locate the selection logic inside `handleAddAccessory` and `handleSwapAccessory`.
+       b. Query and filter the available accessories list (by location and 'accessory' category).
+       c. Sort the filtered accessories list alphabetically by name to ensure a stable, predictable sequential order:
+          `accessories.sort((a, b) => a.name.localeCompare(b.name));`
+       d. Replace random index selection with a sequential index read/write from `localStorage`:
+          - Retrieve index:
+            `let rotationIdx = parseInt(localStorage.getItem('gymlog_accessory_rotation_index') || '0', 10);`
+          - Select exercise:
+            `const accessory = accessories[rotationIdx % accessories.length];`
+          - Increment and persist index:
+            `localStorage.setItem('gymlog_accessory_rotation_index', (rotationIdx + 1).toString());`
+       e. In `handleSwapAccessory(index)`, use the same sequential rotation logic to replace the card at the given index, ensuring swaps pull the next sequential item in the list.
 
-    3. MODIFY `gymlog-react/src/components/AccessoryBlock.jsx`:
-       a. Update the component signature to accept the `excludeNames` prop (defaulting to an empty array `[]`):
-          `export default function AccessoryBlock({ excludeNames = [] }) {`
-       b. Update the random selection logic in both `handleAddAccessory` and `handleSwapAccessory` to filter out matching names:
-          - Helper function:
-            `const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();`
-          - Filtering logic:
-            ```javascript
-            const targetBase = getBaseName(ex.name).toLowerCase();
-            
-            // Check if already in today's planned exercises
-            const notPlanned = !excludeNames.some(name => getBaseName(name).toLowerCase() === targetBase);
-            
-            // Check if already added to the bonus accessories list
-            const notAlreadyAdded = !accessoriesList.some(item => getBaseName(item.baseName).toLowerCase() === targetBase);
-            
-            return isAcc && locMatch && notPlanned && notAlreadyAdded;
-            ```
-          - If the filtered list of available accessories is empty, fallback to ignoring the `notAlreadyAdded` constraint to prevent errors when the catalog pool is exhausted.
-
-    4. AUDIT: Generate `/audit_log_R61.md` in the workspace root detailing duplicate prevention changes.
-    5. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to verify compilation.
+    3. AUDIT: Generate `/audit_log_R61.md` in the workspace root detailing sequential rotation updates.
+    4. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to verify compilation.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
