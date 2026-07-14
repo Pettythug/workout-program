@@ -56,8 +56,3 @@ For Universal AI Behavior (Safety, Anti-Drift, and Core Mandates), refer to the 
 - `DESIGN_PATTERN`: `REQUIRE(CSS variables & unified Design Tokens) DENY(Inline ad-hoc styling)`
 - `COMPILE_CHECK`: `REQUIRE(npm run build) SCOPE(All task merges)`
 
-### SQL Database Standards
-- `HEADERS`: `REQUIRE(Multi-line block comment: Author: Brian Wance) LOCATION(File Header)`
-- `FORMATTING`: `REQUIRE(Leading commas in lists)`
-- `FIELD_CLAUSES`: `REQUIRE(Explicit field names) DENY(Column numbers)`
-- `SUBQUERIES`: `DENY(Correlated subqueries)`
