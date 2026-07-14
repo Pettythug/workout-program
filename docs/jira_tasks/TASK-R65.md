@@ -1,6 +1,6 @@
-# TASK-R65: Extract StickyRestBanner into a Shared Component
+# TASK-R65: Extract StickyRestBanner into a Shared Component (+ Mobile Positioning Hotfix)
 
-> **For Human Readers:** This task extracts the duplicated sticky rest timer banner JSX from PlanView.jsx and CircuitView.jsx into a single reusable `StickyRestBanner.jsx` component.
+> **For Human Readers:** This task extracts the duplicated sticky rest timer banner JSX into a single reusable `StickyRestBanner.jsx` component AND fixes a discovered bug where `top: 60px` is hardcoded but the actual sticky header is taller on mobile, causing the banner to render behind the header.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -100,8 +100,27 @@
        b. Remove the `showStickyTimer` state declaration and its associated `useEffect` scroll listener.
        c. Replace the inline banner JSX block with: `<StickyRestBanner />`
 
-    5. AUDIT: Generate `/audit_log_R65.md` in the workspace root detailing the refactor.
-    6. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to verify compilation.
+    5. HOTFIX `gymlog-react/src/components/StickyRestBanner.jsx` — Mobile Banner Positioning Bug:
+       - **Root Cause:** `top: '60px'` is hardcoded. On mobile the sticky header is taller (~100–110px), causing the banner to render behind or clipped under the header.
+       - **Fix:** Replace the hardcoded `top: '60px'` with a dynamically measured header height using a `ResizeObserver`.
+       - In `StickyRestBanner.jsx`, add the following state and effect:
+         ```javascript
+         const [headerHeight, setHeaderHeight] = useState(60);
+
+         useEffect(() => {
+             const header = document.querySelector('.header');
+             if (!header) return;
+             const update = () => setHeaderHeight(header.getBoundingClientRect().height);
+             update();
+             const ro = new ResizeObserver(update);
+             ro.observe(header);
+             return () => ro.disconnect();
+         }, []);
+         ```
+       - Replace `top: '60px'` in the banner div style with: `top: \`${headerHeight}px\``
+
+    6. AUDIT: Update `/audit_log_R65.md` in the workspace root to include the mobile positioning hotfix.
+    7. VERIFY: Run `npm run build` (via `cmd /c`) inside `gymlog-react` to verify compilation.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
