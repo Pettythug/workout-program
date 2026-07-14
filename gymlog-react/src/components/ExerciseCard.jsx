@@ -744,7 +744,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                     📸 IMAGE
                                 </button>
                                 <button onClick={() => setShowEditPanel(!showEditPanel)} className={showEditPanel ? "btn-accent" : "btn-ghost"} style={{ flex: 1, fontSize: 11, padding: '10px 4px', color: showEditPanel ? '#000' : 'white' }}>
-                                    ⚙️ EDIT EXERCISE
+                                    ⚙️ EDIT
                                 </button>
                             </div>
 
