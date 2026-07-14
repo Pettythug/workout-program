@@ -11,11 +11,14 @@
   2. `EXECUTE`: `GIT_CHECKOUT_BRANCH(TASK-*)`
   3. `OUTPUT_TO_USER (MANAGER ONLY)`: Handoff to Developer.
   4. `AWAIT_SIGNAL`: `DEVELOPMENT_TASK_COMPLETE`
-  5. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-QA-*.md)` (QA verification specification)
+  5. `EXECUTE`: `CREATE_FILE(docs/jira_tasks/TASK-QA-*.md)` (QA pre-merge specification)
   6. `OUTPUT_TO_USER (MANAGER ONLY)`: Handoff to QA Agent.
-  7. `AWAIT_SIGNAL`: `QA_VERIFICATION_PASS`
+  7. `AWAIT_SIGNAL`: `QA_PREMERGE_PASS` (Pre-merge validation on task branch)
   8. `AUDIT`: `CTO_CODE_REVIEW(git_diff)`
   9. `MERGE`: `AWAIT(User_Merge_Approval) -> TRIGGER(git_merge)`
+  10. `OUTPUT_TO_USER (MANAGER ONLY)`: Handoff to QA Agent for post-merge integration check on local main.
+  11. `AWAIT_SIGNAL`: `QA_POSTMERGE_PASS` (Post-merge validation on main)
+  12. `CLOSE`: Finalize task and close branch.
 
 ## Developer Role Isolation:
 - `ROLE(Sandbox_Developer)`: `STRICTLY_DENY(Mimicking, copying, or outputting template messages belonging to the Manager_Auditor. Specifically: you MUST NOT output 'Please run git fetch...' under any circumstances. Focus strictly on executing the code edits described in the JIRA task.)`
