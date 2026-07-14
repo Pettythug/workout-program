@@ -1,23 +1,31 @@
-# Handoff Verification Test (TASK-R99)
+# TASK-R60: Post-Completion Access and Multi-Accessory Workflows
 
-This plan describes the verification comment addition to `gymlog-react/src/context/AppContext.jsx` to test handoff mechanisms.
-
-## User Review Required
-
-> [!NOTE]
-> This is an automated verification test task. It adds a simple comment to the top of `gymlog-react/src/context/AppContext.jsx`.
-
-## Open Questions
-
-None.
+This plan describes the implementation to enable completion list navigation and multi-accessory list state logging.
 
 ## Proposed Changes
 
-### React Context
+### React Plan View
 
-#### [MODIFY] [AppContext.jsx](file:///c:/Users/wance/.gemini/antigravity/workout_tracker/gymlog-react/src/context/AppContext.jsx)
+#### [MODIFY] [PlanView.jsx](file:///C:/Users/wance/Documents/Git/workout-program/gymlog-react/src/components/PlanView.jsx)
 
-- Add `// Handoff Verification Test OK` to the very top of `gymlog-react/src/context/AppContext.jsx` (line 1).
+- Locate the `activeIdx >= plannedExercises.length` completion block (around line 252).
+- Render `<AccessoryBlock />` immediately below the completion container.
+- Add a `📋 VIEW LIST` button next to `Complete Workout` inside the completion container that switches the view to `"full-list"` (`setView('full-list')`).
+
+### React Accessory Block
+
+#### [MODIFY] [AccessoryBlock.jsx](file:///C:/Users/wance/Documents/Git/workout-program/gymlog-react/src/components/AccessoryBlock.jsx)
+
+- Replace the singular `selectedAccessory` state hook with an array state hook:
+  `const [accessoriesList, setAccessoriesList] = useState([]);`
+- Update `handleGenerate` to append the new group object to `accessoriesList`.
+- Implement `handleSwapAccessory(index)` to generate a random replacement and swap the accessory at the specified index in the state array.
+- Render UI:
+  - If `accessoriesList.length === 0`, show the primary dashed button: `Got More in the Tank? +`.
+  - If `accessoriesList.length > 0`, map through `accessoriesList` and render an `ExerciseCard` for each one with a `Swap Bonus` button.
+  - Below the list, render a clean secondary button: `➕ Add Another Accessory` to append additional cards.
+
+---
 
 ## Verification Plan
 
@@ -25,4 +33,8 @@ None.
 - Run `npm run build` in `/gymlog-react` to verify there are no compilation errors.
 
 ### Manual Verification
-- Verify that `// Handoff Verification Test OK` appears on the first line of `AppContext.jsx`.
+- Complete all exercises in the tracker.
+- Verify the completion card displays the `📋 VIEW LIST` button and the `Got More in the Tank? +` accessory block below it.
+- Click `📋 VIEW LIST` to navigate back to the exercise list, verify checkmarks can be reset, and return to tracker.
+- Click `Got More in the Tank? +` on the completion card to generate a bonus exercise. Verify the card logs sets successfully.
+- Verify a `➕ Add Another Accessory` button appears below the first card. Click it to add multiple sequential accessory exercises.
