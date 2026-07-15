@@ -123,26 +123,39 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
     );
 };
 
-const PersonInputsSection = ({ person, ex, input, updateLogInput }) => {
+const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
+    const toggleNotePhrase = (phrase) => {
+        if (toast) setToast("");
+        let prev = input.note || "";
+        if (prev.includes(phrase)) {
+            updateLogInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
+        } else {
+            updateLogInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
+        }
+    };
+
     return (
-        <div style={{ background: '#1a1a1a', padding: 8, borderRadius: 8, marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ background: '#1a1a1a', padding: 12, borderRadius: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 'bold', color: 'var(--accent)' }}>{person.toUpperCase()}</span>
-                <div style={{ display: 'flex', gap: 4, fontSize: 10 }}>
-                    {targetRanges.map((tr, idx) => (
-                        <React.Fragment key={tr.key}>
-                            <span style={tr.isActive ? { color: '#ff8c00', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
-                                {tr.label} ({tr.bestValue})
-                            </span>
-                            {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
-                        </React.Fragment>
-                    ))}
-                </div>
+                {targetRanges.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, fontSize: 10 }}>
+                        {targetRanges.map((tr, idx) => (
+                            <React.Fragment key={tr.key}>
+                                <span style={tr.isActive ? { color: '#ff8c00', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
+                                    {tr.label} ({tr.bestValue})
+                                </span>
+                                {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                )}
             </div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start' }}>
+            
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-start', marginBottom: 8 }}>
                 {ex.timed ? (
                     <>
                         <input 
@@ -185,44 +198,25 @@ const PersonInputsSection = ({ person, ex, input, updateLogInput }) => {
                     </>
                 )}
             </div>
-        </div>
-    );
-};
 
-const PersonNotesSection = ({ person, input, updateLogInput, toast, setToast }) => {
-    const key = person.toLowerCase();
-
-    const toggleNotePhrase = (phrase) => {
-        if (toast) setToast("");
-        let prev = input.note || "";
-        if (prev.includes(phrase)) {
-            updateLogInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
-        } else {
-            updateLogInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
-        }
-    };
-
-    return (
-        <div style={{ background: '#141414', padding: 8, borderRadius: 8, marginBottom: 8, border: '1px solid #222' }}>
-            <div style={{ fontSize: 10, fontWeight: 'bold', color: 'var(--muted)', marginBottom: 4 }}>
-                {person.toUpperCase()} SETTINGS
+            <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
+                        Singles
+                    </label>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                        Alternating
+                    </label>
+                </div>
+                <input 
+                    placeholder="Notes..." 
+                    value={input.note || ""}
+                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
+                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+                />
             </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                    <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
-                    Singles
-                </label>
-                <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                    <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                    Alternating
-                </label>
-            </div>
-            <input 
-                placeholder="Notes..." 
-                value={input.note || ""}
-                onChange={(e) => updateLogInput(key, "note", e.target.value)}
-                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
-            />
         </div>
     );
 };
@@ -683,27 +677,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                 const key = person.toLowerCase();
                                                 const input = logInputs[key] || {};
                                                 return (
-                                                    <PersonInputsSection 
+                                                    <MultiUserPersonLogSection 
                                                         key={person} 
                                                         person={person} 
                                                         ex={ex} 
-                                                        input={input} 
-                                                        updateLogInput={updateLogInput} 
-                                                    />
-                                                );
-                                            })}
-
-                                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 8, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
-                                                {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
-                                            </button>
-
-                                            {activePeople.map(person => {
-                                                const key = person.toLowerCase();
-                                                const input = logInputs[key] || {};
-                                                return (
-                                                    <PersonNotesSection 
-                                                        key={person} 
-                                                        person={person} 
                                                         input={input} 
                                                         updateLogInput={updateLogInput}
                                                         toast={toast}
@@ -711,6 +688,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                                     />
                                                 );
                                             })}
+
+                                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 8, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
+                                                {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                                            </button>
                                         </>
                                     )}
 
