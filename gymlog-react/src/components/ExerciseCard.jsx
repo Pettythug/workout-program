@@ -24,7 +24,7 @@ const formatLogDate = (dateStr) => {
     }
 };
 
-const PersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }) => {
+const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet, isSaving, getNextSetNumber, toast, setToast }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
 
@@ -37,6 +37,95 @@ const PersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }
             updateLogInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
         }
     };
+
+    return (
+        <div style={{ background: '#1a1a1a', padding: 12, borderRadius: 8, marginBottom: 8 }}>
+            {targetRanges.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, fontSize: 11, marginBottom: 8, flexWrap: 'wrap' }}>
+                    {targetRanges.map((tr, idx) => (
+                        <React.Fragment key={tr.key}>
+                            <span style={tr.isActive ? { color: '#ff8c00', fontWeight: 'bold' } : { color: 'var(--muted)' }}>
+                                {tr.label} ({tr.bestValue})
+                            </span>
+                            {idx < targetRanges.length - 1 && <span style={{ color: 'var(--muted)' }}>@</span>}
+                        </React.Fragment>
+                    ))}
+                </div>
+            )}
+            
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                {ex.timed ? (
+                    <>
+                        <input 
+                            placeholder="secs" 
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={input.duration || ""} 
+                            onChange={e => updateLogInput(key, "duration", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                        <input 
+                            placeholder="lbs" 
+                            type="text"
+                            inputMode="decimal"
+                            value={input.weight || ""} 
+                            onChange={e => updateLogInput(key, "weight", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                    </>
+                ) : (
+                    <>
+                        <input 
+                            placeholder="reps" 
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={input.reps || ""} 
+                            onChange={e => updateLogInput(key, "reps", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                        <input 
+                            placeholder="lbs" 
+                            type="text"
+                            inputMode="decimal"
+                            value={input.weight || ""} 
+                            onChange={e => updateLogInput(key, "weight", e.target.value)}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                        />
+                    </>
+                )}
+                
+                <button className="btn-success" style={{ flex: 1, padding: 12, fontWeight: 'bold' }} onClick={handleSaveSet} disabled={isSaving}>
+                    {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                </button>
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
+                        Singles
+                    </label>
+                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                        Alternating
+                    </label>
+                </div>
+                <input 
+                    placeholder="Notes..." 
+                    value={input.note || ""}
+                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
+                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+                />
+            </div>
+        </div>
+    );
+};
+
+const PersonInputsSection = ({ person, ex, input, updateLogInput }) => {
+    const key = person.toLowerCase();
+    const { targetRanges } = useTargetLock(ex, key);
 
     return (
         <div style={{ background: '#1a1a1a', padding: 8, borderRadius: 8, marginBottom: 8 }}>
@@ -96,24 +185,44 @@ const PersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }
                     </>
                 )}
             </div>
-            <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
-                        Singles
-                    </label>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                        Alternating
-                    </label>
-                </div>
-                <input 
-                    placeholder="Notes..." 
-                    value={input.note || ""}
-                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
-                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
-                />
+        </div>
+    );
+};
+
+const PersonNotesSection = ({ person, input, updateLogInput, toast, setToast }) => {
+    const key = person.toLowerCase();
+
+    const toggleNotePhrase = (phrase) => {
+        if (toast) setToast("");
+        let prev = input.note || "";
+        if (prev.includes(phrase)) {
+            updateLogInput(key, "note", prev.replace(phrase, "").replace(/,\s*,/g, ",").replace(/(^,)|(,$)/g, "").trim());
+        } else {
+            updateLogInput(key, "note", prev ? `${prev}, ${phrase}` : phrase);
+        }
+    };
+
+    return (
+        <div style={{ background: '#141414', padding: 8, borderRadius: 8, marginBottom: 8, border: '1px solid #222' }}>
+            <div style={{ fontSize: 10, fontWeight: 'bold', color: 'var(--muted)', marginBottom: 4 }}>
+                {person.toUpperCase()} SETTINGS
             </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                    <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
+                    Singles
+                </label>
+                <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
+                    <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
+                    Alternating
+                </label>
+            </div>
+            <input 
+                placeholder="Notes..." 
+                value={input.note || ""}
+                onChange={(e) => updateLogInput(key, "note", e.target.value)}
+                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+            />
         </div>
     );
 };
@@ -550,27 +659,60 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                     ) : (
                         <div style={{ marginTop: 16 }}>
                             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                                <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>LOG SET</button>
+                                <button className={activeTab === "LOG" ? "btn-success" : "btn-ghost"} onClick={() => setActiveTab("LOG")} style={{ flex: 1, padding: '8px' }}>CURRENT</button>
                                 <button className={activeTab === "HISTORY" ? "btn-secondary" : "btn-ghost"} onClick={() => setActiveTab("HISTORY")} style={{ flex: 1, padding: '8px' }}>HISTORY</button>
                             </div>
 
                             {activeTab === "LOG" && (
                                 <div>
-                                    {activePeople.map(person => {
-                                        const key = person.toLowerCase();
-                                        const input = logInputs[key] || {};
-                                        return (
-                                            <PersonLogSection 
-                                                key={person} 
-                                                person={person} 
-                                                ex={ex} 
-                                                input={input} 
-                                                updateLogInput={updateLogInput} 
-                                                toast={toast}
-                                                setToast={setToast}
-                                            />
-                                        );
-                                    })}
+                                    {activePeople.length === 1 ? (
+                                        <SingleUserLogSection
+                                            person={activePeople[0]}
+                                            ex={ex}
+                                            input={logInputs[activePeople[0].toLowerCase()] || {}}
+                                            updateLogInput={updateLogInput}
+                                            handleSaveSet={handleSaveSet}
+                                            isSaving={isSaving}
+                                            getNextSetNumber={getNextSetNumber}
+                                            toast={toast}
+                                            setToast={setToast}
+                                        />
+                                    ) : (
+                                        <>
+                                            {activePeople.map(person => {
+                                                const key = person.toLowerCase();
+                                                const input = logInputs[key] || {};
+                                                return (
+                                                    <PersonInputsSection 
+                                                        key={person} 
+                                                        person={person} 
+                                                        ex={ex} 
+                                                        input={input} 
+                                                        updateLogInput={updateLogInput} 
+                                                    />
+                                                );
+                                            })}
+
+                                            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 8, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
+                                                {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                                            </button>
+
+                                            {activePeople.map(person => {
+                                                const key = person.toLowerCase();
+                                                const input = logInputs[key] || {};
+                                                return (
+                                                    <PersonNotesSection 
+                                                        key={person} 
+                                                        person={person} 
+                                                        input={input} 
+                                                        updateLogInput={updateLogInput}
+                                                        toast={toast}
+                                                        setToast={setToast}
+                                                    />
+                                                );
+                                            })}
+                                        </>
+                                    )}
 
                                     {todaysSets.length > 0 && (
                                         <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 8, marginTop: 8, border: '1px solid var(--border)' }}>
@@ -589,10 +731,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                             })}
                                         </div>
                                     )}
-
-                                    <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSaveSet} disabled={isSaving}>
-                                        {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
-                                    </button>
 
                                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                                         <button className="btn-secondary" style={{ flex: 1, padding: '10px', fontSize: 12, fontWeight: 'bold' }} onClick={(e) => { 

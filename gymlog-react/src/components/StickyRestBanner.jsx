@@ -36,7 +36,7 @@ export default function StickyRestBanner() {
         return (
             <div style={{
                 position: 'fixed',
-                top: `${headerHeight}px`,
+                top: `${headerHeight + 12}px`,
                 left: '16px',
                 right: '16px',
                 background: 'rgba(30, 10, 10, 0.95)',
@@ -51,7 +51,7 @@ export default function StickyRestBanner() {
                 padding: '10px 16px',
                 zIndex: 99
             }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
                     🚨 REST COMPLETE (0:00)
                 </div>
                 <button
@@ -68,7 +68,7 @@ export default function StickyRestBanner() {
     return (
         <div style={{
             position: 'fixed',
-            top: `${headerHeight}px`,
+            top: `${headerHeight + 12}px`,
             left: '16px',
             right: '16px',
             background: 'rgba(17, 17, 17, 0.9)',
@@ -82,8 +82,8 @@ export default function StickyRestBanner() {
             padding: '10px 16px',
             zIndex: 99
         }}>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: 'white' }}>
-                ⏳ Rest: {formatTimerTime(timerSeconds)}
+            <div style={{ fontSize: '24px', fontWeight: '600', color: 'white' }}>
+                ⏳ {formatTimerTime(timerSeconds)}
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={toggleTimer}>
