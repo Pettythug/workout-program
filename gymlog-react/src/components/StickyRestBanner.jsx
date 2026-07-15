@@ -27,7 +27,43 @@ export default function StickyRestBanner() {
         return () => ro.disconnect();
     }, []);
 
-    if (!showStickyTimer || !timerIsRunning || !timerIsCountdown || timerSeconds <= 0) return null;
+    const isActive    = timerIsRunning && timerIsCountdown && timerSeconds > 0;
+    const isCompleted = !timerIsRunning && timerIsCountdown && timerSeconds === 0;
+
+    if (!showStickyTimer || (!isActive && !isCompleted)) return null;
+
+    if (isCompleted) {
+        return (
+            <div style={{
+                position: 'fixed',
+                top: `${headerHeight}px`,
+                left: '16px',
+                right: '16px',
+                background: 'rgba(30, 10, 10, 0.95)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid #ef4444',
+                borderRadius: 'var(--radius)',
+                boxShadow: '0 0 12px rgba(239, 68, 68, 0.45)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 16px',
+                zIndex: 99
+            }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
+                    🚨 REST COMPLETE (0:00)
+                </div>
+                <button
+                    className="btn-ghost"
+                    style={{ padding: '4px 12px', fontSize: '11px', border: '1px solid #ef4444', color: '#ef4444', fontWeight: '700' }}
+                    onClick={resetTimer}
+                >
+                    DISMISS
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div style={{
