@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import ExerciseCard from './ExerciseCard';
 
-export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList }) {
+export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet }) {
     const { exercises, activeLocation } = useAppContext();
  
     const handleAddAccessory = () => {
@@ -119,7 +119,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
                             <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, paddingLeft: 2 }}>
                                 Bonus Accessory #{idx + 1}
                             </div>
-                            <ExerciseCard group={acc} />
+                            <ExerciseCard group={acc} onLogSet={onLogSet} />
                             <button 
                                 onClick={() => handleSwapAccessory(idx)}
                                 style={{
