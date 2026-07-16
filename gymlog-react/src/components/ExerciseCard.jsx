@@ -63,7 +63,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             pattern="[0-9]*"
                             value={input.duration || ""} 
                             onChange={e => updateLogInput(key, "duration", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
@@ -71,7 +71,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                     </>
                 ) : (
@@ -83,7 +83,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             pattern="[0-9]*"
                             value={input.reps || ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
@@ -91,7 +91,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                     </>
                 )}
