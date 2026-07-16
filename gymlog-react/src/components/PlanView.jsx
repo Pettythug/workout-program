@@ -39,8 +39,8 @@ export default function PlanView() {
         localStorage.setItem('gymlog_session_accessories', JSON.stringify(accessoriesList));
     }, [accessoriesList]);
 
-    const plannedExercises = useMemo(() => {
-        if (!exercises || exercises.length === 0) return [];
+    const groupedExercises = useMemo(() => {
+        if (!exercises || exercises.length === 0) return {};
 
         const getBaseName = (name) => name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
         const getMode = (name) => {
@@ -57,7 +57,13 @@ export default function PlanView() {
             grouped[baseKey].variations[getMode(ex.name)] = ex;
         });
 
-        const availableGroups = Object.values(grouped);
+        return grouped;
+    }, [exercises]);
+
+    const plannedExercises = useMemo(() => {
+        if (!groupedExercises || Object.keys(groupedExercises).length === 0) return [];
+
+        const availableGroups = Object.values(groupedExercises);
 
         const daySwaps = dailySwaps[workoutDay] || {};
 
@@ -80,8 +86,8 @@ export default function PlanView() {
             let finalPick = originalPick;
             if (daySwaps[originalBaseKey]) {
                 const swappedKey = daySwaps[originalBaseKey].toLowerCase();
-                if (grouped[swappedKey]) {
-                    finalPick = grouped[swappedKey];
+                if (groupedExercises[swappedKey]) {
+                    finalPick = groupedExercises[swappedKey];
                 } else {
                     // Custom exercise
                     finalPick = {
@@ -109,7 +115,17 @@ export default function PlanView() {
         ];
 
         return pickedGroups.filter(Boolean);
-    }, [exercises, workoutDay, workoutType, dailySwaps, activeLocation]);
+    }, [groupedExercises, workoutDay, workoutType, dailySwaps, activeLocation]);
+
+    const resolvedAccessories = useMemo(() => {
+        if (!accessoriesList || !groupedExercises) return [];
+        return accessoriesList.map(item => {
+            const baseName = item && item.baseName ? item.baseName : item;
+            if (!baseName) return null;
+            const baseKey = baseName.toLowerCase();
+            return groupedExercises[baseKey] || item;
+        }).filter(Boolean);
+    }, [groupedExercises, accessoriesList]);
 
     const handleLogSetSaved = () => {
         startRestTimer(parseInt(timerMode, 10));
@@ -290,7 +306,7 @@ export default function PlanView() {
                                     </button>
                                 </div>
                             </div>
-                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />
+                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
                         </>
                     );
                 }
@@ -381,7 +397,7 @@ export default function PlanView() {
                             />
                         </div>
 
-                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={accessoriesList} setAccessoriesList={setAccessoriesList} />
+                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
 
                         <button 
                             className="complete-btn" 
