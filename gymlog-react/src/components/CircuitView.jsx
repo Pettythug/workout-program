@@ -109,6 +109,7 @@ export default function CircuitView() {
             if (!grouped[ex.category]) grouped[ex.category] = [];
             grouped[ex.category].push(ex);
         });
+        console.log("[Circuit Diagnostics] Grouped machines:", grouped);
 
         const newCircuit = [];
         Object.keys(grouped).forEach(cat => {
@@ -145,6 +146,7 @@ export default function CircuitView() {
             if (!grouped[ex.category]) grouped[ex.category] = [];
             grouped[ex.category].push(ex);
         });
+        console.log("[Circuit Diagnostics] Grouped machines:", grouped);
 
         const newCircuit = [];
         Object.keys(grouped).forEach(cat => {
@@ -170,8 +172,8 @@ export default function CircuitView() {
         setView('tracker');
     };
 
-    const endCircuit = () => {
-        if (window.confirm("Are you sure you want to end the current circuit?")) {
+    const endCircuit = (force = false) => {
+        if (force || window.confirm("Are you sure you want to end the current circuit?")) {
             updateCircuitState([], {});
             setView('planner');
         }
@@ -480,7 +482,7 @@ export default function CircuitView() {
                                 <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <h2>🎉 Circuit Complete!</h2>
                                     <p>Great job finishing the workout.</p>
-                                    <button className="btn-success" onClick={endCircuit} style={{ marginTop: 20, padding: 12, width: '200px' }}>Finish</button>
+                                    <button className="btn-success" onClick={() => endCircuit(true)} style={{ marginTop: 20, padding: 12, width: '200px' }}>Finish</button>
                                     {lastExName && (
                                         <button 
                                             className="btn-ghost" 
