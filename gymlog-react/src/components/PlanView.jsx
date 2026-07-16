@@ -71,9 +71,10 @@ export default function PlanView() {
             
             // Smart tracking: use a unique counter for each category block instead of workoutDay
             const rotationKey = categories.join('_').replace(/\s/g, '');
-            const idx = parseInt(localStorage.getItem('gymlog_rotation_' + rotationKey) || '0', 10);
+            let idxVal = parseInt(localStorage.getItem('gymlog_rotation_' + rotationKey) || '0', 10);
+            if (isNaN(idxVal) || idxVal < 0) idxVal = 0;
             
-            const originalPick = subset[idx % subset.length];
+            const originalPick = subset[idxVal % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             
             let finalPick = originalPick;
@@ -178,8 +179,11 @@ export default function PlanView() {
         // 1. Increment rotations
         plannedExercises.forEach(ex => {
             if (ex && ex.rotationKey) {
-                const currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
-                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, currentIdx + 1);
+                let currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
+                if (isNaN(currentIdx) || currentIdx < 0) currentIdx = 0;
+                const nextIdx = currentIdx + 1;
+                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, nextIdx.toString());
+                console.log(`[Rotation Audit] Incremented key: ${ex.rotationKey} | Old: ${currentIdx} | New: ${nextIdx}`);
             }
         });
 
