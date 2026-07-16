@@ -63,7 +63,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             pattern="[0-9]*"
                             value={input.duration || ""} 
                             onChange={e => updateLogInput(key, "duration", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
@@ -71,7 +71,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                     </>
                 ) : (
@@ -83,7 +83,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             pattern="[0-9]*"
                             value={input.reps || ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                         <input 
                             placeholder="lbs" 
@@ -91,14 +91,10 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             inputMode="decimal"
                             value={input.weight || ""} 
                             onChange={e => updateLogInput(key, "weight", e.target.value)}
-                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
+                            style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
                     </>
                 )}
-                
-                <button className="btn-success" style={{ flex: 1, padding: '10px 4px', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={handleSaveSet} disabled={isSaving}>
-                    {isSaving ? "SAVING..." : `+ SET ${getNextSetNumber()}`}
-                </button>
             </div>
 
             <div style={{ marginTop: 8 }}>
@@ -119,6 +115,10 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                     style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
                 />
             </div>
+
+            <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', fontSize: '14px', marginTop: 12 }} onClick={handleSaveSet} disabled={isSaving}>
+                {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+            </button>
         </div>
     );
 };
