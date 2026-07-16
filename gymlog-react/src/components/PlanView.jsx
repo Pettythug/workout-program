@@ -123,7 +123,7 @@ export default function PlanView() {
             const baseName = item && item.baseName ? item.baseName : item;
             if (!baseName) return null;
             const baseKey = baseName.toLowerCase();
-            return groupedExercises[baseKey] || item;
+            return groupedExercises[baseKey] || null;
         }).filter(Boolean);
     }, [groupedExercises, accessoriesList]);
 
