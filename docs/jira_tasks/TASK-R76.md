@@ -1,6 +1,6 @@
 # TASK-R76: Fix Circuit Completion Flow and Add Diagnostics
 
-> **For Human Readers:** This task fixes the confusing confirmation prompt when finishing a completed circuit, and adds category machine variety diagnostics to the browser console.
+> **For Human Readers:** This task fixes the confusing confirmation prompt when finishing a completed circuit, adds category machine variety diagnostics to the browser console, and ensures React's click event object does not bypass the mid-workout confirm dialog.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -17,7 +17,8 @@
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
     1. Bypass confirmation dialog when clicking "Finish" on a completed circuit.
-    2. Add browser console diagnostics to list available circuit exercises by category.
+    2. Ensure the mid-workout "End Circuit" button still prompts for confirmation by preventing event object forwarding.
+    3. Add browser console diagnostics to list available circuit exercises by category.
   </OBJECTIVE>
   <RESOURCES>
     - Circuit View: `gymlog-react/src/components/CircuitView.jsx`
@@ -27,13 +28,13 @@
 
     2. MODIFY `gymlog-react/src/components/CircuitView.jsx`:
        - Add a parameter to `endCircuit` (e.g., `endCircuit = (force = false) => { ... }`).
-       - If `force === true`, bypass the `window.confirm` dialog and immediately execute the state reset and view change.
+       - If `force || window.confirm(...)` is true, execute the state reset and view change.
        - Update the completion screen's "Finish" button to call `endCircuit(true)`:
          `<button className="btn-success" onClick={() => endCircuit(true)} ...>Finish</button>`
-       - Update the mid-workout "End Circuit" button to continue calling `endCircuit(false)` (so it prompts the user if they want to quit early).
-       - Inside the circuit generation functions (e.g. `startFullBodyCircuit` and `startMimicCircuit`), add a console log tracing the available category pool:
+       - Update the mid-workout "End Circuit" button's onClick event to explicitly pass `false` (via an arrow function) to prevent React's `SyntheticEvent` from being forwarded as a truthy `force` value:
+         `<button className="complete-btn" onClick={() => endCircuit(false)} ...>End Circuit</button>`
+       - Inside the circuit generation functions (`startFullBodyCircuit` and `startMimicCircuit`), add a console log tracing the available category pool:
          `console.log("[Circuit Diagnostics] Grouped machines:", grouped);`
-         This will print the catalog structure in the browser's developer console (F12) so the user can audit how many options exist per category.
 
     3. AUDIT: Generate `/audit_log_R76.md` detailing the changes.
     4. VERIFY: Run `npm run build` (via `cmd /c` inside `gymlog-react`) to ensure clean compilation.
