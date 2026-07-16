@@ -4,7 +4,8 @@ import { useAppContext } from '../context/AppContext';
 export default function StickyRestBanner() {
     const {
         timerIsRunning, timerIsCountdown, timerSeconds,
-        formatTimerTime, toggleTimer, resetTimer, startRestTimer
+        formatTimerTime, toggleTimer, resetTimer, startRestTimer,
+        timerMode
     } = useAppContext();
 
     const [showStickyTimer, setShowStickyTimer] = useState(false);
@@ -30,6 +31,9 @@ export default function StickyRestBanner() {
     const isActive    = timerIsRunning && timerIsCountdown && timerSeconds > 0;
     const isCompleted = !timerIsRunning && timerIsCountdown && timerSeconds === 0;
 
+    const restDuration = parseInt(timerMode, 10);
+    const canRestart = !isNaN(restDuration) && restDuration > 0;
+
     if (!showStickyTimer || (!isActive && !isCompleted)) return null;
 
     if (isCompleted) {
@@ -54,13 +58,31 @@ export default function StickyRestBanner() {
                 <div style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
                     🚨 REST COMPLETE (0:00)
                 </div>
-                <button
-                    className="btn-ghost"
-                    style={{ padding: '4px 12px', fontSize: '11px', border: '1px solid #ef4444', color: '#ef4444', fontWeight: '700' }}
-                    onClick={resetTimer}
-                >
-                    DISMISS
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {canRestart && (
+                        <button
+                            className="btn-ghost"
+                            style={{ padding: '4px 12px', fontSize: '11px', border: '1px solid #ef4444', color: '#ef4444', fontWeight: '700' }}
+                            onClick={() => startRestTimer(restDuration)}
+                        >
+                            RESTART
+                        </button>
+                    )}
+                    <button
+                        className="btn-ghost"
+                        style={{ 
+                            padding: '4px 12px', 
+                            fontSize: '11px', 
+                            border: '1px solid #ef4444', 
+                            color: '#ef4444', 
+                            fontWeight: '700',
+                            background: 'rgba(239, 68, 68, 0.15)'
+                        }}
+                        onClick={resetTimer}
+                    >
+                        DISMISS
+                    </button>
+                </div>
             </div>
         );
     }
