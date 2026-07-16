@@ -30,7 +30,7 @@ const endCircuit = (force = false) => {
 };
 ```
 
-**Rationale:** When the circuit is fully completed, clicking "Finish" on the completion screen was unnecessarily prompting a confirm dialog. Passing `force = true` short-circuits the dialog. The mid-workout "End Circuit" button retains `endCircuit()` (defaults `force = false`), preserving the accidental-exit guard.
+**Rationale:** When the circuit is fully completed, clicking "Finish" on the completion screen was unnecessarily prompting a confirm dialog. Passing `force = true` short-circuits the dialog.
 
 ---
 
@@ -50,7 +50,23 @@ const endCircuit = (force = false) => {
 
 ---
 
-### 3. `startFullBodyCircuit` — Added Console Diagnostics
+### 3. Mid-Workout "End Circuit" Button — Explicit False Parameter
+
+**Before:**
+```jsx
+<button className="complete-btn" onClick={endCircuit} ...>End Circuit</button>
+```
+
+**After:**
+```jsx
+<button className="complete-btn" onClick={() => endCircuit(false)} ...>End Circuit</button>
+```
+
+**Rationale:** Originally, passing `onClick={endCircuit}` allowed React's `SyntheticEvent` object to be forwarded to `endCircuit(force)`. Since any object in Javascript is truthy, `force` evaluated to true and bypassed the confirmation dialog. Explicitly passing `false` inside an arrow function preserves the confirmation prompt.
+
+---
+
+### 4. `startFullBodyCircuit` — Added Console Diagnostics
 
 ```js
 console.log("[Circuit Diagnostics] Grouped machines:", grouped);
@@ -60,7 +76,7 @@ Added immediately after the `grouped` object is built, before circuit generation
 
 ---
 
-### 4. `startMimicCircuit` — Added Console Diagnostics
+### 5. `startMimicCircuit` — Added Console Diagnostics
 
 ```js
 console.log("[Circuit Diagnostics] Grouped machines:", grouped);
@@ -75,4 +91,4 @@ Same as above but in the Mimic Circuit flow. Full catalog is logged before any c
 | Button | Call | Dialog Shown? |
 |---|---|---|
 | Completion screen "Finish" | `endCircuit(true)` | ❌ No — immediate return to planner |
-| Mid-workout "End Circuit" | `endCircuit()` → `endCircuit(false)` | ✅ Yes — confirm prompt shown |
+| Mid-workout "End Circuit" | `endCircuit(false)` | ✅ Yes — confirm prompt shown |

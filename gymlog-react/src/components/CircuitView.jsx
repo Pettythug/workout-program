@@ -535,7 +535,7 @@ export default function CircuitView() {
                                 
                                 <button 
                                     className="complete-btn" 
-                                    onClick={endCircuit}
+                                    onClick={() => endCircuit(false)}
                                     style={{ width: '100%', background: 'var(--skip)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16, letterSpacing: 1.5, textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
                                 >
                                     End Circuit
