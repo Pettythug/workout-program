@@ -96,8 +96,8 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                     </>
                 )}
                 
-                <button className="btn-success" style={{ flex: 1, padding: 12, fontWeight: 'bold' }} onClick={handleSaveSet} disabled={isSaving}>
-                    {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
+                <button className="btn-success" style={{ flex: 1, padding: '10px 4px', fontWeight: 'bold', fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} onClick={handleSaveSet} disabled={isSaving}>
+                    {isSaving ? "SAVING..." : `+ SET ${getNextSetNumber()}`}
                 </button>
             </div>
 
