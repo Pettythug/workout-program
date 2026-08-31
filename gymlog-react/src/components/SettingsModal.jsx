@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 
 export default function SettingsModal({ isOpen, onClose }) {
-    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
+    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, removeLocationFromRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -184,7 +184,22 @@ export default function SettingsModal({ isOpen, onClose }) {
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>LOCATIONS</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                         {locations.map(l => (
-                            <div key={l} style={{ background: '#1a1a1a', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>{l}</div>
+                            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a1a1a', padding: '6px 10px', borderRadius: 6, fontSize: 12 }}>
+                                <span>{l}</span>
+                                {l !== "Anywhere" && (
+                                    <button 
+                                        onClick={() => {
+                                            if(window.confirm(`Are you sure you want to permanently delete ${l} from the roster?`)) {
+                                                removeLocationFromRoster(l);
+                                            }
+                                        }}
+                                        style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0 4px', fontSize: 10, fontWeight: 'bold' }}
+                                        title="Delete Location"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>

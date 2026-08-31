@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { matchesLocation } from '../utils/locationHelper';
 import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
@@ -68,11 +69,22 @@ export default function PlanView() {
         const daySwaps = dailySwaps[workoutDay] || {};
 
         const pick = (categories) => {
-            const subset = availableGroups.filter(g => {
+            let subset = availableGroups.filter(g => {
                 const ex = g.variations["Standard"] || Object.values(g.variations)[0];
-                const locMatch = activeLocation === "all" || ex.location === "Anywhere" || !ex.location || ex.location === activeLocation;
-                return categories.includes(g.category) && locMatch;
+                return categories.includes(g.category) && matchesLocation(ex.location, activeLocation);
             });
+            if (subset.length === 0) {
+                subset = availableGroups.filter(g => {
+                    const ex = g.variations["Standard"] || Object.values(g.variations)[0];
+                    return categories.includes(g.category) && matchesLocation(ex.location, "Anywhere");
+                });
+            }
+            if (subset.length === 0) {
+                subset = availableGroups.filter(g => {
+                    const ex = g.variations["Standard"] || Object.values(g.variations)[0];
+                    return categories.includes(g.category);
+                });
+            }
             if (subset.length === 0) return null;
             
             // Smart tracking: use a unique counter for each category block instead of workoutDay

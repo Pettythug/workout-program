@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { matchesLocation } from '../utils/locationHelper';
 import ExerciseCard from './ExerciseCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
@@ -28,10 +29,7 @@ export default function LiftView() {
         const filtered = exercises.filter(e => {
             const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
             const catMatch = !categoryFilter || e.category === categoryFilter;
-            const locMatch = activeLocation === "all" 
-                || e.location === "Anywhere" 
-                || !e.location 
-                || e.location === activeLocation;
+            const locMatch = matchesLocation(e.location, activeLocation);
             return nameMatch && catMatch && locMatch;
         });
 

@@ -40,10 +40,17 @@ export function AppProvider({ children }) {
     });
     const [locations, setLocations] = useState(() => {
         const cached = localStorage.getItem('gymlog_locations');
-        return cached ? JSON.parse(cached) : ["Anywhere", "Home", "Gym"];
+        let parsed = cached ? JSON.parse(cached) : ["Anywhere", "Home", "24 Hour Fitness"];
+        if (parsed.includes("Gym")) {
+            parsed = parsed.filter(l => l !== "Gym");
+            if (!parsed.includes("24 Hour Fitness")) parsed.push("24 Hour Fitness");
+        }
+        return parsed;
     });
     const [activeLocation, setActiveLocation] = useState(() => {
-        return localStorage.getItem('gymlog_activeLocation') || "all";
+        let loc = localStorage.getItem('gymlog_activeLocation') || "24 Hour Fitness";
+        if (loc === "Gym") loc = "24 Hour Fitness";
+        return loc;
     });
     const [deviceOwner, setDeviceOwner] = useState(() => {
         return localStorage.getItem('builder_primary_user') || "Brian";
@@ -174,7 +181,11 @@ export function AppProvider({ children }) {
                 // Merge data
                 const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
                 const currentLocalPeople = cachedPeople ? JSON.parse(cachedPeople) : [];
-                const currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "Gym"];
+                let currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "24 Hour Fitness"];
+                if (currentLocalLocations.includes("Gym")) {
+                    currentLocalLocations = currentLocalLocations.filter(l => l !== "Gym");
+                    if (!currentLocalLocations.includes("24 Hour Fitness")) currentLocalLocations.push("24 Hour Fitness");
+                }
                 const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople, currentLocalLocations);
                 
                 setExercises(mergedData.exercises);
@@ -334,6 +345,19 @@ export function AppProvider({ children }) {
             syncMeta(people, next, []);
             return next;
         });
+    };
+
+    const removeLocationFromRoster = (locName) => {
+        if (locName === "Anywhere") return;
+        setLocations(prev => {
+            const next = prev.filter(l => l !== locName);
+            localStorage.setItem('gymlog_locations', JSON.stringify(next));
+            syncMeta(people, next, []);
+            return next;
+        });
+        if (activeLocation === locName) {
+            updateActiveLocation("24 Hour Fitness");
+        }
     };
 
     const updateActiveLocation = (loc) => {
@@ -529,6 +553,7 @@ export function AppProvider({ children }) {
         addPersonToRoster,
         removePersonFromRoster,
         addLocationToRoster,
+        removeLocationFromRoster,
         createExerciseMeta,
         removeExerciseFromLocalState,
         updateExerciseInLocalState,
