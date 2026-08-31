@@ -1,5 +1,5 @@
 // Handoff Verification Test OK
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { mergeFromSheets } from './dataMerge';
 
@@ -66,9 +66,33 @@ export function AppProvider({ children }) {
     const [timerIsRunning, setTimerIsRunning] = useState(false);
     const [timerIsCountdown, setTimerIsCountdown] = useState(false);
 
+    // Wall-clock timestamp refs for resilient timekeeping across lock screens and backgrounding
+    const targetEndTimeRef = useRef(null);
+    const startTimeRef = useRef(null);
+
+    const playBeepSound = () => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 800; // 800Hz
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.15);
+        } catch (e) {
+            console.error("Beep error:", e);
+        }
+    };
+
     // Sync timer mode to localStorage and set initial time
     useEffect(() => {
         localStorage.setItem('gym-global-timer-mode', timerMode);
+        targetEndTimeRef.current = null;
+        startTimeRef.current = null;
+        localStorage.removeItem('gym_timer_target_end');
+        localStorage.removeItem('gym_timer_start_time');
         setTimerIsRunning(false);
         if (timerMode === 'stopwatch') {
             setTimerSeconds(0);
@@ -79,39 +103,41 @@ export function AppProvider({ children }) {
         }
     }, [timerMode]);
 
-    // Timer interval effect
+    // Timer interval effect with wall-clock timestamp synchronization & screen wake listener
     useEffect(() => {
-        let interval = null;
-        if (timerIsRunning) {
-            interval = setInterval(() => {
-                setTimerSeconds(prev => {
-                    if (timerIsCountdown) {
-                        if (prev <= 1) {
-                            setTimerIsRunning(false);
-                            // Visual and sound alert (native Web Audio API beep)
-                            try {
-                                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                                const osc = ctx.createOscillator();
-                                const gain = ctx.createGain();
-                                osc.connect(gain);
-                                gain.connect(ctx.destination);
-                                osc.frequency.value = 800; // 800Hz
-                                gain.gain.setValueAtTime(0.15, ctx.currentTime);
-                                osc.start();
-                                osc.stop(ctx.currentTime + 0.15);
-                            } catch (e) {
-                                console.error("Beep error:", e);
-                            }
-                            return 0;
-                        }
-                        return prev - 1;
-                    } else {
-                        return prev + 1;
-                    }
-                });
-            }, 1000);
-        }
-        return () => clearInterval(interval);
+        if (!timerIsRunning) return;
+
+        const updateFromTimestamp = () => {
+            if (timerIsCountdown && targetEndTimeRef.current) {
+                const remaining = Math.max(0, Math.ceil((targetEndTimeRef.current - Date.now()) / 1000));
+                setTimerSeconds(remaining);
+                if (remaining <= 0) {
+                    setTimerIsRunning(false);
+                    targetEndTimeRef.current = null;
+                    localStorage.removeItem('gym_timer_target_end');
+                    playBeepSound();
+                }
+            } else if (!timerIsCountdown && startTimeRef.current) {
+                const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+                setTimerSeconds(elapsed);
+            }
+        };
+
+        updateFromTimestamp();
+        const interval = setInterval(updateFromTimestamp, 500);
+
+        const handleVisibilityOrFocus = () => {
+            updateFromTimestamp();
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.addEventListener('focus', handleVisibilityOrFocus);
+
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+            window.removeEventListener('focus', handleVisibilityOrFocus);
+        };
     }, [timerIsRunning, timerIsCountdown]);
 
     const formatTimerTime = (totalSeconds) => {
@@ -121,20 +147,54 @@ export function AppProvider({ children }) {
     };
 
     const toggleTimer = () => {
-        setTimerIsRunning(prev => !prev);
+        setTimerIsRunning(prev => {
+            const next = !prev;
+            if (next) {
+                if (timerIsCountdown) {
+                    const target = Date.now() + timerSeconds * 1000;
+                    targetEndTimeRef.current = target;
+                    startTimeRef.current = null;
+                    localStorage.setItem('gym_timer_target_end', target.toString());
+                    localStorage.removeItem('gym_timer_start_time');
+                } else {
+                    const start = Date.now() - timerSeconds * 1000;
+                    startTimeRef.current = start;
+                    targetEndTimeRef.current = null;
+                    localStorage.setItem('gym_timer_start_time', start.toString());
+                    localStorage.removeItem('gym_timer_target_end');
+                }
+            } else {
+                targetEndTimeRef.current = null;
+                startTimeRef.current = null;
+                localStorage.removeItem('gym_timer_target_end');
+                localStorage.removeItem('gym_timer_start_time');
+            }
+            return next;
+        });
     };
 
     const resetTimer = () => {
+        targetEndTimeRef.current = null;
+        startTimeRef.current = null;
+        localStorage.removeItem('gym_timer_target_end');
+        localStorage.removeItem('gym_timer_start_time');
         setTimerIsRunning(false);
         if (timerMode === 'stopwatch') {
             setTimerSeconds(0);
+            setTimerIsCountdown(false);
         } else {
             setTimerSeconds(parseInt(timerMode, 10));
+            setTimerIsCountdown(true);
         }
     };
 
     const startRestTimer = (seconds) => {
         if (!isNaN(seconds) && seconds > 0) {
+            const target = Date.now() + seconds * 1000;
+            targetEndTimeRef.current = target;
+            startTimeRef.current = null;
+            localStorage.setItem('gym_timer_target_end', target.toString());
+            localStorage.removeItem('gym_timer_start_time');
             setTimerSeconds(seconds);
             setTimerIsCountdown(true);
             setTimerIsRunning(true);
