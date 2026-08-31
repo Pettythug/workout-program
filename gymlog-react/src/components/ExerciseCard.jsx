@@ -221,7 +221,7 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
     );
 };
 
-export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
+export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSwap }) {
     const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
@@ -543,7 +543,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
             }
         }
         
-        swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
+        if (onSwap) {
+            onSwap(ex.name, targetEx.name);
+        } else if (group.originalBaseKey) {
+            swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
+        }
         setSwapMode(null);
         setCustomSwapState(null);
     };
@@ -800,7 +804,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                                 </div>
                             )}
 
-                            {group.originalBaseKey && swapMode === ex.name && (
+                            {(group.originalBaseKey || onSwap || group.alternatives) && swapMode === ex.name && (
                                 <div style={{ marginTop: 16, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     <div style={{ background: "#0e0e0e", padding: 12, borderRadius: 8, border: "1px solid var(--border)" }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>Swap Exercise</div>
@@ -854,7 +858,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen }) {
                             )}
 
                             <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 16 }}>
-                                {group.originalBaseKey && (
+                                {(group.originalBaseKey || onSwap || (group.alternatives && group.alternatives.length > 0)) && (
                                     <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, fontSize: 11, padding: '10px 4px' }}>
                                         🔄 SWAP
                                     </button>
