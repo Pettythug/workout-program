@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { matchesLocation } from '../utils/locationHelper';
 import ExerciseCard from './ExerciseCard';
 
 export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet }) {
@@ -9,7 +10,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
         if (!exercises) return;
         const accessories = exercises.filter(ex => {
             const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
-            const locMatch = activeLocation === "all" || ex.location === "Anywhere" || !ex.location || ex.location === activeLocation;
+            const locMatch = matchesLocation(ex.location, activeLocation);
             return isAcc && locMatch;
         });
         if (accessories.length === 0) return;
@@ -50,7 +51,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
         if (!exercises) return;
         const accessories = exercises.filter(ex => {
             const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
-            const locMatch = activeLocation === "all" || ex.location === "Anywhere" || !ex.location || ex.location === activeLocation;
+            const locMatch = matchesLocation(ex.location, activeLocation);
             return isAcc && locMatch;
         });
         if (accessories.length === 0) return;
