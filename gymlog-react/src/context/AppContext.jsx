@@ -38,6 +38,14 @@ export function AppProvider({ children }) {
         const cached = localStorage.getItem('gymlog_dailySwaps');
         return cached ? JSON.parse(cached) : {};
     });
+    const [fullBodyWorkoutDay, setFullBodyWorkoutDay] = useState(() => {
+        const cached = localStorage.getItem('gymlog_fullBody_workoutDay');
+        return cached ? JSON.parse(cached) : 1;
+    });
+    const [fullBodySwaps, setFullBodySwaps] = useState(() => {
+        const cached = localStorage.getItem('gymlog_fullBody_swaps');
+        return cached ? JSON.parse(cached) : {};
+    });
     const [locations, setLocations] = useState(() => {
         const cached = localStorage.getItem('gymlog_locations');
         let parsed = cached ? JSON.parse(cached) : ["Anywhere", "Home", "24 Hour Fitness"];
@@ -215,8 +223,10 @@ export function AppProvider({ children }) {
             // New day detected: reset daily statuses and swaps
             localStorage.setItem('gymlog_exerciseStatus', JSON.stringify({}));
             localStorage.setItem('gymlog_dailySwaps', JSON.stringify({}));
+            localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify({}));
             setExerciseStatus({});
             setDailySwaps({});
+            setFullBodySwaps({});
         }
         localStorage.setItem('gymlog_lastActiveDate', today);
 
@@ -276,6 +286,11 @@ export function AppProvider({ children }) {
     const updateWorkoutDay = (day) => {
         setWorkoutDay(day);
         localStorage.setItem('gymlog_workoutDay', JSON.stringify(day));
+    };
+
+    const updateFullBodyWorkoutDay = (day) => {
+        setFullBodyWorkoutDay(day);
+        localStorage.setItem('gymlog_fullBody_workoutDay', JSON.stringify(day));
     };
 
     const togglePersonActive = (person) => {
@@ -371,6 +386,16 @@ export function AppProvider({ children }) {
             if (!next[day]) next[day] = {};
             next[day][originalBaseKey] = newName;
             localStorage.setItem('gymlog_dailySwaps', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const swapFullBodyExercise = (day, originalBaseKey, newName) => {
+        setFullBodySwaps(prev => {
+            const next = { ...prev };
+            if (!next[day]) next[day] = {};
+            next[day][originalBaseKey] = newName;
+            localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify(next));
             return next;
         });
     };
@@ -590,6 +615,7 @@ export function AppProvider({ children }) {
 
     const contextValue = {
         workoutDay,
+        fullBodyWorkoutDay,
         people,
         activePeople: [...new Set(activePeople)].filter(p => people.includes(p)),
         deviceOwner,
@@ -597,11 +623,13 @@ export function AppProvider({ children }) {
         exercises,
         exerciseStatus,
         dailySwaps,
+        fullBodySwaps,
         loading,
         isSyncing,
         locations,
         activeLocation,
         updateWorkoutDay,
+        updateFullBodyWorkoutDay,
         updateActiveLocation,
         togglePersonActive,
         setExerciseDone,
@@ -610,6 +638,7 @@ export function AppProvider({ children }) {
         addSetToLocalHistory,
         deleteSetFromLocalHistory,
         swapExercise,
+        swapFullBodyExercise,
         addPersonToRoster,
         removePersonFromRoster,
         addLocationToRoster,
