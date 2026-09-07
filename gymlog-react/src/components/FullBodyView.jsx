@@ -115,6 +115,8 @@ export default function FullBodyView() {
             };
         };
 
+        const activeCoreCategory = fullBodyWorkoutDay % 2 !== 0 ? 'Plank Core' : 'Rotational Core';
+
         const pickedGroups = [
             pick(['Explosive']),
             pick(['Knee Dominant']),
@@ -123,7 +125,7 @@ export default function FullBodyView() {
             pick(['Horizontal Push']),
             pick(['Vertical Pull']),
             pick(['Horizontal Pull']),
-            pick(['Rotational Core', 'Plank Core'])
+            pick([activeCoreCategory])
         ];
 
         return pickedGroups.filter(Boolean);
