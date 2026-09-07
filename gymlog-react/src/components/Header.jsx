@@ -12,6 +12,7 @@ export default function Header() {
                 <span className={`sync-indicator ${isSyncing ? 'syncing' : 'synced'}`} />
             </h1>
             <NavLink to="/plan" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>PLAN</NavLink>
+            <NavLink to="/full-body" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>FULL BODY</NavLink>
             <NavLink to="/lift" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>LIFT</NavLink>
             <NavLink to="/circuit" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>CIRCUIT</NavLink>
         </div>

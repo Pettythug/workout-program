@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import PlanView from './components/PlanView';
+import FullBodyView from './components/FullBodyView';
 import LiftView from './components/LiftView';
 import CircuitView from './components/CircuitView';
 import Header from './components/Header';
@@ -14,6 +15,7 @@ function App() {
         <main className="main">
           <Routes>
             <Route path="/plan" element={<PlanView />} />
+            <Route path="/full-body" element={<FullBodyView />} />
             <Route path="/lift" element={<LiftView />} />
             <Route path="/circuit" element={<CircuitView />} />
             <Route path="/" element={<Navigate to="/lift" replace />} />
