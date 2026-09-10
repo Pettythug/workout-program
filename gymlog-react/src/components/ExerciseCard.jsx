@@ -252,10 +252,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
     if (!ex) return null;
 
     const todaysSets = useMemo(() => {
-        if (!ex || !ex.history || ex.history.length === 0) return [];
         const todayStr = new Date().toDateString();
-        return ex.history.filter(h => h.date && new Date(h.date).toDateString() === todayStr);
-    }, [ex]);
+        return Object.values(variations)
+            .flatMap(v => v.history || [])
+            .filter(h => h.date && new Date(h.date).toDateString() === todayStr);
+    }, [variations]);
 
     const groupedSets = useMemo(() => {
         const groups = {};
@@ -502,10 +503,17 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
     };
 
     const getBest = (personKey) => {
-        if (!ex.best || !ex.best[personKey]) return "No data";
-        const validKeys = Object.keys(ex.best[personKey]).filter(k => ex.best[personKey][k] !== null);
+        let bestObj = null;
+        if (ex.best && ex.best[personKey]) {
+            bestObj = ex.best[personKey];
+        } else if (variations["Standard"] && variations["Standard"].best && variations["Standard"].best[personKey]) {
+            bestObj = variations["Standard"].best[personKey];
+        }
+        if (!bestObj) return "No data";
+        
+        const validKeys = Object.keys(bestObj).filter(k => bestObj[k] !== null);
         if (validKeys.length === 0) return "No data";
-        const b = ex.best[personKey][validKeys[0]];
+        const b = bestObj[validKeys[0]];
         return ex.timed ? `${b.reps}s` : `${b.reps}x${b.weight}`;
     };
 

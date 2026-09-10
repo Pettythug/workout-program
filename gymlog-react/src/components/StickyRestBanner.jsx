@@ -28,7 +28,9 @@ export default function StickyRestBanner() {
         return () => ro.disconnect();
     }, []);
 
-    const isActive    = timerIsRunning && timerIsCountdown && timerSeconds > 0;
+    const isCountdownActive = timerIsRunning && timerIsCountdown && timerSeconds > 0;
+    const isStopwatchActive = timerIsRunning && !timerIsCountdown;
+    const isActive = isCountdownActive || isStopwatchActive;
     const isCompleted = !timerIsRunning && timerIsCountdown && timerSeconds === 0;
 
     const restDuration = parseInt(timerMode, 10);
@@ -105,17 +107,19 @@ export default function StickyRestBanner() {
             zIndex: 99
         }}>
             <div style={{ fontSize: '24px', fontWeight: '600', color: 'white' }}>
-                ⏳ {formatTimerTime(timerSeconds)}
+                {isStopwatchActive ? `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}` : `⏳ ${formatTimerTime(timerSeconds)}`}
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                 <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={toggleTimer}>
                     {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
                 </button>
-                <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={() => startRestTimer(timerSeconds + 30)}>
-                    +30S
-                </button>
+                {!isStopwatchActive && (
+                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={() => startRestTimer(timerSeconds + 30)}>
+                        +30S
+                    </button>
+                )}
                 <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={resetTimer}>
-                    SKIP
+                    {isStopwatchActive ? 'RESET' : 'SKIP'}
                 </button>
             </div>
         </div>

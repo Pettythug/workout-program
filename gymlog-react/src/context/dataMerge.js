@@ -7,6 +7,8 @@ function getImageFile(name) {
     return MACHINE_IMAGE_MAP[normalized] || null;
 }
 
+const cleanName = n => (n || '').trim().toLowerCase();
+
 export function mergeFromSheets(localExercises, sheetsData, localPeople = [], localLocations = []) {
     const { history: allHistory = [], best: allBest = {}, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
     const people = (sheetPeople && sheetPeople.length > 0) ? sheetPeople : localPeople;
@@ -24,9 +26,10 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
     }
 
     const merged = baseExercises.map(ex => {
-        const sheetHistory = allHistory.filter(h => h.exercise === ex.name);
-        const sheetBest    = allBest[ex.name];
-        const sheetExInfo  = (sheetExercises || []).find(e => e.name === ex.name);
+        const sheetHistory = allHistory.filter(h => cleanName(h.exercise) === cleanName(ex.name));
+        const bestKey = Object.keys(allBest).find(k => cleanName(k) === cleanName(ex.name));
+        const sheetBest = bestKey ? allBest[bestKey] : undefined;
+        const sheetExInfo  = (sheetExercises || []).find(e => cleanName(e.name) === cleanName(ex.name));
         
         let fileReference = getImageFile(ex.name) || getImageFile(sheetExInfo?.name);
         if (!fileReference) {
@@ -71,8 +74,9 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
     if (sheetExercises) {
         sheetExercises.forEach(sheetEx => {
             if (!localExNames.has(sheetEx.name)) {
-                const sheetHistory = allHistory.filter(h => h.exercise === sheetEx.name);
-                const sheetBest    = allBest[sheetEx.name];
+                const sheetHistory = allHistory.filter(h => cleanName(h.exercise) === cleanName(sheetEx.name));
+                const bestKey = Object.keys(allBest).find(k => cleanName(k) === cleanName(sheetEx.name));
+                const sheetBest = bestKey ? allBest[bestKey] : undefined;
                 
                 let fileReference = getImageFile(sheetEx.name);
                 if (!fileReference) {

@@ -508,16 +508,20 @@ export function AppProvider({ children }) {
     const logExerciseSet = async (ex, logs) => {
         console.log("logExerciseSet CALLED", { ex, logs });
         
+        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+        const baseName = getBaseName(ex.name);
+        
+        const allVariations = exercises.filter(e => getBaseName(e.name) === baseName);
+        const allTodaysEntries = allVariations.flatMap(v => v.history || [])
+            .filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
+        
         let nextSetNum = 1;
-        if (ex.history && ex.history.length > 0) {
-            const todaysEntries = ex.history.filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
-            if (todaysEntries.length > 0) {
-                const maxSetNum = todaysEntries.reduce((max, h) => {
-                    const num = parseInt(h.setNum) || 0;
-                    return num > max ? num : max;
-                }, 0);
-                nextSetNum = maxSetNum + 1;
-            }
+        if (allTodaysEntries.length > 0) {
+            const maxSetNum = allTodaysEntries.reduce((max, h) => {
+                const num = parseInt(h.setNum) || 0;
+                return num > max ? num : max;
+            }, 0);
+            nextSetNum = maxSetNum + 1;
         }
 
         const entries = [];
