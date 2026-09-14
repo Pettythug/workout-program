@@ -5,7 +5,6 @@ import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
-import StickyRestBanner from './StickyRestBanner';
 
 export default function PlanView() {
     const { 
@@ -252,7 +251,6 @@ export default function PlanView() {
 
     return (
         <div className="main" style={{ paddingBottom: 100 }}>
-            <StickyRestBanner />
             <div className="header" style={{ margin: '-16px -16px 16px', position: 'sticky', top: 0, zIndex: 100 }}>
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: 'var(--accent)' }}>PLAN</h1>

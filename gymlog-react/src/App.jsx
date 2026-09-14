@@ -4,6 +4,7 @@ import FullBodyView from './components/FullBodyView';
 import LiftView from './components/LiftView';
 import CircuitView from './components/CircuitView';
 import Header from './components/Header';
+import StickyRestBanner from './components/StickyRestBanner';
 import { AppProvider } from './context/AppContext';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
     <AppProvider>
       <HashRouter>
         <Header />
+        <StickyRestBanner />
         
         <main className="main">
           <Routes>

@@ -11,7 +11,7 @@ export default function StickyRestBanner() {
     const [showStickyTimer, setShowStickyTimer] = useState(false);
 
     useEffect(() => {
-        const handleScroll = () => setShowStickyTimer(window.scrollY > 220);
+        const handleScroll = () => setShowStickyTimer(window.scrollY > 60);
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
@@ -28,8 +28,8 @@ export default function StickyRestBanner() {
         return () => ro.disconnect();
     }, []);
 
-    const isCountdownActive = timerIsRunning && timerIsCountdown && timerSeconds > 0;
-    const isStopwatchActive = timerIsRunning && !timerIsCountdown;
+    const isCountdownActive = timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
+    const isStopwatchActive = !timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
     const isActive = isCountdownActive || isStopwatchActive;
     const isCompleted = !timerIsRunning && timerIsCountdown && timerSeconds === 0;
 
@@ -42,9 +42,11 @@ export default function StickyRestBanner() {
         return (
             <div style={{
                 position: 'fixed',
-                top: `${headerHeight + 12}px`,
-                left: '16px',
-                right: '16px',
+                top: `${headerHeight + 8}px`,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: 'calc(100% - 32px)',
+                maxWidth: '480px',
                 background: 'rgba(30, 10, 10, 0.95)',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
@@ -55,7 +57,7 @@ export default function StickyRestBanner() {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 padding: '10px 16px',
-                zIndex: 99
+                zIndex: 500
             }}>
                 <div style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
                     🚨 REST COMPLETE (0:00)
@@ -92,9 +94,11 @@ export default function StickyRestBanner() {
     return (
         <div style={{
             position: 'fixed',
-            top: `${headerHeight + 12}px`,
-            left: '16px',
-            right: '16px',
+            top: `${headerHeight + 8}px`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'calc(100% - 32px)',
+            maxWidth: '480px',
             background: 'rgba(17, 17, 17, 0.9)',
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
@@ -104,7 +108,7 @@ export default function StickyRestBanner() {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '10px 16px',
-            zIndex: 99
+            zIndex: 500
         }}>
             <div style={{ fontSize: '24px', fontWeight: '600', color: 'white' }}>
                 {isStopwatchActive ? `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}` : `⏳ ${formatTimerTime(timerSeconds)}`}
