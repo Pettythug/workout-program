@@ -6,7 +6,7 @@
 <TASK_EXECUTION_PROTOCOL>
   <GATEKEEPER>
     - TASK_CLASS: MULTI_FILE_Refactoring
-    - REQUIRED_MODEL_TIER: MEDIUM_TIER
+    - REQUIRED_MODEL_TIER: ["MEDIUM_TIER", "Gemini 3.8 Flash (Medium)", "Gemini 3.8 Flash", "Gemini 3.8 Pro"]
   </GATEKEEPER>
   <ROLE_DEFINITION>
     - ASSIGNED_ROLE: Sandbox_Developer
