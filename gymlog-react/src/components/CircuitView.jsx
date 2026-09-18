@@ -5,7 +5,6 @@ import { useGymAPI } from '../hooks/useGymAPI';
 import CircuitCard from './CircuitCard';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
-import StickyRestBanner from './StickyRestBanner';
 
 const CATEGORY_ORDER = [
     "Explosive",
@@ -347,7 +346,6 @@ export default function CircuitView() {
 
     return (
         <div style={{ padding: '20px', paddingBottom: '100px' }}>
-            <StickyRestBanner />
             {/* Header / Modal toggle */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h2 style={{ margin: 0, fontSize: 20, color: 'var(--accent)' }}>Circuit Training</h2>

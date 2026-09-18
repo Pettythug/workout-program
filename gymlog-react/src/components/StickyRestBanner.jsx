@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 export default function StickyRestBanner() {
@@ -8,26 +7,6 @@ export default function StickyRestBanner() {
         timerMode
     } = useAppContext();
 
-    const [showStickyTimer, setShowStickyTimer] = useState(false);
-
-    useEffect(() => {
-        const handleScroll = () => setShowStickyTimer(window.scrollY > 60);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    const [headerHeight, setHeaderHeight] = useState(60);
-
-    useEffect(() => {
-        const header = document.querySelector('.header');
-        if (!header) return;
-        const update = () => setHeaderHeight(header.getBoundingClientRect().height);
-        update();
-        const ro = new ResizeObserver(update);
-        ro.observe(header);
-        return () => ro.disconnect();
-    }, []);
-
     const isCountdownActive = timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
     const isStopwatchActive = !timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
     const isActive = isCountdownActive || isStopwatchActive;
@@ -36,37 +15,48 @@ export default function StickyRestBanner() {
     const restDuration = parseInt(timerMode, 10);
     const canRestart = !isNaN(restDuration) && restDuration > 0;
 
-    if (!showStickyTimer || (!isActive && !isCompleted)) return null;
+    const shouldRender = timerIsRunning || timerSeconds > 0 || isCompleted;
+
+    if (!shouldRender) return null;
 
     if (isCompleted) {
         return (
             <div style={{
-                position: 'fixed',
-                top: `${headerHeight + 8}px`,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 'calc(100% - 32px)',
-                maxWidth: '480px',
-                background: 'rgba(30, 10, 10, 0.95)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid #ef4444',
-                borderRadius: 'var(--radius)',
-                boxShadow: '0 0 12px rgba(239, 68, 68, 0.45)',
+                width: '100%',
+                padding: '6px 16px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '10px 16px',
-                zIndex: 500
+                borderTop: '1px solid var(--border)',
+                background: '#ef4444',
+                boxSizing: 'border-box',
+                transform: 'translateZ(0)',
+                willChange: 'transform'
             }}>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444', letterSpacing: '0.03em' }}>
+                <div style={{
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    color: '#ffffff',
+                    letterSpacing: '0.03em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                }}>
                     🚨 REST COMPLETE (0:00)
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                     {canRestart && (
                         <button
                             className="btn-ghost"
-                            style={{ padding: '4px 12px', fontSize: '11px', border: '1px solid #ef4444', color: '#ef4444', fontWeight: '700' }}
+                            style={{
+                                padding: '4px 10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                border: '1px solid rgba(255, 255, 255, 0.4)',
+                                color: '#ffffff',
+                                background: 'rgba(0, 0, 0, 0.25)',
+                                cursor: 'pointer'
+                            }}
                             onClick={() => startRestTimer(restDuration)}
                         >
                             RESTART
@@ -74,13 +64,14 @@ export default function StickyRestBanner() {
                     )}
                     <button
                         className="btn-ghost"
-                        style={{ 
-                            padding: '4px 12px', 
-                            fontSize: '11px', 
-                            border: '1px solid #ef4444', 
-                            color: '#ef4444', 
+                        style={{
+                            padding: '4px 10px',
+                            fontSize: '11px',
                             fontWeight: '700',
-                            background: 'rgba(239, 68, 68, 0.15)'
+                            border: '1px solid #ffffff',
+                            color: '#ef4444',
+                            background: '#ffffff',
+                            cursor: 'pointer'
                         }}
                         onClick={resetTimer}
                     >
@@ -93,38 +84,67 @@ export default function StickyRestBanner() {
 
     return (
         <div style={{
-            position: 'fixed',
-            top: `${headerHeight + 8}px`,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 'calc(100% - 32px)',
-            maxWidth: '480px',
-            background: 'rgba(17, 17, 17, 0.9)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius)',
+            width: '100%',
+            padding: '6px 16px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '10px 16px',
-            zIndex: 500
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+            boxSizing: 'border-box',
+            transform: 'translateZ(0)',
+            willChange: 'transform'
         }}>
-            <div style={{ fontSize: '24px', fontWeight: '600', color: 'white' }}>
-                {isStopwatchActive ? `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}` : `⏳ ${formatTimerTime(timerSeconds)}`}
+            <div style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                fontFamily: 'var(--mono)',
+                color: timerIsCountdown 
+                    ? (timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)')
+                    : '#38bdf8',
+                letterSpacing: '0.02em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+            }}>
+                {timerIsCountdown 
+                    ? `⏳ REST ${formatTimerTime(timerSeconds)}` 
+                    : `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}`}
             </div>
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={toggleTimer}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                <button
+                    className="btn-ghost"
+                    style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                    onClick={toggleTimer}
+                >
                     {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
                 </button>
-                {!isStopwatchActive && (
-                    <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={() => startRestTimer(timerSeconds + 30)}>
-                        +30S
+                {timerIsCountdown ? (
+                    <>
+                        <button
+                            className="btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            onClick={() => startRestTimer(timerSeconds + 30)}
+                        >
+                            +30S
+                        </button>
+                        <button
+                            className="btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            onClick={resetTimer}
+                        >
+                            SKIP
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        className="btn-ghost"
+                        style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                        onClick={resetTimer}
+                    >
+                        RESET
                     </button>
                 )}
-                <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)' }} onClick={resetTimer}>
-                    {isStopwatchActive ? 'RESET' : 'SKIP'}
-                </button>
             </div>
         </div>
     );
