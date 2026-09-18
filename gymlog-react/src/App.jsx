@@ -11,8 +11,10 @@ function App() {
   return (
     <AppProvider>
       <HashRouter>
-        <Header />
-        <StickyRestBanner />
+        <div className="sticky-header-container" style={{ position: 'sticky', top: 0, zIndex: 999, background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+          <Header />
+          <StickyRestBanner />
+        </div>
         
         <main className="main">
           <Routes>
