@@ -76,6 +76,14 @@ export function AppProvider({ children }) {
         return cached ? JSON.parse(cached) : [];
     });
 
+    // Pre-Workout Warm-Up State
+    const [warmUpStatus, setWarmUpStatus] = useState(() => {
+        return localStorage.getItem('gymlog_active_warmup_status') || 'pending';
+    });
+    const [selectedWarmUp, setSelectedWarmUp] = useState(() => {
+        return localStorage.getItem('gymlog_last_warmup') || '500m Row';
+    });
+
     // Global Timer State
     const [timerMode, setTimerMode] = useState(() => {
         return localStorage.getItem('gym-global-timer-mode') || 'stopwatch';
@@ -234,9 +242,11 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_exerciseStatus', JSON.stringify({}));
             localStorage.setItem('gymlog_dailySwaps', JSON.stringify({}));
             localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify({}));
+            localStorage.setItem('gymlog_active_warmup_status', 'pending');
             setExerciseStatus({});
             setDailySwaps({});
             setFullBodySwaps({});
+            setWarmUpStatus('pending');
         }
         localStorage.setItem('gymlog_lastActiveDate', today);
 
@@ -523,6 +533,30 @@ export function AppProvider({ children }) {
         return startTime;
     };
 
+    const resetWarmUp = () => {
+        setWarmUpStatus('pending');
+        localStorage.setItem('gymlog_active_warmup_status', 'pending');
+    };
+
+    const completeWarmUp = (modality) => {
+        const mod = modality || selectedWarmUp || '500m Row';
+        setSelectedWarmUp(mod);
+        setWarmUpStatus('completed');
+        localStorage.setItem('gymlog_last_warmup', mod);
+        localStorage.setItem('gymlog_active_warmup_status', 'completed');
+
+        if (!sessionStartTime) {
+            const now = Date.now();
+            setSessionStartTime(now);
+            localStorage.setItem('gymlog_session_start_time', now.toString());
+        }
+    };
+
+    const skipWarmUp = () => {
+        setWarmUpStatus('skipped');
+        localStorage.setItem('gymlog_active_warmup_status', 'skipped');
+    };
+
     const endSession = () => {
         setSessionStartTime(null);
         localStorage.removeItem('gymlog_session_start_time');
@@ -530,6 +564,7 @@ export function AppProvider({ children }) {
 
     const resetSessionTime = () => {
         endSession();
+        resetWarmUp();
     };
 
     const saveCompletedSession = (sessionData) => {
@@ -734,6 +769,13 @@ export function AppProvider({ children }) {
         activeLocation,
         sessionStartTime,
         sessionHistory,
+        warmUpStatus,
+        setWarmUpStatus,
+        selectedWarmUp,
+        setSelectedWarmUp,
+        completeWarmUp,
+        skipWarmUp,
+        resetWarmUp,
         startSession,
         endSession,
         resetSessionTime,
