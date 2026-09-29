@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import CircuitCard from './CircuitCard';
+import WarmUpCard from './WarmUpCard';
+import SessionStatsModal from './SessionStatsModal';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 
@@ -27,16 +29,26 @@ export default function CircuitView() {
         setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus, 
         updateExerciseInLocalState,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
-        formatTimerTime, toggleTimer, resetTimer, startRestTimer
+        formatTimerTime, toggleTimer, resetTimer, startRestTimer,
+        sessionStartTime, startSession, resetSessionTime, saveCompletedSession,
+        warmUpStatus, selectedWarmUp, resetWarmUp
     } = useAppContext();
     
     const navigate = useNavigate();
-    const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker'
+    const [view, setView] = useState('planner'); // 'planner' | 'mimic-setup' | 'tracker' | 'full-list'
     
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isStatsOpen, setIsStatsOpen] = useState(false);
+    const [viewingWarmUp, setViewingWarmUp] = useState(false);
 
-
+    const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
+        return localStorage.getItem('gymlog_circuit_complete') === 'true';
+    });
+    const [completedSummary, setCompletedSummary] = useState(() => {
+        const cached = localStorage.getItem('gymlog_circuit_last_summary');
+        return cached ? JSON.parse(cached) : null;
+    });
 
     // Circuit states synced to 'gym-circuit-active'
     const [circuitState, setCircuitState] = useState(() => {
@@ -45,8 +57,6 @@ export default function CircuitView() {
     });
     const circuit = circuitState.circuit || [];
     const completedMap = circuitState.completedMap || {};
-
-
 
     // Accordion state
     const [openCardIndex, setOpenCardIndex] = useState(0);
@@ -100,8 +110,33 @@ export default function CircuitView() {
 
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+    const formatDate = (ts) => {
+        const d = new Date(ts);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const formatTime = (ts) => {
+        const d = new Date(ts);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        return `${hh}:${min}:${ss}`;
+    };
+
     const startFullBodyCircuit = () => {
         clearAllExerciseStatus();
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_circuit_complete', 'false');
+        localStorage.removeItem('gymlog_circuit_last_summary');
+        setCompletedSummary(null);
+        setViewingWarmUp(false);
+        if (!sessionStartTime) {
+            startSession();
+        }
+
         const grouped = {};
         machines.forEach(ex => {
             if (!ex.category) return;
@@ -129,6 +164,15 @@ export default function CircuitView() {
 
     const startHitEveryMachine = () => {
         clearAllExerciseStatus();
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_circuit_complete', 'false');
+        localStorage.removeItem('gymlog_circuit_last_summary');
+        setCompletedSummary(null);
+        setViewingWarmUp(false);
+        if (!sessionStartTime) {
+            startSession();
+        }
+
         updateCircuitState([...machines], {});
         setView('tracker');
     };
@@ -139,6 +183,15 @@ export default function CircuitView() {
 
     const startMimicCircuit = () => {
         clearAllExerciseStatus();
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_circuit_complete', 'false');
+        localStorage.removeItem('gymlog_circuit_last_summary');
+        setCompletedSummary(null);
+        setViewingWarmUp(false);
+        if (!sessionStartTime) {
+            startSession();
+        }
+
         const grouped = {};
         machines.forEach(ex => {
             if (!ex.category) return;
@@ -175,7 +228,54 @@ export default function CircuitView() {
         if (force || window.confirm("Are you sure you want to end the current circuit?")) {
             updateCircuitState([], {});
             setView('planner');
+            setIsWorkoutComplete(false);
+            localStorage.setItem('gymlog_circuit_complete', 'false');
+            localStorage.removeItem('gymlog_circuit_last_summary');
+            setCompletedSummary(null);
+            resetSessionTime();
+            resetWarmUp();
+            setViewingWarmUp(false);
         }
+    };
+
+    const completeWorkout = () => {
+        const endTime = Date.now();
+        const startTime = sessionStartTime || (endTime - 30 * 60 * 1000);
+        const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+
+        const summary = {
+            id: `Circuit_${formatDate(startTime)}_${formatTime(startTime)}`,
+            date: new Date().toLocaleDateString('en-US'),
+            program: 'Circuit',
+            workoutDay: 1,
+            workoutType: 'Circuit Training',
+            repRange: '13+',
+            startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            durationMinutes: durationMinutes,
+            startTimestamp: startTime,
+            endTimestamp: endTime
+        };
+
+        const saved = saveCompletedSession(summary);
+        setCompletedSummary(saved || summary);
+        localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
+
+        setIsWorkoutComplete(true);
+        localStorage.setItem('gymlog_circuit_complete', 'true');
+    };
+
+    const startNextWorkout = () => {
+        updateCircuitState([], {});
+        clearAllExerciseStatus();
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_circuit_complete', 'false');
+        localStorage.removeItem('gymlog_circuit_last_summary');
+        setCompletedSummary(null);
+        resetSessionTime();
+        resetWarmUp();
+        setViewingWarmUp(false);
+        setView('planner');
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
@@ -261,7 +361,6 @@ export default function CircuitView() {
     const handleExplicitDone = (exName) => {
         if (!window.confirm(`Are you sure you want to mark "${exName}" as DONE?`)) return;
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active' };
         newMap[exName] = { status: 'done' };
 
         // Flip any previously skipped exercises back to active
@@ -278,7 +377,6 @@ export default function CircuitView() {
     const handleSkip = (exName) => {
         if (!window.confirm(`Are you sure you want to SKIP "${exName}"?`)) return;
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active' };
         newMap[exName] = { status: 'skipped' };
         updateCircuitState(circuit, newMap);
         setExerciseSkipped(exName);
@@ -286,7 +384,6 @@ export default function CircuitView() {
 
     const handleUndo = (exName) => {
         const newMap = { ...completedMap };
-        const currentData = newMap[exName] || { status: 'active' };
         newMap[exName] = { status: 'active' };
         updateCircuitState(circuit, newMap);
         resetExerciseStatus(exName);
@@ -344,14 +441,98 @@ export default function CircuitView() {
         return <div style={{ padding: 20, textAlign: 'center', color: 'var(--muted)' }}>Loading...</div>;
     }
 
+    if (isWorkoutComplete) {
+        return (
+            <div style={{ padding: '20px', paddingBottom: '100px' }}>
+                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    <div style={{ fontSize: 40 }}>🎉</div>
+                    <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Circuit Complete!</h2>
+                    <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing the circuit workout.</p>
+
+                    {completedSummary && (
+                        <div style={{
+                            width: '100%',
+                            maxWidth: 320,
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
+                            borderRadius: 10,
+                            padding: '16px',
+                            textAlign: 'left',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                                <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Total Time</span>
+                                <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                                    {completedSummary.durationMinutes} mins
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Time Span</span>
+                                <span style={{ fontSize: 11, color: 'white', fontFamily: 'var(--mono)' }}>
+                                    {completedSummary.startTime} • {completedSummary.endTime}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Rep Range</span>
+                                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                                    {completedSummary.repRange || '13+'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    <button 
+                        className="btn-secondary" 
+                        onClick={() => setIsStatsOpen(true)}
+                        style={{
+                            padding: '10px 18px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            fontFamily: 'var(--mono)',
+                            border: '1px solid #38bdf8',
+                            color: '#38bdf8',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        📊 VIEW TIME STATS & AVERAGES
+                    </button>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: '240px' }}>
+                        <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
+                            START NEW CIRCUIT
+                        </button>
+                        <button className="btn-ghost" onClick={() => {
+                            setIsWorkoutComplete(false);
+                            localStorage.setItem('gymlog_circuit_complete', 'false');
+                        }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                            UNDO COMPLETION
+                        </button>
+                    </div>
+                </div>
+
+                <SessionStatsModal isOpen={isStatsOpen} onClose={() => setIsStatsOpen(false)} />
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+                <HelpDrawer showHelp={isHelpOpen} setShowHelp={setIsHelpOpen} />
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '20px', paddingBottom: '100px' }}>
             {/* Header / Modal toggle */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h2 style={{ margin: 0, fontSize: 20, color: 'var(--accent)' }}>Circuit Training</h2>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsHelpOpen(true)}>❓</button>
-                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsSettingsOpen(true)}>⚙️</button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsStatsOpen(true)} title="Session Stats">📊</button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsHelpOpen(true)} title="Help">❓</button>
+                    <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 16 }} onClick={() => setIsSettingsOpen(true)} title="Settings">⚙️</button>
                 </div>
             </div>
 
@@ -412,59 +593,9 @@ export default function CircuitView() {
 
             {view === 'tracker' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
-                        <div>
-                            <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Active Circuit</div>
-                            <div style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>
-                                {circuit.length - Object.keys(completedMap).filter(k => {
-                                    const s = completedMap[k];
-                                    const status = typeof s === 'string' ? s : s?.status;
-                                    return status === 'done' || status === 'skipped';
-                                }).length} / {circuit.length}
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button className="btn-ghost btn-no-translate" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
-                                📋 FULL LIST
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Timer Widget */}
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                        <div style={{ flex: '1 1 120px' }}>
-                            <div style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                {timerIsCountdown ? '⏳ REST COUNTDOWN' : '⏱️ STOPWATCH'}
-                            </div>
-                            <div style={{ fontSize: 24, fontWeight: 'bold', fontFamily: 'var(--mono)', color: timerIsCountdown && timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)', transition: 'color 0.3s' }}>
-                                {formatTimerTime(timerSeconds)}
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)', background: timerIsRunning ? 'rgba(239, 68, 68, 0.1)' : 'transparent', color: timerIsRunning ? '#ef4444' : 'white' }} onClick={toggleTimer}>
-                                {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
-                            </button>
-                            <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)' }} onClick={resetTimer}>
-                                🔄 RESET
-                            </button>
-                            <select 
-                                value={timerMode} 
-                                onChange={e => setTimerMode(e.target.value)}
-                                style={{ background: '#000', border: '1px solid var(--border)', color: 'white', fontSize: 11, padding: 6, borderRadius: 4, cursor: 'pointer' }}
-                            >
-                                <option value="stopwatch">⏱️ STOPWATCH</option>
-                                <option value="30">⏳ 30S REST</option>
-                                <option value="60">⏳ 60S REST</option>
-                                <option value="90">⏳ 90S REST</option>
-                                <option value="120">⏳ 2M REST</option>
-                                <option value="180">⏳ 3M REST</option>
-                                <option value="240">⏳ 4M REST</option>
-                                <option value="300">⏳ 5M REST</option>
-                            </select>
-                        </div>
-                    </div>
-
                     {(() => {
+                        const showWarmUp = viewingWarmUp || (warmUpStatus === 'pending');
+
                         let activeIdx = 0;
                         while (activeIdx < circuit.length) {
                             const ex = circuit[activeIdx];
@@ -474,70 +605,150 @@ export default function CircuitView() {
                             activeIdx++;
                         }
 
-                        if (activeIdx >= circuit.length) {
-                            const lastExName = circuit[circuit.length - 1]?.name;
-                            return (
-                                <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-                                    <h2>🎉 Circuit Complete!</h2>
-                                    <p>Great job finishing the workout.</p>
-                                    <button className="btn-success" onClick={() => endCircuit(true)} style={{ marginTop: 20, padding: 12, width: '200px' }}>Finish</button>
-                                    {lastExName && (
-                                        <button 
-                                            className="btn-ghost" 
-                                            onClick={() => handleUndo(lastExName)} 
-                                            style={{ border: '1px solid var(--border)', padding: 12, width: '200px', color: 'white', fontSize: 13 }}
-                                        >
-                                            &larr; Undo Last Submission
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        }
-
-                        const ex = circuit[activeIdx];
-                        const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
-
-                        const wrappedHandleLogSet = async (exObj, logs) => {
-                            const success = await handleLogSet(exObj, logs);
-                            if (success) {
-                                // Find the actual DOM log set button and blur it to close keyboard
-                                document.activeElement?.blur();
-                            }
-                            return success;
-                        };
-
-                        const wrappedHandleSkip = () => {
-                            handleSkip(ex.name);
-                        };
-
                         return (
                             <>
-                                <CircuitCard 
-                                    key={`${ex.name}-${activeIdx}`} 
-                                    ex={upToDateEx} 
-                                    index={activeIdx} 
-                                    completedStatus={completedMap[ex.name]} 
-                                    activePeople={activePeople} 
-                                    onLogSet={wrappedHandleLogSet} 
-                                    onExplicitDone={handleExplicitDone} 
-                                    onSkip={wrappedHandleSkip} 
-                                    onUndo={handleUndo} 
-                                    onDeleteSet={handleDeleteSet}
-                                    onDeleteHistoryEntry={handleDeleteHistoryEntry}
-                                    isOpen={true}
-                                    onToggle={() => {}}
-                                    onSwap={handleSwap}
-                                    allExercises={exercises}
-                                    onRemove={handleRemoveExerciseFromCircuit}
-                                />
-                                
-                                <button 
-                                    className="complete-btn" 
-                                    onClick={() => endCircuit(false)}
-                                    style={{ width: '100%', background: 'var(--skip)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', padding: 16, fontWeight: 800, cursor: 'pointer', marginTop: 16, letterSpacing: 1.5, textTransform: 'uppercase', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)' }}
-                                >
-                                    End Circuit
-                                </button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Active Circuit</div>
+                                        <div style={{ fontSize: 18, fontWeight: 'bold', color: showWarmUp ? 'var(--accent)' : 'white' }}>
+                                            {showWarmUp ? (
+                                                <span>WARM-UP <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>(Step #0 / {circuit.length})</span></span>
+                                            ) : (
+                                                <span>{activeIdx + 1} / {circuit.length}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button className="btn-ghost btn-no-translate" style={{ fontSize: 12, border: '1px solid var(--border)' }} onClick={() => setView('full-list')}>
+                                            📋 FULL LIST
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Timer Widget */}
+                                <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                                    <div style={{ flex: '1 1 120px' }}>
+                                        <div style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                            {timerIsCountdown ? '⏳ REST COUNTDOWN' : '⏱️ STOPWATCH'}
+                                        </div>
+                                        <div style={{ fontSize: 24, fontWeight: 'bold', fontFamily: 'var(--mono)', color: timerIsCountdown && timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)', transition: 'color 0.3s' }}>
+                                            {formatTimerTime(timerSeconds)}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)', background: timerIsRunning ? 'rgba(239, 68, 68, 0.1)' : 'transparent', color: timerIsRunning ? '#ef4444' : 'white' }} onClick={toggleTimer}>
+                                            {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
+                                        </button>
+                                        <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)' }} onClick={resetTimer}>
+                                            🔄 RESET
+                                        </button>
+                                        <select 
+                                            value={timerMode} 
+                                            onChange={e => setTimerMode(e.target.value)}
+                                            style={{ background: '#000', border: '1px solid var(--border)', color: 'white', fontSize: 11, padding: 6, borderRadius: 4, cursor: 'pointer' }}
+                                        >
+                                            <option value="stopwatch">⏱️ STOPWATCH</option>
+                                            <option value="30">⏳ 30S REST</option>
+                                            <option value="60">⏳ 60S REST</option>
+                                            <option value="90">⏳ 90S REST</option>
+                                            <option value="120">⏳ 2M REST</option>
+                                            <option value="180">⏳ 3M REST</option>
+                                            <option value="240">⏳ 4M REST</option>
+                                            <option value="300">⏳ 5M REST</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {(() => {
+                                    if (!showWarmUp && activeIdx >= circuit.length) {
+                                        const lastExName = circuit[circuit.length - 1]?.name;
+                                        return (
+                                            <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                                                <div style={{ fontSize: 40 }}>🎉</div>
+                                                <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All Circuit Exercises Complete!</h2>
+                                                <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout and log your session time.</p>
+                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                                    <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
+                                                        Complete Workout
+                                                    </button>
+                                                    <button className="btn-ghost btn-no-translate" onClick={() => setView('full-list')} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, border: '1px solid var(--border)' }}>
+                                                        📋 VIEW LIST
+                                                    </button>
+                                                </div>
+                                                {lastExName && (
+                                                    <button 
+                                                        className="btn-ghost" 
+                                                        onClick={() => handleUndo(lastExName)} 
+                                                        style={{ border: '1px solid var(--border)', padding: '8px 16px', color: 'var(--muted)', fontSize: 12, marginTop: 8 }}
+                                                    >
+                                                        &larr; Undo Last Submission
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    }
+
+                                    if (showWarmUp) {
+                                        return (
+                                            <div id="exerciseList">
+                                                <WarmUpCard onAdvance={() => setViewingWarmUp(false)} />
+                                            </div>
+                                        );
+                                    }
+
+                                    const ex = circuit[activeIdx];
+                                    const upToDateEx = exercises.find(e => e.name === ex.name) || ex;
+
+                                    const wrappedHandleLogSet = async (exObj, logs) => {
+                                        const success = await handleLogSet(exObj, logs);
+                                        if (success) {
+                                            document.activeElement?.blur();
+                                        }
+                                        return success;
+                                    };
+
+                                    const wrappedHandleSkip = () => {
+                                        handleSkip(ex.name);
+                                    };
+
+                                    return (
+                                        <>
+                                            <CircuitCard 
+                                                key={`${ex.name}-${activeIdx}`} 
+                                                ex={upToDateEx} 
+                                                index={activeIdx} 
+                                                completedStatus={completedMap[ex.name]} 
+                                                activePeople={activePeople} 
+                                                onLogSet={wrappedHandleLogSet} 
+                                                onExplicitDone={handleExplicitDone} 
+                                                onSkip={wrappedHandleSkip} 
+                                                onUndo={handleUndo} 
+                                                onDeleteSet={handleDeleteSet}
+                                                onDeleteHistoryEntry={handleDeleteHistoryEntry}
+                                                isOpen={true}
+                                                onToggle={() => {}}
+                                                onSwap={handleSwap}
+                                                allExercises={exercises}
+                                                onRemove={handleRemoveExerciseFromCircuit}
+                                            />
+                                            
+                                            <button 
+                                                className="complete-btn" 
+                                                onClick={completeWorkout}
+                                                style={{ width: '100%', background: 'rgba(249, 115, 22, 0.1)', color: 'var(--accent)', border: '2px solid var(--accent)', borderRadius: 'var(--radius)', padding: 16, fontWeight: 700, cursor: 'pointer', marginTop: 16, letterSpacing: 1, textTransform: 'uppercase' }}
+                                            >
+                                                Complete Workout
+                                            </button>
+                                            <button 
+                                                className="btn-ghost" 
+                                                onClick={() => endCircuit(false)}
+                                                style={{ width: '100%', color: 'var(--skip)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: 10, fontSize: 12, fontWeight: 600, marginTop: 8 }}
+                                            >
+                                                End Circuit (Abandon)
+                                            </button>
+                                        </>
+                                    );
+                                })()}
                             </>
                         );
                     })()}
@@ -550,13 +761,74 @@ export default function CircuitView() {
                         &larr; BACK TO ACTIVE CARD
                     </button>
                     <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 4 }}>Full Circuit Order</div>
+
+                    {/* Pre-Workout Warm-Up Item */}
+                    <div 
+                        style={{ 
+                            padding: 12, 
+                            background: 'var(--surface)', 
+                            border: '1px solid var(--border)', 
+                            borderRadius: 8, 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            cursor: 'pointer',
+                            opacity: warmUpStatus === 'completed' || warmUpStatus === 'skipped' ? 0.7 : 1 
+                        }}
+                        onClick={() => {
+                            setViewingWarmUp(true);
+                            setView('tracker');
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>
+                                🔥 Pre-Workout Warm-Up
+                            </div>
+                            {selectedWarmUp && (
+                                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                                    {selectedWarmUp}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ 
+                                fontSize: 11, 
+                                fontWeight: 'bold', 
+                                color: warmUpStatus === 'completed' ? 'var(--success)' : warmUpStatus === 'skipped' ? 'var(--skip)' : 'var(--muted)' 
+                            }}>
+                                {warmUpStatus === 'completed' ? '✓ DONE' : warmUpStatus === 'skipped' ? 'SKIPPED' : 'PENDING'}
+                            </div>
+                            {(warmUpStatus === 'completed' || warmUpStatus === 'skipped') && (
+                                <button 
+                                    className="btn-ghost" 
+                                    style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        resetWarmUp();
+                                        setViewingWarmUp(true);
+                                        setView('tracker'); 
+                                    }}
+                                >
+                                    UNDO
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     {circuit.map((ex, idx) => {
                         const s = completedMap[ex.name];
                         const status = typeof s === 'string' ? s : s?.status;
                         const isCompletedOrSkipped = status === 'done' || status === 'skipped';
                         
                         return (
-                            <div key={idx} style={{ padding: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: isCompletedOrSkipped ? 0.6 : 1 }}>
+                            <div 
+                                key={idx} 
+                                style={{ padding: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: isCompletedOrSkipped ? 0.6 : 1, cursor: 'pointer' }}
+                                onClick={() => {
+                                    setViewingWarmUp(false);
+                                    setView('tracker');
+                                }}
+                            >
                                 <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {ex.name}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ fontSize: 11, color: status === 'done' ? 'var(--success)' : status === 'skipped' ? 'var(--skip)' : 'var(--muted)', fontWeight: 'bold' }}>
@@ -566,8 +838,10 @@ export default function CircuitView() {
                                         <button 
                                             className="btn-ghost" 
                                             style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
-                                            onClick={() => { 
+                                            onClick={(e) => { 
+                                                e.stopPropagation();
                                                 handleUndo(ex.name); 
+                                                setViewingWarmUp(false);
                                                 setView('tracker'); 
                                             }}
                                         >
@@ -580,6 +854,11 @@ export default function CircuitView() {
                     })}
                 </div>
             )}
+
+            <SessionStatsModal 
+                isOpen={isStatsOpen} 
+                onClose={() => setIsStatsOpen(false)} 
+            />
 
             <SettingsModal 
                 isOpen={isSettingsOpen} 
