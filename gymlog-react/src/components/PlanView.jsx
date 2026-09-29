@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
 import ExerciseCard from './ExerciseCard';
+import WarmUpCard from './WarmUpCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
@@ -14,7 +15,8 @@ export default function PlanView() {
         resetExerciseStatus, clearAllExerciseStatus,
         sessionStartTime, resetSessionTime, saveCompletedSession,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
-        formatTimerTime, toggleTimer, resetTimer, startRestTimer
+        formatTimerTime, toggleTimer, resetTimer, startRestTimer,
+        warmUpStatus, selectedWarmUp, resetWarmUp
     } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
@@ -23,6 +25,7 @@ export default function PlanView() {
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [view, setView] = useState('tracker'); // 'tracker' | 'full-list'
+    const [viewingWarmUp, setViewingWarmUp] = useState(false);
     const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
         return localStorage.getItem('gymlog_plan_complete') === 'true';
     });
@@ -263,6 +266,8 @@ export default function PlanView() {
         localStorage.removeItem('gymlog_plan_last_summary');
         setCompletedSummary(null);
         resetSessionTime();
+        resetWarmUp();
+        setViewingWarmUp(false);
         setView('tracker');
 
         // 5. Clean up accessories
@@ -386,6 +391,8 @@ export default function PlanView() {
                     );
                 }
 
+                const showWarmUp = viewingWarmUp || (warmUpStatus === 'pending');
+
                 let activeIdx = 0;
                 while (activeIdx < plannedExercises.length) {
                     const group = plannedExercises[activeIdx];
@@ -393,7 +400,7 @@ export default function PlanView() {
                     activeIdx++;
                 }
 
-                if (activeIdx >= plannedExercises.length) {
+                if (!showWarmUp && activeIdx >= plannedExercises.length) {
                     return (
                         <>
                             <div style={{ textAlign: 'center', padding: 40, color: 'var(--success)', background: '#111', borderRadius: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
@@ -446,8 +453,12 @@ export default function PlanView() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
                             <div>
                                 <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Active Exercise</div>
-                                <div style={{ fontSize: 18, fontWeight: 'bold', color: 'white' }}>
-                                    {plannedExercises.length - plannedExercises.filter(isGroupCompleteOrSkipped).length} / {plannedExercises.length}
+                                <div style={{ fontSize: 18, fontWeight: 'bold', color: showWarmUp ? 'var(--accent)' : 'white' }}>
+                                    {showWarmUp ? (
+                                        <span>WARM-UP <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 500 }}>(1 / {plannedExercises.length + 1})</span></span>
+                                    ) : (
+                                        <span>{activeIdx + 1} / {plannedExercises.length}</span>
+                                    )}
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -492,12 +503,16 @@ export default function PlanView() {
                         </div>
 
                         <div id="exerciseList">
-                            <ExerciseCard 
-                                key={activeIdx} 
-                                group={activeGroup} 
-                                isOpen={true} 
-                                onLogSet={handleLogSetSaved} 
-                            />
+                            {showWarmUp ? (
+                                <WarmUpCard onAdvance={() => setViewingWarmUp(false)} />
+                            ) : (
+                                <ExerciseCard 
+                                    key={activeIdx} 
+                                    group={activeGroup} 
+                                    isOpen={true} 
+                                    onLogSet={handleLogSetSaved} 
+                                />
+                            )}
                         </div>
 
                         <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
@@ -519,13 +534,84 @@ export default function PlanView() {
                         &larr; BACK TO ACTIVE CARD
                     </button>
                     <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1, paddingLeft: 4 }}>Full Exercise Order</div>
+
+                    {/* Pre-Workout Warm-Up Item */}
+                    <div 
+                        style={{ 
+                            padding: 12, 
+                            background: 'var(--surface)', 
+                            border: '1px solid var(--border)', 
+                            borderRadius: 8, 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            cursor: 'pointer',
+                            opacity: warmUpStatus === 'completed' || warmUpStatus === 'skipped' ? 0.7 : 1 
+                        }}
+                        onClick={() => {
+                            setViewingWarmUp(true);
+                            setView('tracker');
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 14, fontWeight: 'bold', color: 'var(--accent)' }}>
+                                🔥 Pre-Workout Warm-Up
+                            </div>
+                            {selectedWarmUp && (
+                                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                                    {selectedWarmUp}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ 
+                                fontSize: 11, 
+                                fontWeight: 'bold', 
+                                color: warmUpStatus === 'completed' ? 'var(--success)' : warmUpStatus === 'skipped' ? 'var(--skip)' : 'var(--muted)' 
+                            }}>
+                                {warmUpStatus === 'completed' ? '✓ DONE' : warmUpStatus === 'skipped' ? 'SKIPPED' : 'PENDING'}
+                            </div>
+                            {(warmUpStatus === 'completed' || warmUpStatus === 'skipped') && (
+                                <button 
+                                    className="btn-ghost" 
+                                    style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        resetWarmUp();
+                                        setViewingWarmUp(true);
+                                        setView('tracker'); 
+                                    }}
+                                >
+                                    UNDO
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     {plannedExercises.map((group, idx) => {
                         const variations = Object.values(group.variations || {});
                         const isDone = variations.some(v => exerciseStatus[v.name] === 'done');
                         const isSkipped = variations.some(v => exerciseStatus[v.name] === 'skipped');
                         
                         return (
-                            <div key={idx} style={{ padding: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: isDone || isSkipped ? 0.6 : 1 }}>
+                            <div 
+                                key={idx} 
+                                style={{ 
+                                    padding: 12, 
+                                    background: 'var(--surface)', 
+                                    border: '1px solid var(--border)', 
+                                    borderRadius: 8, 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center', 
+                                    cursor: 'pointer',
+                                    opacity: isDone || isSkipped ? 0.6 : 1 
+                                }}
+                                onClick={() => {
+                                    setViewingWarmUp(false);
+                                    setView('tracker');
+                                }}
+                            >
                                 <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {group.baseName}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ fontSize: 11, color: isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--muted)', fontWeight: 'bold' }}>
@@ -535,8 +621,10 @@ export default function PlanView() {
                                         <button 
                                             className="btn-ghost" 
                                             style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
-                                            onClick={() => { 
+                                            onClick={(e) => { 
+                                                e.stopPropagation();
                                                 variations.forEach(v => resetExerciseStatus(v.name));
+                                                setViewingWarmUp(false);
                                                 setView('tracker'); 
                                             }}
                                         >
