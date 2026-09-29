@@ -231,9 +231,9 @@ export default function PlanView() {
             endTimestamp: endTime
         };
 
-        saveCompletedSession(summary);
-        setCompletedSummary(summary);
-        localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(summary));
+        const saved = saveCompletedSession(summary);
+        setCompletedSummary(saved || summary);
+        localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(saved || summary));
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');

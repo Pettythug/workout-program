@@ -6,7 +6,7 @@ import { mergeFromSheets } from './dataMerge';
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-    const { syncAll, syncMeta, saveExercise, logSet } = useGymAPI();
+    const { syncAll, syncMeta, saveExercise, logSet, sheetsPost } = useGymAPI();
     
     // Core state variables
     const [workoutDay, setWorkoutDay] = useState(() => {
@@ -567,28 +567,87 @@ export function AppProvider({ children }) {
         resetWarmUp();
     };
 
+    const formatDate = (ts) => {
+        const d = new Date(ts);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const formatTime = (ts) => {
+        const d = new Date(ts);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        return `${hh}:${min}:${ss}`;
+    };
+
     const saveCompletedSession = (sessionData) => {
+        const startTs = sessionData.startTimestamp || sessionStartTime || Date.now();
+        const prog = (sessionData.program || 'Plan').trim().replace(/\s+/g, '');
+        
+        // Human-readable session ID: ${program}_${formatDate(startTimestamp)}_${formatTime(startTimestamp)}
+        // (e.g. Plan_2026-09-29_10:56:00)
+        const generatedId = `${prog}_${formatDate(startTs)}_${formatTime(startTs)}`;
+        const sessionId = (sessionData.id && !sessionData.id.startsWith('session_'))
+            ? sessionData.id
+            : generatedId;
+
         const newSession = {
-            id: sessionData.id || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            date: sessionData.date || new Date().toLocaleDateString('en-US'),
+            id: sessionId,
+            date: sessionData.date || new Date(startTs).toLocaleDateString('en-US'),
             program: sessionData.program || 'Plan',
-            workoutDay: sessionData.workoutDay,
+            workoutDay: sessionData.workoutDay !== undefined ? sessionData.workoutDay : '',
             workoutType: sessionData.workoutType || '',
             repRange: sessionData.repRange || '',
-            startTime: sessionData.startTime || '',
-            endTime: sessionData.endTime || '',
+            startTime: sessionData.startTime || new Date(startTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endTime: sessionData.endTime || (sessionData.endTimestamp ? new Date(sessionData.endTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
             durationMinutes: typeof sessionData.durationMinutes === 'number' ? sessionData.durationMinutes : parseInt(sessionData.durationMinutes, 10) || 0,
-            startTimestamp: sessionData.startTimestamp || null,
-            endTimestamp: sessionData.endTimestamp || null
+            startTimestamp: startTs,
+            endTimestamp: sessionData.endTimestamp || Date.now()
         };
 
         setSessionHistory(prev => {
-            const next = [newSession, ...(prev || [])];
+            const list = prev || [];
+            const existingIdx = list.findIndex(s => s.id === newSession.id);
+            let next;
+            if (existingIdx !== -1) {
+                // In-place upsert: update existing session record
+                next = [...list];
+                next[existingIdx] = { ...next[existingIdx], ...newSession };
+            } else {
+                // Prepend new session record
+                next = [newSession, ...list];
+            }
             localStorage.setItem('gymlog_session_history', JSON.stringify(next));
             return next;
         });
 
+        // Background Google Sheets sync via sheetsPost({ action: 'logSession', ...sessionData })
+        (async () => {
+            try {
+                if (sheetsPost) {
+                    await sheetsPost({
+                        action: 'logSession',
+                        ...newSession
+                    });
+                    console.log('[Sheets Sync] Session synced successfully:', newSession.id);
+                }
+            } catch (err) {
+                console.warn('[Sheets Sync] Background session sync warning:', err.message || err);
+            }
+        })();
+
         return newSession;
+    };
+
+    const deleteSession = (sessionId) => {
+        setSessionHistory(prev => {
+            const next = (prev || []).filter(s => s.id !== sessionId);
+            localStorage.setItem('gymlog_session_history', JSON.stringify(next));
+            return next;
+        });
     };
 
     const getRepRangeStats = (customHistory = null) => {
@@ -780,6 +839,7 @@ export function AppProvider({ children }) {
         endSession,
         resetSessionTime,
         saveCompletedSession,
+        deleteSession,
         getRepRangeStats,
         updateWorkoutDay,
         updateFullBodyWorkoutDay,

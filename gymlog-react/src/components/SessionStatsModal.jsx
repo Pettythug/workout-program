@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 export default function SessionStatsModal({ isOpen, onClose }) {
-    const { sessionHistory, getRepRangeStats } = useAppContext();
+    const { sessionHistory, getRepRangeStats, deleteSession } = useAppContext();
 
     const stats = useMemo(() => {
         return getRepRangeStats ? getRepRangeStats(sessionHistory) : {
@@ -242,18 +242,55 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                             )}
                                         </div>
                                     </div>
-                                    <div style={{
-                                        fontSize: 13,
-                                        fontWeight: 700,
-                                        color: 'var(--accent)',
-                                        fontFamily: 'var(--mono)',
-                                        whiteSpace: 'nowrap',
-                                        background: 'rgba(249, 115, 22, 0.1)',
-                                        border: '1px solid rgba(249, 115, 22, 0.25)',
-                                        padding: '4px 8px',
-                                        borderRadius: 6
-                                    }}>
-                                        ⏱️ {session.durationMinutes}m
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <div style={{
+                                            fontSize: 13,
+                                            fontWeight: 700,
+                                            color: 'var(--accent)',
+                                            fontFamily: 'var(--mono)',
+                                            whiteSpace: 'nowrap',
+                                            background: 'rgba(249, 115, 22, 0.1)',
+                                            border: '1px solid rgba(249, 115, 22, 0.25)',
+                                            padding: '4px 8px',
+                                            borderRadius: 6
+                                        }}>
+                                            ⏱️ {session.durationMinutes}m
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const label = `${session.program || 'Workout'} #${session.workoutDay || ''} (${session.date})`;
+                                                if (window.confirm(`Delete historical session for ${label}?`)) {
+                                                    if (deleteSession) deleteSession(session.id);
+                                                }
+                                            }}
+                                            title="Delete session record"
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--muted)',
+                                                cursor: 'pointer',
+                                                fontSize: 13,
+                                                padding: '4px 6px',
+                                                borderRadius: 4,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                opacity: 0.7,
+                                                transition: 'opacity 0.2s, color 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.opacity = '1';
+                                                e.currentTarget.style.color = '#ef4444';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.opacity = '0.7';
+                                                e.currentTarget.style.color = 'var(--muted)';
+                                            }}
+                                            aria-label="Delete session"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
                                 </div>
                             ))
