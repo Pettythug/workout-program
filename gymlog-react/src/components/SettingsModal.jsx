@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
+import SessionStatsModal from './SessionStatsModal';
 
 export default function SettingsModal({ isOpen, onClose }) {
     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, removeLocationFromRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
+    const [isStatsOpen, setIsStatsOpen] = useState(false);
 
     const [exName, setExName] = useState('');
     const [exTimed, setExTimed] = useState(false);
@@ -107,6 +109,30 @@ export default function SettingsModal({ isOpen, onClose }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <h3 style={{ margin: 0, fontSize: 16, letterSpacing: 1, color: 'var(--accent)' }}>SETTINGS</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>&#x2715;</button>
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setIsStatsOpen(true)}
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            border: '1px solid #38bdf8',
+                            color: '#38bdf8',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '13px'
+                        }}
+                    >
+                        📊 Workout Time & Averages
+                    </button>
                 </div>
 
                 <div style={{ marginBottom: 24 }}>
@@ -344,6 +370,11 @@ export default function SettingsModal({ isOpen, onClose }) {
                 </div>
 
             </div>
+
+            <SessionStatsModal 
+                isOpen={isStatsOpen} 
+                onClose={() => setIsStatsOpen(false)} 
+            />
         </div>
     );
 }

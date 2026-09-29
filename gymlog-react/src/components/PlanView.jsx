@@ -5,12 +5,14 @@ import ExerciseCard from './ExerciseCard';
 import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
+import SessionStatsModal from './SessionStatsModal';
 
 export default function PlanView() {
     const { 
         exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, 
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
+        sessionStartTime, resetSessionTime, saveCompletedSession,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer
     } = useAppContext();
@@ -18,10 +20,19 @@ export default function PlanView() {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
     });
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [view, setView] = useState('tracker'); // 'tracker' | 'full-list'
     const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
         return localStorage.getItem('gymlog_plan_complete') === 'true';
+    });
+    const [completedSummary, setCompletedSummary] = useState(() => {
+        try {
+            const cached = localStorage.getItem('gymlog_plan_last_summary');
+            return cached ? JSON.parse(cached) : null;
+        } catch (e) {
+            return null;
+        }
     });
 
 
@@ -198,6 +209,29 @@ export default function PlanView() {
     };
 
     const completeWorkout = () => {
+        const endTime = Date.now();
+        const startTime = sessionStartTime || (endTime - 45 * 60 * 1000);
+        const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
+        const repRange = getRepRange(workoutDay);
+
+        const summary = {
+            id: `session_plan_${Date.now()}`,
+            date: new Date().toLocaleDateString('en-US'),
+            program: 'Plan',
+            workoutDay: workoutDay,
+            workoutType: workoutType,
+            repRange: repRange,
+            startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            durationMinutes: durationMinutes,
+            startTimestamp: startTime,
+            endTimestamp: endTime
+        };
+
+        saveCompletedSession(summary);
+        setCompletedSummary(summary);
+        localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(summary));
+
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
     };
@@ -223,9 +257,12 @@ export default function PlanView() {
         localStorage.setItem('gymlog_workoutType', newType);
         updateWorkoutDay(workoutDay + 1);
 
-        // 4. Reset completion state
+        // 4. Reset completion state & session time
         setIsWorkoutComplete(false);
         localStorage.setItem('gymlog_plan_complete', 'false');
+        localStorage.removeItem('gymlog_plan_last_summary');
+        setCompletedSummary(null);
+        resetSessionTime();
         setView('tracker');
 
         // 5. Clean up accessories
@@ -278,6 +315,62 @@ export default function PlanView() {
                             <div style={{ fontSize: 40 }}>🎉</div>
                             <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>Workout Day Complete!</h2>
                             <p style={{ color: 'var(--muted)', fontSize: 13 }}>Great job finishing all exercises.</p>
+
+                            {completedSummary && (
+                                <div style={{
+                                    width: '100%',
+                                    maxWidth: 320,
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 10,
+                                    padding: '16px',
+                                    textAlign: 'left',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                                        <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Total Time</span>
+                                        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                                            {completedSummary.durationMinutes} mins
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Time Span</span>
+                                        <span style={{ fontSize: 11, color: 'white', fontFamily: 'var(--mono)' }}>
+                                            {completedSummary.startTime} • {completedSummary.endTime}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Rep Range</span>
+                                        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                                            {completedSummary.repRange}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button 
+                                className="btn-secondary" 
+                                onClick={() => setIsStatsOpen(true)}
+                                style={{
+                                    padding: '10px 18px',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    fontFamily: 'var(--mono)',
+                                    border: '1px solid #38bdf8',
+                                    color: '#38bdf8',
+                                    background: 'rgba(56, 189, 248, 0.1)',
+                                    borderRadius: 8,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                📊 VIEW TIME STATS & AVERAGES
+                            </button>
+
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: '240px' }}>
                                 <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                                     START NEXT WORKOUT
@@ -456,6 +549,11 @@ export default function PlanView() {
                     })}
                 </div>
             )}
+
+            <SessionStatsModal 
+                isOpen={isStatsOpen} 
+                onClose={() => setIsStatsOpen(false)} 
+            />
 
             <SettingsModal 
                 isOpen={isSettingsOpen} 

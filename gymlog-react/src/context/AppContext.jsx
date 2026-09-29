@@ -66,6 +66,16 @@ export function AppProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(true);
 
+    // Workout Session Duration & History State
+    const [sessionStartTime, setSessionStartTime] = useState(() => {
+        const cached = localStorage.getItem('gymlog_session_start_time');
+        return cached ? parseInt(cached, 10) : null;
+    });
+    const [sessionHistory, setSessionHistory] = useState(() => {
+        const cached = localStorage.getItem('gymlog_session_history');
+        return cached ? JSON.parse(cached) : [];
+    });
+
     // Global Timer State
     const [timerMode, setTimerMode] = useState(() => {
         return localStorage.getItem('gym-global-timer-mode') || 'stopwatch';
@@ -505,6 +515,90 @@ export function AppProvider({ children }) {
         });
     };
 
+    // Session Tracking Handlers
+    const startSession = (time = null) => {
+        const startTime = time || Date.now();
+        setSessionStartTime(startTime);
+        localStorage.setItem('gymlog_session_start_time', startTime.toString());
+        return startTime;
+    };
+
+    const endSession = () => {
+        setSessionStartTime(null);
+        localStorage.removeItem('gymlog_session_start_time');
+    };
+
+    const resetSessionTime = () => {
+        endSession();
+    };
+
+    const saveCompletedSession = (sessionData) => {
+        const newSession = {
+            id: sessionData.id || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            date: sessionData.date || new Date().toLocaleDateString('en-US'),
+            program: sessionData.program || 'Plan',
+            workoutDay: sessionData.workoutDay,
+            workoutType: sessionData.workoutType || '',
+            repRange: sessionData.repRange || '',
+            startTime: sessionData.startTime || '',
+            endTime: sessionData.endTime || '',
+            durationMinutes: typeof sessionData.durationMinutes === 'number' ? sessionData.durationMinutes : parseInt(sessionData.durationMinutes, 10) || 0,
+            startTimestamp: sessionData.startTimestamp || null,
+            endTimestamp: sessionData.endTimestamp || null
+        };
+
+        setSessionHistory(prev => {
+            const next = [newSession, ...(prev || [])];
+            localStorage.setItem('gymlog_session_history', JSON.stringify(next));
+            return next;
+        });
+
+        return newSession;
+    };
+
+    const getRepRangeStats = (customHistory = null) => {
+        const history = customHistory || sessionHistory || [];
+        const brackets = {
+            '1-3': { label: '1–3 Reps (Heavy)', key: '1-3', count: 0, totalMinutes: 0, avgMinutes: 0 },
+            '4-7': { label: '4–7 Reps (Strength)', key: '4-7', count: 0, totalMinutes: 0, avgMinutes: 0 },
+            '8-12': { label: '8–12 Reps (Hypertrophy)', key: '8-12', count: 0, totalMinutes: 0, avgMinutes: 0 },
+            '13+': { label: '13+ Reps (Endurance)', key: '13+', count: 0, totalMinutes: 0, avgMinutes: 0 }
+        };
+
+        history.forEach(session => {
+            const range = (session.repRange || '').trim();
+            const duration = parseInt(session.durationMinutes, 10) || 0;
+            if (duration <= 0) return;
+
+            let targetKey = null;
+            if (range === '1-3' || range.includes('1-3')) targetKey = '1-3';
+            else if (range === '4-7' || range.includes('4-7')) targetKey = '4-7';
+            else if (range === '8-12' || range.includes('8-12')) targetKey = '8-12';
+            else if (range === '13+' || range.includes('13')) targetKey = '13+';
+
+            if (targetKey && brackets[targetKey]) {
+                brackets[targetKey].count += 1;
+                brackets[targetKey].totalMinutes += duration;
+            }
+        });
+
+        Object.keys(brackets).forEach(k => {
+            if (brackets[k].count > 0) {
+                brackets[k].avgMinutes = Math.round(brackets[k].totalMinutes / brackets[k].count);
+            }
+        });
+
+        const totalCount = history.filter(s => (parseInt(s.durationMinutes, 10) || 0) > 0).length;
+        const totalMinutes = history.reduce((sum, s) => sum + (parseInt(s.durationMinutes, 10) || 0), 0);
+        const overallAvgMinutes = totalCount > 0 ? Math.round(totalMinutes / totalCount) : 0;
+
+        return {
+            brackets,
+            totalSessions: totalCount,
+            overallAvgMinutes
+        };
+    };
+
     const logExerciseSet = async (ex, logs) => {
         console.log("logExerciseSet CALLED", { ex, logs });
         
@@ -572,6 +666,12 @@ export function AppProvider({ children }) {
         console.log("ENTRIES:", entries);
 
         if (entries.length > 0) {
+            if (!sessionStartTime) {
+                const now = Date.now();
+                setSessionStartTime(now);
+                localStorage.setItem('gymlog_session_start_time', now.toString());
+            }
+
             const userPins = {};
             let cancelled = false;
             const seenPinKeys = new Set();
@@ -632,6 +732,13 @@ export function AppProvider({ children }) {
         isSyncing,
         locations,
         activeLocation,
+        sessionStartTime,
+        sessionHistory,
+        startSession,
+        endSession,
+        resetSessionTime,
+        saveCompletedSession,
+        getRepRangeStats,
         updateWorkoutDay,
         updateFullBodyWorkoutDay,
         updateActiveLocation,
