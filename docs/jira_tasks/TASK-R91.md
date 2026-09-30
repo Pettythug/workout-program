@@ -1,6 +1,6 @@
-﻿# TASK-R91: First-Class Standalone Exercise Architecture & Modality Generator
+# TASK-R91: First-Class Standalone Exercise Architecture, Modality Generator & Swap Sorting
 
-> **For Human Readers:** This task flattens the exercise model so every variation (Standard, Alt, Single) is a first-class standalone exercise. It cleans up `ExerciseCard.jsx` by removing the top variation pills and bottom checkboxes, and adds multi-modality checkboxes (`Standard`, `Alternating`, `Singles`) to the Add Exercise modal in `SettingsModal.jsx` so creating a movement can automatically generate all valid standalone variations.
+> **For Human Readers:** This task flattens the exercise model so every variation (Standard, Alt, Single) is a first-class standalone exercise. It cleans up `ExerciseCard.jsx` and `CircuitCard.jsx` by removing redundant top variation pills and bottom checkboxes, adds multi-modality checkboxes (`Standard`, `Alternating`, `Singles`) to the Add Exercise modal in `SettingsModal.jsx`, and ensures the Swap dropdown displays all standalone variations filtered by active location and sorted alphabetically.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -19,21 +19,20 @@
     1. Update `gymlog-react/src/components/ExerciseCard.jsx` & `gymlog-react/src/components/CircuitCard.jsx`:
        - Remove top variation switcher pills (`STANDARD | SINGLES | ALT`).
        - Remove bottom checkboxes (`[ ] Singles` and `[ ] Alternating`).
-       - Display the clean, exact exercise name in the header (e.g. `Dumbbell Snatch (Alt)` or `Side-to-Side Pushups (Single)`).
-       - Maintain clean history and 1RM lookups mapped directly to the exact exercise name.
+       - Display the clean, exact exercise name in the header.
+       - Ensure the Swap dropdown lists all standalone exercises filtered by `matchesLocation(alt.location, activeLocation)` and sorted alphabetically: `.sort((a, b) => a.name.localeCompare(b.name))`.
 
     2. Update `gymlog-react/src/components/SettingsModal.jsx` (Add Exercise Modal):
        - When adding a new exercise, provide modality selection checkboxes:
-         - `☑️ Standard` (Base name, e.g. `Dumbbell Bench Press`)
-         - `☑️ Alternating` (Appends `(Alt)`, e.g. `Dumbbell Bench Press (Alt)`)
-         - `☑️ Singles` (Appends `(Single)`, e.g. `Dumbbell Bench Press (Single)`)
+         - `[x] Standard` (Base name, e.g. `Dumbbell Bench Press`)
+         - `[x] Alternating` (Appends `(Alt)`, e.g. `Dumbbell Bench Press (Alt)`)
+         - `[x] Singles` (Appends `(Single)`, e.g. `Dumbbell Bench Press (Single)`)
        - When submitting, automatically creates and saves each checked variation as a distinct row to `GymLog_Exercises` via `saveExercise`.
 
-    3. Update `PlanView.jsx`, `FullBodyView.jsx`, and `CircuitView.jsx`:
-       - Ensure the `🔄 SWAP` modal lists all standalone variations cleanly so users can easily swap to any specific modality.
+    3. Update `PlanView.jsx` and `FullBodyView.jsx`:
+       - Ensure `pick()` and `plannedExercises` map functions resolve exact standalone exercise names.
 
     4. Verification & Audit:
-       - Generate `/audit_log_R91.md`.
        - Run `npm run build` inside `gymlog-react` and verify clean build with 0 errors.
   </OBJECTIVE>
   <RESOURCES>
@@ -44,11 +43,10 @@
     - Full Body View: `gymlog-react/src/components/FullBodyView.jsx`
   </RESOURCES>
   <SEQUENCE>
-    1. READ `gymlog-react/src/components/ExerciseCard.jsx` and `gymlog-react/src/components/SettingsModal.jsx`.
-    2. MODIFY `gymlog-react/src/components/ExerciseCard.jsx` & `CircuitCard.jsx` to remove top pills and duplicate checkboxes.
-    3. MODIFY `gymlog-react/src/components/SettingsModal.jsx` to add modality generator checkboxes.
-    4. CREATE `/audit_log_R91.md`.
-    5. RUN `npm run build` inside `gymlog-react` and verify clean build.
+    1. READ `docs/jira_tasks/TASK-R91.md`.
+    2. In `ExerciseCard.jsx`, add `.sort((a, b) => a.name.localeCompare(b.name))` to the swap dropdown list.
+    3. RUN `npm run build` inside `gymlog-react` and verify clean build.
+    4. SIGNAL `DEVELOPMENT_TASK_COMPLETE`.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```

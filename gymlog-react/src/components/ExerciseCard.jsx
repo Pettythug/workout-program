@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
+import { matchesLocation } from '../utils/locationHelper';
 import ImageModal from './ImageModal';
 
 const formatLogDate = (dateStr) => {
@@ -206,7 +207,7 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSwap }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
     const [isOpenState, setIsOpenState] = useState(false);
@@ -792,7 +793,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                         >
                                             <option value="">-- Select Exercise --</option>
                                             <option value="custom">-- New Custom Exercise --</option>
-                                            {(exercises || []).filter(alt => alt.category === ex.category).map(alt => (
+                                            {(exercises || []).filter(alt => alt.category === ex.category && matchesLocation(alt.location, activeLocation)).sort((a, b) => a.name.localeCompare(b.name)).map(alt => (
                                                 <option key={alt.name} value={alt.name}>{alt.name}</option>
                                             ))}
                                         </select>
