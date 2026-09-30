@@ -1,6 +1,6 @@
-# TASK-QA-R91: QA Pre-Merge Validation for Standalone Exercise Architecture & Modality Generator
+# TASK-QA-R91: QA Pre-Merge Validation for Standalone Exercise Architecture, Modality Generator & Swap Dropdown
 
-> **For Human & QA Readers:** This QA specification validates the changes made in `TASK-R91` on branch `TASK-R91`. It ensures that variations (`Standard`, `Alt`, `Single`) are treated as standalone first-class exercises, the UI cards are clean of redundant pills/checkboxes, and new exercises can be created with modality generator checkboxes.
+> **For Human & QA Readers:** This QA specification validates all deliverables in `TASK-R91` on branch `TASK-R91`.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -17,26 +17,26 @@
     - TARGET_APP_PATH: `gymlog-react`
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
-    1. Compile and Syntax Audit:
+    1. Compile and Scope Verification:
        - Run `npm run build` inside `gymlog-react/` to verify zero build errors.
-    2. Code Audit (TASK-R91 Deliverables):
+       - Run AST scope check (`npx eslint src/`) to verify 0 `no-undef` errors.
+    2. Deliverables Audit:
        - Verify `ExerciseCard.jsx` & `CircuitCard.jsx`:
-         - Legacy top variation pills (`STANDARD | SINGLES | ALT`) are removed.
-         - Duplicate bottom checkboxes (`[ ] Singles`, `[ ] Alternating`) are removed.
-         - Card title cleanly displays the exact exercise name.
-         - History and 1RM lookups map directly to the exact exercise name.
+         - Card header renders exact `exerciseName`.
+         - Swap dropdown filters by `matchesLocation(alt.location, activeLocation)` and sorts alphabetically with `.sort((a, b) => a.name.localeCompare(b.name))`.
+         - Legacy top pills and bottom toggle checkboxes are removed.
        - Verify `SettingsModal.jsx`:
-         - Modality checkboxes (`Standard`, `Alternating`, `Singles`) exist in the Add Exercise modal.
-         - `createExerciseMeta` dispatches independent exercise entries for all selected modalities.
-       - Verify `PlanView.jsx`, `FullBodyView.jsx`, and `CircuitView.jsx`:
-         - Swap modal and tracker state operate cleanly with flattened standalone exercises.
+         - Modality checkboxes (`Standard`, `Alternating`, `Singles`) generate standalone entries upon create.
+       - Verify `PlanView.jsx` and `FullBodyView.jsx`:
+         - Full list modal renders clean `displayName` and handles resets properly.
     3. Verification Output:
-       - Report findings and signal `QA_PREMERGE_PASS` if all checks succeed.
+       - Report findings and output `QA_PREMERGE_PASS` if all checks succeed.
   </OBJECTIVE>
   <SEQUENCE>
     1. RUN `npm run build` in `gymlog-react`.
-    2. REVIEW git diff on `TASK-R91`.
-    3. OUTPUT QA summary and `QA_PREMERGE_PASS` signal.
+    2. RUN `npx eslint src/` in `gymlog-react`.
+    3. REVIEW git diff on `TASK-R91`.
+    4. SIGNAL `QA_PREMERGE_PASS`.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
