@@ -125,17 +125,25 @@ export default function PlanView() {
             
             let finalPick = originalPick;
             if (daySwaps[originalBaseKey]) {
-                const swappedKey = daySwaps[originalBaseKey].toLowerCase();
-                if (groupedExercises[swappedKey]) {
-                    finalPick = groupedExercises[swappedKey];
-                } else {
-                    // Custom exercise
+                const swappedName = daySwaps[originalBaseKey];
+                const foundEx = exercises.find(e => e.name.toLowerCase() === swappedName.toLowerCase());
+                if (foundEx) {
                     finalPick = {
-                        baseName: daySwaps[originalBaseKey],
+                        baseName: foundEx.name,
+                        category: foundEx.category,
+                        variations: { "Standard": foundEx },
+                        ex: foundEx
+                    };
+                } else if (groupedExercises[swappedName.toLowerCase()]) {
+                    finalPick = groupedExercises[swappedName.toLowerCase()];
+                } else {
+                    finalPick = {
+                        baseName: swappedName,
                         category: originalPick.category,
                         variations: {
-                            "Standard": { name: daySwaps[originalBaseKey], category: originalPick.category, history: [] }
-                        }
+                            "Standard": { name: swappedName, category: originalPick.category, history: [] }
+                        },
+                        ex: { name: swappedName, category: originalPick.category, history: [] }
                     };
                 }
             }

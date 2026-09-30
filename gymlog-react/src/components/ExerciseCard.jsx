@@ -792,8 +792,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                         >
                                             <option value="">-- Select Exercise --</option>
                                             <option value="custom">-- New Custom Exercise --</option>
-                                            {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                                <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                            {(exercises || []).filter(alt => alt.category === ex.category).map(alt => (
+                                                <option key={alt.name} value={alt.name}>{alt.name}</option>
                                             ))}
                                         </select>
 
