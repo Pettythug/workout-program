@@ -31,7 +31,8 @@ export default function CircuitView() {
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime, saveCompletedSession,
-        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
+        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
+        circuitWorkoutDay, updateCircuitWorkoutDay
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -64,16 +65,24 @@ export default function CircuitView() {
     // Mimic setup state
     const [selectedCategories, setSelectedCategories] = useState({});
 
+    const getRepRange = (day) => {
+        const position = ((day - 1) % 16);
+        if (position < 4) return '8-12';
+        if (position < 8) return '1-3';
+        if (position < 12) return '13+';
+        return '4-7';
+    };
+
     useEffect(() => {
         localStorage.setItem('gym-circuit-active', JSON.stringify(circuitState));
     }, [circuitState]);
 
     useEffect(() => {
         if (!timerIsRunning) {
-            setTimerMode(getDefaultRestForRepRange('13+'));
+            setTimerMode(getDefaultRestForRepRange(getRepRange(circuitWorkoutDay)));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [circuitWorkoutDay]);
 
     useEffect(() => {
         if (circuit.length === 0) return;
@@ -254,9 +263,9 @@ export default function CircuitView() {
             id: `Circuit_${formatDate(startTime)}_${formatTime(startTime)}`,
             date: new Date().toLocaleDateString('en-US'),
             program: 'Circuit',
-            workoutDay: 1,
+            workoutDay: circuitWorkoutDay,
             workoutType: 'Circuit Training',
-            repRange: '13+',
+            repRange: getRepRange(circuitWorkoutDay),
             startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             durationMinutes: durationMinutes,
@@ -273,6 +282,9 @@ export default function CircuitView() {
     };
 
     const startNextWorkout = () => {
+        const nextDay = (circuitWorkoutDay % 16) + 1;
+        updateCircuitWorkoutDay(nextDay);
+        
         updateCircuitState([], {});
         clearAllExerciseStatus();
         setIsWorkoutComplete(false);
@@ -614,6 +626,21 @@ export default function CircuitView() {
 
                         return (
                             <>
+                                <div className="info-bar" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+                                    <div className="info-item" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, textAlign: 'center' }}>
+                                        <div className="label" style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Workout</div>
+                                        <div className="value" style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{circuitWorkoutDay}</div>
+                                    </div>
+                                    <div className="info-item" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, textAlign: 'center' }}>
+                                        <div className="label" style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Reps</div>
+                                        <div className="value" style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>{getRepRange(circuitWorkoutDay)}</div>
+                                    </div>
+                                    <div className="info-item" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 12, textAlign: 'center' }}>
+                                        <div className="label" style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', fontFamily: 'var(--mono)' }}>Rounds</div>
+                                        <div className="value" style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>1</div>
+                                    </div>
+                                </div>
+
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)' }}>
                                     <div>
                                         <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase' }}>Active Circuit</div>
