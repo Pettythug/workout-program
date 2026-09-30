@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
+import { matchesLocation } from '../utils/locationHelper';
 import ImageModal from './ImageModal';
 
 const formatLogDate = (dateStr) => {
@@ -99,14 +100,6 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
 
             <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
-                        Singles
-                    </label>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                        Alternating
-                    </label>
                 </div>
                 <input 
                     placeholder="Notes..." 
@@ -201,14 +194,6 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
 
             <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
-                        Singles
-                    </label>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                        Alternating
-                    </label>
                 </div>
                 <input 
                     placeholder="Notes..." 
@@ -222,10 +207,9 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSwap }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState } = useAppContext();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation } = useAppContext();
     const { logSet, deleteHistory, saveExercise } = useGymAPI();
     
-    const [mode, setMode] = useState("Standard"); // "Standard", "Single", "Alt"
     const [isOpenState, setIsOpenState] = useState(false);
     const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
     const [activeTab, setActiveTab] = useState("LOG"); // "LOG", "HISTORY"
@@ -246,17 +230,17 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
-    // Fallback to "Standard" if not provided
-    const variations = group.variations || {};
-    const ex = variations[mode] || variations["Standard"] || Object.values(variations)[0];
+    const ex = group.ex || 
+               (group.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || 
+               (group.name ? group : { ...group, name: group.baseName });
     if (!ex) return null;
+    const exerciseName = ex?.name || group.baseName || "Unknown Exercise";
 
     const todaysSets = useMemo(() => {
         const todayStr = new Date().toDateString();
-        return Object.values(variations)
-            .flatMap(v => v.history || [])
+        return (ex?.history || [])
             .filter(h => h.date && new Date(h.date).toDateString() === todayStr);
-    }, [variations]);
+    }, [ex?.history]);
 
     const groupedSets = useMemo(() => {
         const groups = {};
@@ -272,17 +256,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
             .map(key => groups[key]);
     }, [todaysSets]);
 
-    const hasVariations = Object.keys(variations).length > 1;
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
-
-    const isGroupDone = useMemo(() => {
-        return Object.values(variations).some(v => exerciseStatus[v.name] === 'done');
-    }, [variations, exerciseStatus]);
-
-    const isGroupSkipped = useMemo(() => {
-        return Object.values(variations).some(v => exerciseStatus[v.name] === 'skipped');
-    }, [variations, exerciseStatus]);
 
     const getImageUrl = (fileRef) => {
         if (!fileRef) return `${import.meta.env.BASE_URL}images/placeholder.jpg`;
@@ -506,8 +481,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         let bestObj = null;
         if (ex.best && ex.best[personKey]) {
             bestObj = ex.best[personKey];
-        } else if (variations["Standard"] && variations["Standard"].best && variations["Standard"].best[personKey]) {
-            bestObj = variations["Standard"].best[personKey];
         }
         if (!bestObj) return "No data";
         
@@ -567,10 +540,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
     return (
         <div style={{ 
             background: '#111', 
-            border: `1px solid ${isGroupDone ? 'var(--success)' : isGroupSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
+            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 12, 
-            opacity: isGroupSkipped && !isGroupDone ? 0.5 : 1,
-            boxShadow: isGroupDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
+            opacity: isSkipped && !isDone ? 0.5 : 1,
+            boxShadow: isDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
             overflow: 'hidden',
             marginBottom: 16
         }}>
@@ -583,24 +556,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                         <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
                             {ex.category || 'Uncategorized'}
                         </div>
-                        {hasVariations && (
-                            <div style={{ display: "flex", gap: 4 }}>
-                                {Object.keys(variations).map(v => (
-                                    <button 
-                                        key={v}
-                                        onClick={(e) => { e.stopPropagation(); setMode(v); }}
-                                        className="btn-ghost btn-no-translate" 
-                                        style={{ padding: '2px 6px', fontSize: 10, border: `1px solid ${mode===v ? 'var(--accent)' : 'transparent'}`, color: mode===v ? 'white' : 'var(--muted)' }}
-                                    >
-                                        {v === 'Single' ? 'SINGLES' : v.toUpperCase()}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
-                        {isGroupDone && (
+                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{exerciseName}</div>
+                        {isDone && (
                             <span style={{ 
                                 background: 'rgba(34, 197, 94, 0.15)', 
                                 color: 'var(--success)', 
@@ -611,7 +570,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                 letterSpacing: 0.5 
                             }}>COMPLETED</span>
                         )}
-                        {(isGroupSkipped && !isGroupDone) && (
+                        {(isSkipped && !isDone) && (
                             <span style={{ 
                                 background: 'rgba(239, 68, 68, 0.15)', 
                                 color: 'var(--skip)', 
@@ -834,8 +793,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                         >
                                             <option value="">-- Select Exercise --</option>
                                             <option value="custom">-- New Custom Exercise --</option>
-                                            {(group.alternatives || []).filter(alt => alt.category === ex.category).map(alt => (
-                                                <option key={alt.baseName} value={alt.baseName}>{alt.baseName}</option>
+                                            {(exercises || []).filter(alt => alt.category === ex.category && matchesLocation(alt.location, activeLocation)).sort((a, b) => a.name.localeCompare(b.name)).map(alt => (
+                                                <option key={alt.name} value={alt.name}>{alt.name}</option>
                                             ))}
                                         </select>
 
