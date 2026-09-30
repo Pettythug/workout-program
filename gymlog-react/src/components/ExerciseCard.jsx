@@ -477,8 +477,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         let bestObj = null;
         if (ex.best && ex.best[personKey]) {
             bestObj = ex.best[personKey];
-        } else if (variations["Standard"] && variations["Standard"].best && variations["Standard"].best[personKey]) {
-            bestObj = variations["Standard"].best[personKey];
         }
         if (!bestObj) return "No data";
         
@@ -538,10 +536,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
     return (
         <div style={{ 
             background: '#111', 
-            border: `1px solid ${isGroupDone ? 'var(--success)' : isGroupSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
+            border: `1px solid ${isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : isOpen ? 'var(--accent)' : 'var(--border)'}`, 
             borderRadius: 12, 
-            opacity: isGroupSkipped && !isGroupDone ? 0.5 : 1,
-            boxShadow: isGroupDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
+            opacity: isSkipped && !isDone ? 0.5 : 1,
+            boxShadow: isDone ? '0 4px 20px rgba(34, 197, 94, 0.12)' : 'none',
             overflow: 'hidden',
             marginBottom: 16
         }}>

@@ -593,6 +593,7 @@ export default function FullBodyView() {
                     </div>
 
                     {plannedExercises.map((group, idx) => {
+                        const ex = group.ex || group;
                         const variations = Object.values(group.variations || {});
                         const isDone = variations.some(v => exerciseStatus[v.name] === 'done');
                         const isSkipped = variations.some(v => exerciseStatus[v.name] === 'skipped');
