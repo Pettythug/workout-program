@@ -593,7 +593,8 @@ export default function FullBodyView() {
                     </div>
 
                     {plannedExercises.map((group, idx) => {
-                        const ex = group.ex || group;
+                        const ex = group.ex || (group.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || group;
+                        const displayName = ex?.name || group.baseName || ("Exercise " + (idx + 1));
                         const variations = Object.values(group.variations || {});
                         const isDone = variations.some(v => exerciseStatus[v.name] === 'done');
                         const isSkipped = variations.some(v => exerciseStatus[v.name] === 'skipped');
@@ -618,7 +619,7 @@ export default function FullBodyView() {
                                 }}
                             >
                                 <div>
-                                    <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {ex.name}</div>
+                                    <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {displayName}</div>
                                     <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{group.category}</div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -631,7 +632,7 @@ export default function FullBodyView() {
                                             style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
                                             onClick={(e) => { 
                                                 e.stopPropagation();
-                                                resetExerciseStatus(ex.name);
+                                                resetExerciseStatus(displayName);
                                                 setViewingWarmUp(false);
                                                 setView('tracker'); 
                                             }}

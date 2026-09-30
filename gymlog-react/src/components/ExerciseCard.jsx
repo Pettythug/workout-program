@@ -229,8 +229,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
-    const ex = group.ex || group;
+    const ex = group.ex || 
+               (group.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || 
+               (group.name ? group : { ...group, name: group.baseName });
     if (!ex) return null;
+    const exerciseName = ex?.name || group.baseName || "Unknown Exercise";
 
     const todaysSets = useMemo(() => {
         const todayStr = new Date().toDateString();
@@ -554,7 +557,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                         </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{ex.name}</div>
+                        <div style={{ fontSize: 16, fontWeight: 'bold', color: 'white' }}>{exerciseName}</div>
                         {isDone && (
                             <span style={{ 
                                 background: 'rgba(34, 197, 94, 0.15)', 
