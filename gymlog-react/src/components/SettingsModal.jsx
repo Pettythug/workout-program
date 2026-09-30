@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import SessionStatsModal from './SessionStatsModal';
+import { createPortal } from 'react-dom';
 
 export default function SettingsModal({ isOpen, onClose }) {
     const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, removeLocationFromRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
@@ -106,7 +107,7 @@ export default function SettingsModal({ isOpen, onClose }) {
         }
     };
 
-    return (
+    return createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -399,6 +400,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                 isOpen={isStatsOpen} 
                 onClose={() => setIsStatsOpen(false)} 
             />
-        </div>
+        </div>,
+        document.body
     );
 }

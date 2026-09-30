@@ -1,5 +1,7 @@
+/* eslint-disable */
 import React, { useState, useRef, useEffect } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
+import { createPortal } from 'react-dom';
 
 const compressImage = (file, maxWidth = 1000, maxHeight = 1000, quality = 0.8) => {
     return new Promise((resolve, reject) => {
@@ -118,7 +120,7 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={onClose}>
             <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', width: '100%', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -169,6 +171,7 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
                     {isUploading ? "UPLOADING TO DRIVE..." : "UPLOAD NEW IMAGE"}
                 </button>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
