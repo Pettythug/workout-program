@@ -1,6 +1,6 @@
-# TASK-R92: Mobile Sticky Rest Timer Stability & Session Timer Reset Controls
+# TASK-R92: Mobile Sticky Timer, Session Reset Controls & User-Partitioned Session Stats
 
-> **For Human Readers:** This task fixes the mobile rest timer detachment issue on phones by eliminating conflicting nested sticky headers in `PlanView.jsx`, `LiftView.jsx`, and `FullBodyView.jsx` and applying GPU hardware acceleration. Additionally, it implements session timer controls (Option 1: Manual reset in `SessionStatsModal.jsx`, and Option 3: Auto-cleanup on Warm-Up UNDO).
+> **For Human Readers:** This task delivers three interconnected improvements: (1) Fixes the mobile sticky rest timer detachment by removing nested sticky subheaders and applying GPU compositing, (2) Implements session timer reset controls (manual restart in Stats modal and auto-cleanup on Warm-Up UNDO), and (3) Tags all completed workout sessions with active participant(s) (`Solo: Brian`, `Partner: Brian + Dad`) and adds user-partitioned pacing filters in the Stats modal so averages are never polluted by tests or mixed group sizes.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -16,31 +16,37 @@
     - TARGET_BRANCH: `TASK-R92`
   </ENVIRONMENT_SETUP>
   <OBJECTIVE>
-    1. Fix Mobile Sticky Rest Timer & Viewport Detachment:
+    1. Mobile Sticky Rest Timer Stability:
        - In `PlanView.jsx`, `LiftView.jsx`, and `FullBodyView.jsx`:
-         - Remove `position: 'sticky', top: 0, zIndex: 100` and `margin: '-16px -16px 16px'` from the inner subheaders.
-         - Ensure the subheaders render as clean static headers with `marginBottom: 16` (matching `CircuitView.jsx`), eliminating z-index collisions with the top global sticky header.
+         - Remove `position: 'sticky', top: 0, zIndex: 100` and `margin: '-16px -16px 16px'` from the inner view headers so they render as clean static headers with `marginBottom: 16`.
        - In `index.css`:
-         - Change `html, body { height: 100%; }` to `html, body { min-height: 100%; }`.
+         - Update `html, body { height: 100%; }` to `html, body { min-height: 100%; }`.
          - Add GPU compositing to `.sticky-header-container`:
            `transform: translate3d(0, 0, 0); -webkit-transform: translate3d(0, 0, 0); will-change: transform;`
 
-    2. Session Timer Controls (Option 1: Manual Reset in Stats Modal):
+    2. Session Timer Controls:
        - In `SessionStatsModal.jsx`:
-         - Extract `sessionStartTime`, `startSession`, and `resetSessionTime` from `useAppContext()`.
-         - If `sessionStartTime` exists, render an "Active Session" control card at the top:
+         - If `sessionStartTime` is active, render an "Active Session" control card at the top:
            - Displays start time and elapsed minutes.
-           - `[ ? Reset to 0m ]` button -> calls `startSession(Date.now())` (resets the timer to right now).
-           - `[ ?? Clear Session ]` button -> calls `resetSessionTime()` (clears active session).
-
-    3. Session Timer Auto-Cleanup (Option 3: Warm-Up UNDO Reset):
+           - `[ ? Reset Session to 0m ]` button -> calls `startSession(Date.now())` (resets session clock to right now).
+           - `[ ?? Clear Active Clock ]` button -> calls `resetSessionTime()` (clears active session clock).
        - In `PlanView.jsx` and `FullBodyView.jsx`:
-         - When clicking `UNDO` on the warm-up (or in the Full List modal for warm-up):
-           - Check if any other working sets have been completed (`Object.values(exerciseStatus).every(s => s === 'pending')`).
-           - If no working sets are done/skipped, call `resetSessionTime()` to cleanly clear the session start time.
+         - In the warm-up `UNDO` handler: If all exercise statuses are pending (no working sets logged), call `resetSessionTime()` to automatically cancel accidental starts.
+
+    3. User-Partitioned Session Tagging & Stats Averages:
+       - In `AppContext.jsx` (`saveCompletedSession`):
+         - Capture `activePeople` on session completion.
+         - Format human-readable ID: `${program}_${activePeopleStr}_${formatDate(startTs)}_${formatTime(startTs)}` (e.g. `Plan_Brian_2026-09-30_14:15:00` or `Plan_Brian+Dad_2026-09-30_14:15:00`).
+         - Attach `people: (activePeople && activePeople.length > 0) ? activePeople.join(', ') : 'Solo'` to the session record and background sheets payload.
+         - Update `getRepRangeStats(customHistory, filterPerson)` to compute averages partitioned by selected participant filter.
+       - In `SessionStatsModal.jsx`:
+         - Add participant filter tabs at the top (e.g. `[ ALL ]`, `[ Brian (Solo) ]`, `[ Brian + Dad (Partner) ]`, `[ Dad (Solo) ]`) derived dynamically from `sessionHistory`.
+         - Compute rep-range averages (1-3, 4-7, 8-12, 13+) strictly for the active filter tab.
+       - In `Combined_AppScript_v2.gs`:
+         - Ensure `logSession` writes the `People` column to `GymLog_Sessions`.
 
     4. Verification & Audit:
-       - Run `npm run build` inside `gymlog-react/` and verify clean build with 0 errors.
+       - Run `npm run build` inside `gymlog-react/` to ensure zero compilation errors.
        - Run `npx eslint src/` to verify 0 `no-undef` errors.
   </OBJECTIVE>
   <RESOURCES>
@@ -49,16 +55,17 @@
     - Plan View: `gymlog-react/src/components/PlanView.jsx`
     - Lift View: `gymlog-react/src/components/LiftView.jsx`
     - Full Body View: `gymlog-react/src/components/FullBodyView.jsx`
-    - Header: `gymlog-react/src/components/Header.jsx`
-    - Context: `gymlog-react/src/context/AppContext.jsx`
+    - AppContext: `gymlog-react/src/context/AppContext.jsx`
+    - Backend: `Combined_AppScript_v2.gs`
   </RESOURCES>
   <SEQUENCE>
     1. READ `docs/jira_tasks/TASK-R92.md`.
-    2. MODIFY `index.css`, `PlanView.jsx`, `LiftView.jsx`, and `FullBodyView.jsx` for mobile sticky timer stability.
-    3. MODIFY `SessionStatsModal.jsx` to add active session reset and stop buttons.
-    4. MODIFY `PlanView.jsx` and `FullBodyView.jsx` warm-up UNDO handlers for session time cleanup.
-    5. RUN `npm run build` inside `gymlog-react` and verify clean build with 0 errors.
-    6. SIGNAL `DEVELOPMENT_TASK_COMPLETE`.
+    2. MODIFY `index.css`, `PlanView.jsx`, `LiftView.jsx`, and `FullBodyView.jsx` for mobile sticky rest timer stability.
+    3. MODIFY `AppContext.jsx` and `Combined_AppScript_v2.gs` to attach participant(s) to sessions.
+    4. MODIFY `SessionStatsModal.jsx` to add active session reset controls and participant filter tabs for averages.
+    5. MODIFY `PlanView.jsx` and `FullBodyView.jsx` for warm-up UNDO auto-reset.
+    6. RUN `npm run build` inside `gymlog-react/` and verify clean build with 0 errors.
+    7. SIGNAL `DEVELOPMENT_TASK_COMPLETE`.
   </SEQUENCE>
 </TASK_EXECUTION_PROTOCOL>
 ```
