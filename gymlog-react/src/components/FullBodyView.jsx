@@ -617,7 +617,7 @@ export default function FullBodyView() {
                                 }}
                             >
                                 <div>
-                                    <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {group.baseName}</div>
+                                    <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {ex.name}</div>
                                     <div style={{ fontSize: 10, color: 'var(--accent)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>{group.category}</div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -630,7 +630,7 @@ export default function FullBodyView() {
                                             style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
                                             onClick={(e) => { 
                                                 e.stopPropagation();
-                                                variations.forEach(v => resetExerciseStatus(v.name));
+                                                resetExerciseStatus(ex.name);
                                                 setViewingWarmUp(false);
                                                 setView('tracker'); 
                                             }}

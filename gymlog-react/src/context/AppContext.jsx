@@ -507,12 +507,11 @@ export function AppProvider({ children }) {
     };
 
     const createExerciseMeta = async (exerciseData, pin) => {
-        const { baseName, createSingle, createAlt, category, location, timed, isCircuit } = exerciseData;
+        const { baseName, createStandard, createSingle, createAlt, category, location, timed, isCircuit } = exerciseData;
         
-        const variationsToCreate = [
-            { name: baseName, category, location, timed, isCircuit }
-        ];
+        const variationsToCreate = [];
 
+        if (createStandard) variationsToCreate.push({ name: baseName, category, location, timed, isCircuit });
         if (createSingle) variationsToCreate.push({ name: `${baseName} (Single)`, category, location, timed, isCircuit });
         if (createAlt) variationsToCreate.push({ name: `${baseName} (Alt)`, category, location, timed, isCircuit });
 
