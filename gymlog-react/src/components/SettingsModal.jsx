@@ -5,7 +5,14 @@ import SessionStatsModal from './SessionStatsModal';
 import { createPortal } from 'react-dom';
 
 export default function SettingsModal({ isOpen, onClose }) {
-    const { people, exercises, locations, activePeople, deviceOwner, updateDeviceOwner, addPersonToRoster, removePersonFromRoster, addLocationToRoster, removeLocationFromRoster, togglePersonActive, createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus } = useAppContext();
+    const { 
+        people, exercises, locations, activePeople, deviceOwner, 
+        updateDeviceOwner, addPersonToRoster, removePersonFromRoster, 
+        addLocationToRoster, removeLocationFromRoster, togglePersonActive, 
+        createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus,
+        workoutDay, fullBodyWorkoutDay, circuitWorkoutDay,
+        updateWorkoutDay, updateFullBodyWorkoutDay, updateCircuitWorkoutDay
+    } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
@@ -361,6 +368,52 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </button>
                         </div>
                     )}
+                </div>
+
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>WORKOUT PROGRESS OVERRIDE</label>
+                    <p style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 12 }}>Active Device Owner: <strong style={{ color: 'var(--accent)' }}>{deviceOwner}</strong></p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 13, color: 'white' }}>Plan Workout #</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    value={workoutDay} 
+                                    onChange={e => updateWorkoutDay(parseInt(e.target.value) || 1)}
+                                    style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 13, color: 'white' }}>Full Body Workout #</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    value={fullBodyWorkoutDay} 
+                                    onChange={e => updateFullBodyWorkoutDay(parseInt(e.target.value) || 1)}
+                                    style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 13, color: 'white' }}>Circuit Workout #</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    value={circuitWorkoutDay} 
+                                    onChange={e => updateCircuitWorkoutDay(parseInt(e.target.value) || 1)}
+                                    style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
