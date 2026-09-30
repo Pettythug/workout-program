@@ -47,6 +47,10 @@ export function AppProvider({ children }) {
         const cached = localStorage.getItem('gymlog_dailySwaps');
         return cached ? JSON.parse(cached) : {};
     });
+    const [circuitWorkoutDay, setCircuitWorkoutDay] = useState(() => {
+        const cached = localStorage.getItem('gymlog_circuit_workout_day');
+        return cached ? JSON.parse(cached) : 1;
+    });
     const [fullBodyWorkoutDay, setFullBodyWorkoutDay] = useState(() => {
         const cached = localStorage.getItem('gymlog_fullBody_workoutDay');
         return cached ? JSON.parse(cached) : 1;
@@ -333,6 +337,11 @@ export function AppProvider({ children }) {
     const updateWorkoutDay = (day) => {
         setWorkoutDay(day);
         localStorage.setItem('gymlog_workoutDay', JSON.stringify(day));
+    };
+
+    const updateCircuitWorkoutDay = (day) => {
+        setCircuitWorkoutDay(day);
+        localStorage.setItem('gymlog_circuit_workout_day', JSON.stringify(day));
     };
 
     const updateFullBodyWorkoutDay = (day) => {
@@ -852,6 +861,7 @@ export function AppProvider({ children }) {
     const contextValue = {
         workoutDay,
         fullBodyWorkoutDay,
+        circuitWorkoutDay,
         people,
         activePeople: [...new Set(activePeople)].filter(p => people.includes(p)),
         deviceOwner,
@@ -880,6 +890,7 @@ export function AppProvider({ children }) {
         deleteSession,
         getRepRangeStats,
         updateWorkoutDay,
+        updateCircuitWorkoutDay,
         updateFullBodyWorkoutDay,
         updateActiveLocation,
         togglePersonActive,
