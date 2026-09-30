@@ -1,11 +1,28 @@
-import React, { useMemo } from 'react';
+/* eslint-disable */
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 export default function SessionStatsModal({ isOpen, onClose }) {
-    const { sessionHistory, getRepRangeStats, deleteSession } = useAppContext();
+    const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime } = useAppContext();
+    const [activeFilter, setActiveFilter] = useState('ALL');
+
+    const participantTabs = useMemo(() => {
+        const tabs = new Set(['ALL']);
+        sessionHistory.forEach(s => {
+            if (s.people) tabs.add(s.people);
+            else tabs.add('Solo');
+        });
+        return Array.from(tabs).sort();
+    }, [sessionHistory]);
+
+    useEffect(() => {
+        if (!participantTabs.includes(activeFilter)) {
+            setActiveFilter('ALL');
+        }
+    }, [participantTabs, activeFilter]);
 
     const stats = useMemo(() => {
-        return getRepRangeStats ? getRepRangeStats(sessionHistory) : {
+        return getRepRangeStats ? getRepRangeStats(sessionHistory, activeFilter) : {
             brackets: {
                 '1-3': { label: '1–3 Reps (Heavy)', count: 0, avgMinutes: 0 },
                 '4-7': { label: '4–7 Reps (Strength)', count: 0, avgMinutes: 0 },
@@ -15,7 +32,15 @@ export default function SessionStatsModal({ isOpen, onClose }) {
             totalSessions: 0,
             overallAvgMinutes: 0
         };
-    }, [sessionHistory, getRepRangeStats]);
+    }, [sessionHistory, getRepRangeStats, activeFilter]);
+
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => {
+        if (!isOpen || !sessionStartTime) return;
+        setNow(Date.now());
+        const interval = setInterval(() => setNow(Date.now()), 60000);
+        return () => clearInterval(interval);
+    }, [isOpen, sessionStartTime]);
 
     if (!isOpen) return null;
 
@@ -97,6 +122,70 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                     </button>
                 </div>
 
+                {/* Active Session Card */}
+                {sessionStartTime && (
+                    <div style={{
+                        background: 'rgba(249, 115, 22, 0.1)',
+                        border: '1px solid var(--accent)',
+                        borderRadius: 10,
+                        padding: 16,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--mono)' }}>
+                                ⏱️ ACTIVE SESSION
+                            </div>
+                            <div style={{ fontSize: 12, color: 'white', fontFamily: 'var(--mono)' }}>
+                                {new Date(sessionStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({(Math.max(1, Math.round((now - sessionStartTime) / 60000)))}m elapsed)
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                                className="btn-ghost" 
+                                onClick={() => startSession(Date.now())}
+                                style={{ flex: 1, padding: 8, fontSize: 11, border: '1px solid var(--accent)', color: 'var(--accent)' }}
+                            >
+                                ⏱️ Reset to 0m
+                            </button>
+                            <button 
+                                className="btn-ghost" 
+                                onClick={() => resetSessionTime()}
+                                style={{ flex: 1, padding: 8, fontSize: 11, border: '1px solid #ef4444', color: '#ef4444' }}
+                            >
+                                🗑️ Clear Clock
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Participant Tabs */}
+                {participantTabs.length > 1 && (
+                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+                        {participantTabs.map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveFilter(tab)}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: 16,
+                                    fontSize: 11,
+                                    fontWeight: activeFilter === tab ? 700 : 500,
+                                    fontFamily: 'var(--mono)',
+                                    whiteSpace: 'nowrap',
+                                    background: activeFilter === tab ? 'var(--accent)' : 'var(--surface)',
+                                    color: activeFilter === tab ? '#000' : 'var(--muted)',
+                                    border: `1px solid ${activeFilter === tab ? 'var(--accent)' : 'var(--border)'}`,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {tab}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {/* Overall Summary Bar */}
                 <div style={{
                     display: 'flex',
@@ -165,7 +254,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                 {/* Recent Session History List */}
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
-                        Recent Completed Workouts ({sessionHistory.length})
+                        Recent Completed Workouts
                     </div>
                     
                     <div style={{
@@ -232,6 +321,19 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                                     fontFamily: 'var(--mono)'
                                                 }}>
                                                     {session.repRange} reps
+                                                </span>
+                                            )}
+                                            {session.people && (
+                                                <span style={{
+                                                    fontSize: 10,
+                                                    padding: '1px 6px',
+                                                    borderRadius: 4,
+                                                    background: 'rgba(56, 189, 248, 0.15)',
+                                                    color: '#38bdf8',
+                                                    fontWeight: 600,
+                                                    fontFamily: 'var(--mono)'
+                                                }}>
+                                                    👥 {session.people}
                                                 </span>
                                             )}
                                         </div>

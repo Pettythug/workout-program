@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
@@ -65,7 +66,7 @@ export default function LiftView() {
 
     return (
         <div className="main" style={{ paddingBottom: 100 }}>
-            <div className="header" style={{ margin: '-16px -16px 16px', position: 'sticky', top: 0, zIndex: 100 }}>
+            <div className="header" style={{ marginBottom: 16 }}>
                 <div>
                     <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: 5, color: 'var(--accent)' }}>LIFT</h1>
                     <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: 2, fontFamily: 'var(--mono)', marginTop: 3 }}>

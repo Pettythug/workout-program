@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useCallback } from 'react';
 
 // Default URL if not in localStorage

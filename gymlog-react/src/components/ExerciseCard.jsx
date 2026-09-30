@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';

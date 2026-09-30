@@ -47,7 +47,7 @@ const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note", 
 const SETTINGS_TAB      = "GymLog_Settings";
 const SETTINGS_HEADERS  = ["Setting", "Value"];
 const SESSIONS_TAB      = "GymLog_Sessions";
-const SESSIONS_HEADERS  = ["Session ID", "Date", "Program", "Workout Day", "Rep Range", "Start Time", "End Time", "Duration Minutes", "Start Timestamp", "End Timestamp"];
+const SESSIONS_HEADERS  = ["Session ID", "Date", "Program", "Workout Day", "Rep Range", "Start Time", "End Time", "Duration Minutes", "Start Timestamp", "End Timestamp", "People"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
@@ -336,7 +336,8 @@ function gymlog_doGet() {
       endTime: String(r[6]),
       durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
       startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
-      endTimestamp: r[9] !== "" ? Number(r[9]) : 0
+      endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
+      people: String(r[10] || "")
     })).filter(s => s.id);
 
     const responseObj = {
@@ -789,7 +790,8 @@ function gymlog_handleLogSession(payload) {
     payload.endTime || "",
     payload.durationMinutes || 0,
     payload.startTimestamp || 0,
-    payload.endTimestamp || 0
+    payload.endTimestamp || 0,
+    payload.people || ""
   ];
 
   if (rowIndex > 0) {

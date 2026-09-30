@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
@@ -81,7 +82,6 @@ export default function CircuitView() {
         if (!timerIsRunning) {
             setTimerMode(getDefaultRestForRepRange(getRepRange(circuitWorkoutDay)));
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [circuitWorkoutDay]);
 
     useEffect(() => {

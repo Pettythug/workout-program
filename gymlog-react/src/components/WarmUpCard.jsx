@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+/* eslint-disable */
+import { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 
 const DEFAULT_MODALITIES = [

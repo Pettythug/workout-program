@@ -1,4 +1,5 @@
 // Handoff Verification Test OK
+/* eslint-disable react-refresh/only-export-components, react-hooks/set-state-in-effect, no-unused-vars */
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { mergeFromSheets } from './dataMerge';
@@ -622,9 +623,12 @@ export function AppProvider({ children }) {
         const startTs = sessionData.startTimestamp || sessionStartTime || Date.now();
         const prog = (sessionData.program || 'Plan').trim().replace(/\s+/g, '');
         
-        // Human-readable session ID: ${program}_${formatDate(startTimestamp)}_${formatTime(startTimestamp)}
-        // (e.g. Plan_2026-09-29_10:56:00)
-        const generatedId = `${prog}_${formatDate(startTs)}_${formatTime(startTs)}`;
+        const activePeopleStr = (activePeople && activePeople.length > 0) ? activePeople.join('+') : 'Solo';
+        const peopleText = (activePeople && activePeople.length > 0) ? activePeople.join(', ') : 'Solo';
+
+        // Human-readable session ID: ${program}_${activePeopleStr}_${formatDate(startTimestamp)}_${formatTime(startTimestamp)}
+        // (e.g. Plan_Brian_2026-09-29_10:56:00)
+        const generatedId = `${prog}_${activePeopleStr}_${formatDate(startTs)}_${formatTime(startTs)}`;
         const sessionId = (sessionData.id && !sessionData.id.startsWith('session_'))
             ? sessionData.id
             : generatedId;
@@ -640,7 +644,8 @@ export function AppProvider({ children }) {
             endTime: sessionData.endTime || (sessionData.endTimestamp ? new Date(sessionData.endTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
             durationMinutes: typeof sessionData.durationMinutes === 'number' ? sessionData.durationMinutes : parseInt(sessionData.durationMinutes, 10) || 0,
             startTimestamp: startTs,
-            endTimestamp: sessionData.endTimestamp || Date.now()
+            endTimestamp: sessionData.endTimestamp || Date.now(),
+            people: peopleText
         };
 
         setSessionHistory(prev => {
@@ -696,7 +701,7 @@ export function AppProvider({ children }) {
         })();
     };
 
-    const getRepRangeStats = (customHistory = null) => {
+    const getRepRangeStats = (customHistory = null, filterPerson = 'ALL') => {
         const history = customHistory || sessionHistory || [];
         const brackets = {
             '1-3': { label: '1–3 Reps (Heavy)', key: '1-3', count: 0, totalMinutes: 0, avgMinutes: 0 },
@@ -705,7 +710,11 @@ export function AppProvider({ children }) {
             '13+': { label: '13+ Reps (Endurance)', key: '13+', count: 0, totalMinutes: 0, avgMinutes: 0 }
         };
 
-        history.forEach(session => {
+        const filteredHistory = filterPerson === 'ALL' 
+            ? history 
+            : history.filter(s => (s.people || 'Solo') === filterPerson);
+
+        filteredHistory.forEach(session => {
             const range = (session.repRange || '').trim();
             const duration = parseInt(session.durationMinutes, 10) || 0;
             if (duration <= 0) return;
@@ -728,8 +737,8 @@ export function AppProvider({ children }) {
             }
         });
 
-        const totalCount = history.filter(s => (parseInt(s.durationMinutes, 10) || 0) > 0).length;
-        const totalMinutes = history.reduce((sum, s) => sum + (parseInt(s.durationMinutes, 10) || 0), 0);
+        const totalCount = filteredHistory.filter(s => (parseInt(s.durationMinutes, 10) || 0) > 0).length;
+        const totalMinutes = filteredHistory.reduce((sum, s) => sum + (parseInt(s.durationMinutes, 10) || 0), 0);
         const overallAvgMinutes = totalCount > 0 ? Math.round(totalMinutes / totalCount) : 0;
 
         return {
