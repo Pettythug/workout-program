@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { createPortal } from 'react-dom';
 
 export default function SessionStatsModal({ isOpen, onClose }) {
     const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime } = useAppContext();
@@ -79,7 +80,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
         }
     ];
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed',
             inset: 0,
@@ -411,6 +412,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

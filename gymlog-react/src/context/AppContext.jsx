@@ -296,22 +296,10 @@ export function AppProvider({ children }) {
                 setPeople(mergedData.people);
                 setLocations(mergedData.locations);
 
-                if (data && data.sessions) {
-                    setSessionHistory(prevLocal => {
-                        const localSessions = prevLocal || [];
-                        const serverSessions = data.sessions || [];
-                        const mergedMap = new Map();
-                        
-                        [...serverSessions, ...localSessions].forEach(s => {
-                            if (!mergedMap.has(s.id)) {
-                                mergedMap.set(s.id, s);
-                            }
-                        });
-                        const merged = Array.from(mergedMap.values());
-                        merged.sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
-                        localStorage.setItem('gymlog_session_history', JSON.stringify(merged));
-                        return merged;
-                    });
+                if (data && data.sessions !== undefined) {
+                    const serverSessions = data.sessions || [];
+                    setSessionHistory(serverSessions);
+                    localStorage.setItem('gymlog_session_history', JSON.stringify(serverSessions));
                 }
 
                 // Update cache
