@@ -31,7 +31,7 @@ export default function CircuitView() {
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime, saveCompletedSession,
-        warmUpStatus, selectedWarmUp, resetWarmUp
+        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -67,6 +67,13 @@ export default function CircuitView() {
     useEffect(() => {
         localStorage.setItem('gym-circuit-active', JSON.stringify(circuitState));
     }, [circuitState]);
+
+    useEffect(() => {
+        if (!timerIsRunning) {
+            setTimerMode(getDefaultRestForRepRange('13+'));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (circuit.length === 0) return;
@@ -649,6 +656,7 @@ export default function CircuitView() {
                                         >
                                             <option value="stopwatch">⏱️ STOPWATCH</option>
                                             <option value="30">⏳ 30S REST</option>
+                                            <option value="45">⏳ 45S REST</option>
                                             <option value="60">⏳ 60S REST</option>
                                             <option value="90">⏳ 90S REST</option>
                                             <option value="120">⏳ 2M REST</option>

@@ -16,7 +16,7 @@ export default function PlanView() {
         sessionStartTime, resetSessionTime, saveCompletedSession,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
-        warmUpStatus, selectedWarmUp, resetWarmUp
+        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
     } = useAppContext();
     const [workoutType, setWorkoutType] = useState(() => {
         return localStorage.getItem('gymlog_workoutType') || 'Pull';
@@ -52,6 +52,21 @@ export default function PlanView() {
     useEffect(() => {
         localStorage.setItem('gymlog_session_accessories', JSON.stringify(accessoriesList));
     }, [accessoriesList]);
+
+    const getRepRange = (day) => {
+        const position = ((day - 1) % 16);
+        if (position < 4) return '8-12';
+        if (position < 8) return '1-3';
+        if (position < 12) return '13+';
+        return '4-7';
+    };
+
+    useEffect(() => {
+        if (!timerIsRunning) {
+            setTimerMode(getDefaultRestForRepRange(getRepRange(workoutDay)));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [workoutDay]);
 
     const groupedExercises = useMemo(() => {
         if (!exercises || exercises.length === 0) return {};
@@ -275,13 +290,6 @@ export default function PlanView() {
         setAccessoriesList([]);
     };
 
-    const getRepRange = (day) => {
-        const position = ((day - 1) % 16);
-        if (position < 4) return '8-12';
-        if (position < 8) return '1-3';
-        if (position < 12) return '13+';
-        return '4-7';
-    };
 
     if (loading) {
         return (
@@ -492,6 +500,7 @@ export default function PlanView() {
                                 >
                                     <option value="stopwatch">⏱️ STOPWATCH</option>
                                     <option value="30">⏳ 30S REST</option>
+                                    <option value="45">⏳ 45S REST</option>
                                     <option value="60">⏳ 60S REST</option>
                                     <option value="90">⏳ 90S REST</option>
                                     <option value="120">⏳ 2M REST</option>
