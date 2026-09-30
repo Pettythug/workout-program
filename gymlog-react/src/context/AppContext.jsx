@@ -3,6 +3,15 @@ import React, { createContext, useState, useEffect, useContext, useRef } from 'r
 import { useGymAPI } from '../hooks/useGymAPI';
 import { mergeFromSheets } from './dataMerge';
 
+export function getDefaultRestForRepRange(repRange) {
+    const r = (repRange || '').toString().toLowerCase().trim();
+    if (r.includes('1-3') || r.includes('1_3') || r === '1-3') return '180';
+    if (r.includes('4-7') || r.includes('4_7') || r === '4-7') return '120';
+    if (r.includes('8-12') || r.includes('8_12') || r === '8-12') return '90';
+    if (r.includes('13') || r.includes('13_plus') || r.includes('13+')) return '45';
+    return '90';
+}
+
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
@@ -901,7 +910,8 @@ export function AppProvider({ children }) {
         formatTimerTime,
         toggleTimer,
         resetTimer,
-        startRestTimer
+        startRestTimer,
+        getDefaultRestForRepRange
     };
 
     return (
