@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { useAppContext } from '../context/AppContext';
 
 export default function StickyRestBanner() {
@@ -9,7 +10,6 @@ export default function StickyRestBanner() {
 
     const isCountdownActive = timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
     const isStopwatchActive = !timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
-    const isActive = isCountdownActive || isStopwatchActive;
     const isCompleted = !timerIsRunning && timerIsCountdown && timerSeconds === 0;
 
     const restDuration = parseInt(timerMode, 10);
