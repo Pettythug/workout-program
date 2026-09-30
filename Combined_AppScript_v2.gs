@@ -46,6 +46,8 @@ const PEOPLE_HEADERS    = ["Name"];
 const EXERCISES_HEADERS = ["Exercise", "Timed", "Category", "Location", "Note", "Manufacturer", "Model Series", "Base Exercise", "Muscle Groups", "File Reference", "Circuit Eligible"];
 const SETTINGS_TAB      = "GymLog_Settings";
 const SETTINGS_HEADERS  = ["Setting", "Value"];
+const SESSIONS_TAB      = "GymLog_Sessions";
+const SESSIONS_HEADERS  = ["Session ID", "Date", "Program", "Workout Day", "Rep Range", "Start Time", "End Time", "Duration Minutes", "Start Timestamp", "End Timestamp"];
 const REP_RANGES        = ["r1_3", "r4_7", "r8_12", "r13_plus"];
 const DEFAULT_PEOPLE  = ["Brian", "Dad"];
 
@@ -106,6 +108,9 @@ function doGet(e) {
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
       if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
       if (payload.action === "getImage")      return gymlog_handleGetImage(payload);
+      if (payload.action === "logSession")     return withLock(gymlog_handleLogSession, payload);
+      if (payload.action === "deleteSession")  return withLock(gymlog_handleDeleteSession, payload);
+      if (payload.action === "getSessions")    return gymlog_handleGetSessions();
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -135,6 +140,9 @@ function doPost(e) {
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
     if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
     if (payload.action === "getImage")      return gymlog_handleGetImage(payload);
+    if (payload.action === "logSession")     return withLock(gymlog_handleLogSession, payload);
+    if (payload.action === "deleteSession")  return withLock(gymlog_handleDeleteSession, payload);
+    if (payload.action === "getSessions")    return gymlog_handleGetSessions();
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -313,6 +321,24 @@ function gymlog_doGet() {
       exercisesMeta.map(e => e.location).filter(l => l && l !== "Anywhere")
     )];
 
+    // ── Sessions ──────────────────────────────────────────────────────────────
+    const sessionsSheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
+    const sessionsRaw = sessionsSheet.getLastRow() > 1
+      ? sessionsSheet.getRange(2, 1, sessionsSheet.getLastRow() - 1, SESSIONS_HEADERS.length).getValues()
+      : [];
+    const sessions = sessionsRaw.map(r => ({
+      id: String(r[0]),
+      date: String(r[1]),
+      program: String(r[2]),
+      workoutDay: r[3] !== "" ? Number(r[3]) : "",
+      repRange: String(r[4]),
+      startTime: String(r[5]),
+      endTime: String(r[6]),
+      durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+      startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+      endTimestamp: r[9] !== "" ? Number(r[9]) : 0
+    })).filter(s => s.id);
+
     const responseObj = {
       status: "ok",
       data: {
@@ -321,7 +347,8 @@ function gymlog_doGet() {
         people:    people.length > 0 ? people : DEFAULT_PEOPLE,
         exercises: exercisesMeta,
         locations: derivedLocations,
-        settings:  gymlog_getSettingsInternal()
+        settings:  gymlog_getSettingsInternal(),
+        sessions
       }
     };
 
@@ -729,6 +756,88 @@ function gymlog_handleSaveSettings(payload) {
     }
   }
   return ok({ saved: Object.keys(settings).length });
+}
+
+
+// =============================================================================
+// GYMLOG — SESSIONS
+// =============================================================================
+
+function gymlog_handleLogSession(payload) {
+  const sheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
+  const id = payload.id;
+  
+  const lastRow = sheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) {
+        rowIndex = i + 2;
+        break;
+      }
+    }
+  }
+
+  const rowData = [
+    id,
+    payload.date || "",
+    payload.program || "",
+    payload.workoutDay !== undefined ? payload.workoutDay : "",
+    payload.repRange || "",
+    payload.startTime || "",
+    payload.endTime || "",
+    payload.durationMinutes || 0,
+    payload.startTimestamp || 0,
+    payload.endTimestamp || 0
+  ];
+
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+  } else {
+    sheet.appendRow(rowData);
+  }
+
+  return ok({ status: "success", id: id });
+}
+
+function gymlog_handleDeleteSession(payload) {
+  const sheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
+  const id = payload.id;
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) {
+        sheet.deleteRow(i + 2);
+        break;
+      }
+    }
+  }
+  return ok({ status: "success", deletedId: id });
+}
+
+function gymlog_handleGetSessions() {
+  const sheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
+  const lastRow = sheet.getLastRow();
+  let sessions = [];
+  if (lastRow > 1) {
+    const data = sheet.getRange(2, 1, lastRow - 1, SESSIONS_HEADERS.length).getValues();
+    sessions = data.map(r => ({
+      id: String(r[0]),
+      date: String(r[1]),
+      program: String(r[2]),
+      workoutDay: r[3] !== "" ? Number(r[3]) : "",
+      repRange: String(r[4]),
+      startTime: String(r[5]),
+      endTime: String(r[6]),
+      durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+      startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+      endTimestamp: r[9] !== "" ? Number(r[9]) : 0
+    })).filter(s => s.id);
+  }
+  return ok({ sessions: sessions });
 }
 
 

@@ -282,6 +282,24 @@ export function AppProvider({ children }) {
                 setPeople(mergedData.people);
                 setLocations(mergedData.locations);
 
+                if (data && data.sessions) {
+                    setSessionHistory(prevLocal => {
+                        const localSessions = prevLocal || [];
+                        const serverSessions = data.sessions || [];
+                        const mergedMap = new Map();
+                        
+                        [...serverSessions, ...localSessions].forEach(s => {
+                            if (!mergedMap.has(s.id)) {
+                                mergedMap.set(s.id, s);
+                            }
+                        });
+                        const merged = Array.from(mergedMap.values());
+                        merged.sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
+                        localStorage.setItem('gymlog_session_history', JSON.stringify(merged));
+                        return merged;
+                    });
+                }
+
                 // Update cache
                 localStorage.setItem('gymlog_exercises', JSON.stringify(mergedData.exercises));
                 localStorage.setItem('gymlog_people', JSON.stringify(mergedData.people));
@@ -648,6 +666,17 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_session_history', JSON.stringify(next));
             return next;
         });
+
+        (async () => {
+            try {
+                if (sheetsPost) {
+                    await sheetsPost({ action: 'deleteSession', id: sessionId });
+                    console.log('[Sheets Sync] Session deleted successfully:', sessionId);
+                }
+            } catch (err) {
+                console.warn('[Sheets Sync] Background session delete sync warning:', err.message || err);
+            }
+        })();
     };
 
     const getRepRangeStats = (customHistory = null) => {
