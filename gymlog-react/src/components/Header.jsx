@@ -27,8 +27,9 @@ export default function Header() {
 
     return (
         <>
-            <div className="header" style={{ gap: '16px', justifyContent: 'flex-start' }}>
-                <h1 style={{ margin: 0, fontSize: '16px', marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="header">
+                <div className="header-brand">
+                    <h1 style={{ margin: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     GymLog
                     <span className={`sync-indicator ${isSyncing ? 'syncing' : 'synced'}`} />
                     {sessionStartTime && (
@@ -54,11 +55,14 @@ export default function Header() {
                             ⏱️ {elapsedMinutes}m
                         </button>
                     )}
-                </h1>
-                <NavLink to="/plan" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>PLAN</NavLink>
-                <NavLink to="/full-body" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>FULL BODY</NavLink>
-                <NavLink to="/lift" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>LIFT</NavLink>
-                <NavLink to="/circuit" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>CIRCUIT</NavLink>
+                    </h1>
+                </div>
+                <nav className="header-nav">
+                    <NavLink to="/plan" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>PLAN</NavLink>
+                    <NavLink to="/full-body" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>FULL BODY</NavLink>
+                    <NavLink to="/lift" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>LIFT</NavLink>
+                    <NavLink to="/circuit" className={({ isActive }) => isActive ? 'nav-tab active' : 'nav-tab'}>CIRCUIT</NavLink>
+                </nav>
             </div>
 
             <SessionStatsModal 
