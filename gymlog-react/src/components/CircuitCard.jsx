@@ -96,14 +96,6 @@ const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
             </div>
             <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Singles")} onChange={() => toggleNotePhrase("Singles")} />
-                        Singles
-                    </label>
-                    <label style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--muted)' }}>
-                        <input type="checkbox" checked={(input.note || "").includes("Alternating")} onChange={() => toggleNotePhrase("Alternating")} />
-                        Alternating
-                    </label>
                 </div>
                 <input 
                     placeholder="Notes..." 

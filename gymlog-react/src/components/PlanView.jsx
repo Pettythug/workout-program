@@ -125,17 +125,25 @@ export default function PlanView() {
             
             let finalPick = originalPick;
             if (daySwaps[originalBaseKey]) {
-                const swappedKey = daySwaps[originalBaseKey].toLowerCase();
-                if (groupedExercises[swappedKey]) {
-                    finalPick = groupedExercises[swappedKey];
-                } else {
-                    // Custom exercise
+                const swappedName = daySwaps[originalBaseKey];
+                const foundEx = exercises.find(e => e.name.toLowerCase() === swappedName.toLowerCase());
+                if (foundEx) {
                     finalPick = {
-                        baseName: daySwaps[originalBaseKey],
+                        baseName: foundEx.name,
+                        category: foundEx.category,
+                        variations: { "Standard": foundEx },
+                        ex: foundEx
+                    };
+                } else if (groupedExercises[swappedName.toLowerCase()]) {
+                    finalPick = groupedExercises[swappedName.toLowerCase()];
+                } else {
+                    finalPick = {
+                        baseName: swappedName,
                         category: originalPick.category,
                         variations: {
-                            "Standard": { name: daySwaps[originalBaseKey], category: originalPick.category, history: [] }
-                        }
+                            "Standard": { name: swappedName, category: originalPick.category, history: [] }
+                        },
+                        ex: { name: swappedName, category: originalPick.category, history: [] }
                     };
                 }
             }
@@ -598,6 +606,8 @@ export default function PlanView() {
                     </div>
 
                     {plannedExercises.map((group, idx) => {
+                        const ex = group.ex || (group.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || group;
+                        const displayName = ex?.name || group.baseName || ("Exercise " + (idx + 1));
                         const variations = Object.values(group.variations || {});
                         const isDone = variations.some(v => exerciseStatus[v.name] === 'done');
                         const isSkipped = variations.some(v => exerciseStatus[v.name] === 'skipped');
@@ -621,7 +631,7 @@ export default function PlanView() {
                                     setView('tracker');
                                 }}
                             >
-                                <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {group.baseName}</div>
+                                <div style={{ fontSize: 14, fontWeight: 'bold' }}>{idx + 1}. {displayName}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <div style={{ fontSize: 11, color: isDone ? 'var(--success)' : isSkipped ? 'var(--skip)' : 'var(--muted)', fontWeight: 'bold' }}>
                                         {isDone ? 'DONE' : isSkipped ? 'SKIPPED' : 'PENDING'}
@@ -632,7 +642,7 @@ export default function PlanView() {
                                             style={{ padding: '4px 10px', fontSize: 10, border: '1px solid var(--border)', color: 'white' }}
                                             onClick={(e) => { 
                                                 e.stopPropagation();
-                                                variations.forEach(v => resetExerciseStatus(v.name));
+                                                resetExerciseStatus(displayName);
                                                 setViewingWarmUp(false);
                                                 setView('tracker'); 
                                             }}

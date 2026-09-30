@@ -14,6 +14,7 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exTimed, setExTimed] = useState(false);
     const [exCategory, setExCategory] = useState('');
     const [exLocation, setExLocation] = useState('Anywhere');
+    const [exCreateStandard, setExCreateStandard] = useState(true);
     const [exCreateSingle, setExCreateSingle] = useState(false);
     const [exCreateAlt, setExCreateAlt] = useState(false);
     const [exIsCircuit, setExIsCircuit] = useState(false);
@@ -68,6 +69,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                 timed: exTimed,
                 category: exCategory,
                 location: exLocation,
+                createStandard: exCreateStandard,
                 createSingle: exCreateSingle,
                 createAlt: exCreateAlt,
                 isCircuit: exIsCircuit
@@ -77,6 +79,7 @@ export default function SettingsModal({ isOpen, onClose }) {
             setExTimed(false);
             setExCategory('');
             setExLocation('Anywhere');
+            setExCreateStandard(true);
             setExCreateSingle(false);
             setExCreateAlt(false);
             setExIsCircuit(false);
@@ -287,17 +290,38 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     Timed
                                 </label>
                                 <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <input type="checkbox" checked={exCreateSingle} onChange={e => setExCreateSingle(e.target.checked)} />
-                                    Create (Single)
-                                </label>
-                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <input type="checkbox" checked={exCreateAlt} onChange={e => setExCreateAlt(e.target.checked)} />
-                                    Create (Alt)
-                                </label>
-                                <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                                     <input type="checkbox" checked={exIsCircuit} onChange={e => setExIsCircuit(e.target.checked)} />
                                     Circuit Eligible
                                 </label>
+                            </div>
+                            <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Generate Modalities</div>
+                                <div style={{ display: 'flex', gap: 16 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={exCreateStandard} 
+                                            onChange={e => setExCreateStandard(e.target.checked)}
+                                        />
+                                        Standard
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={exCreateAlt} 
+                                            onChange={e => setExCreateAlt(e.target.checked)}
+                                        />
+                                        Alternating
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={exCreateSingle} 
+                                            onChange={e => setExCreateSingle(e.target.checked)}
+                                        />
+                                        Singles
+                                    </label>
+                                </div>
                             </div>
 
                             <button className="btn-success" onClick={handleCreateExercise} style={{ marginTop: 8, width: '100%' }}>
