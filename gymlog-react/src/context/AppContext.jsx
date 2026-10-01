@@ -311,19 +311,30 @@ export function AppProvider({ children }) {
                 localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
 
                 if (data && data.settings) {
+                    localStorage.setItem('gymlog_raw_settings', JSON.stringify(data.settings));
                     const owner = localStorage.getItem('builder_primary_user') || "Brian";
-                    if (data.settings[`${owner}_Plan_Day`]) {
-                        const val = parseInt(data.settings[`${owner}_Plan_Day`], 10) || 1;
+                    const ownerLower = owner.toLowerCase();
+                    
+                    // Plan Day mapping
+                    const planVal = data.settings[`builder_workout_num_${ownerLower}`] ?? data.settings[`${owner}_Plan_Day`] ?? data.settings['builder_workout_num'];
+                    if (planVal !== undefined) {
+                        const val = parseInt(planVal, 10) || 1;
                         setWorkoutDay(val);
                         localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(val));
                     }
-                    if (data.settings[`${owner}_Circuit_Day`]) {
-                        const val = parseInt(data.settings[`${owner}_Circuit_Day`], 10) || 1;
+
+                    // Circuit Day mapping
+                    const circVal = data.settings[`builder_circuit_num_${ownerLower}`] ?? data.settings[`${owner}_Circuit_Day`] ?? data.settings['builder_circuit_num'];
+                    if (circVal !== undefined) {
+                        const val = parseInt(circVal, 10) || 1;
                         setCircuitWorkoutDay(val);
                         localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(val));
                     }
-                    if (data.settings[`${owner}_FullBody_Day`]) {
-                        const val = parseInt(data.settings[`${owner}_FullBody_Day`], 10) || 1;
+
+                    // Full Body Day mapping
+                    const fbVal = data.settings[`builder_fullbody_num_${ownerLower}`] ?? data.settings[`${owner}_FullBody_Day`] ?? data.settings['builder_fullbody_num'];
+                    if (fbVal !== undefined) {
+                        const val = parseInt(fbVal, 10) || 1;
                         setFullBodyWorkoutDay(val);
                         localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
                     }
@@ -349,7 +360,18 @@ export function AppProvider({ children }) {
         setWorkoutDay(day);
         localStorage.setItem(`gymlog_workout_day_${deviceOwner}`, JSON.stringify(day));
         if (sheetsPost) {
-            sheetsPost({ action: 'updateSetting', key: `${deviceOwner}_Plan_Day`, value: day }).catch(console.warn);
+            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+            const calcType = (day % 2 === 1) ? 'Push' : 'Pull';
+            sheetsPost({ 
+                action: 'saveSettings', 
+                settings: {
+                    [`builder_workout_num_${ownerLower}`]: day,
+                    [`builder_workout_type_${ownerLower}`]: calcType,
+                    'builder_workout_num': day,
+                    'builder_workout_type': calcType,
+                    [`${deviceOwner}_Plan_Day`]: day
+                }
+            }).catch(console.warn);
         }
     };
 
@@ -357,7 +379,15 @@ export function AppProvider({ children }) {
         setCircuitWorkoutDay(day);
         localStorage.setItem(`gymlog_circuit_workout_day_${deviceOwner}`, JSON.stringify(day));
         if (sheetsPost) {
-            sheetsPost({ action: 'updateSetting', key: `${deviceOwner}_Circuit_Day`, value: day }).catch(console.warn);
+            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+            sheetsPost({ 
+                action: 'saveSettings', 
+                settings: {
+                    [`builder_circuit_num_${ownerLower}`]: day,
+                    'builder_circuit_num': day,
+                    [`${deviceOwner}_Circuit_Day`]: day
+                }
+            }).catch(console.warn);
         }
     };
 
@@ -365,7 +395,15 @@ export function AppProvider({ children }) {
         setFullBodyWorkoutDay(day);
         localStorage.setItem(`gymlog_fullBody_workout_day_${deviceOwner}`, JSON.stringify(day));
         if (sheetsPost) {
-            sheetsPost({ action: 'updateSetting', key: `${deviceOwner}_FullBody_Day`, value: day }).catch(console.warn);
+            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+            sheetsPost({ 
+                action: 'saveSettings', 
+                settings: {
+                    [`builder_fullbody_num_${ownerLower}`]: day,
+                    'builder_fullbody_num': day,
+                    [`${deviceOwner}_FullBody_Day`]: day
+                }
+            }).catch(console.warn);
         }
     };
 
@@ -396,12 +434,25 @@ export function AppProvider({ children }) {
             return prev;
         });
 
+        let rawSettings = {};
+        try {
+            rawSettings = JSON.parse(localStorage.getItem('gymlog_raw_settings') || '{}');
+        } catch (e) {
+            console.warn('Failed to parse raw settings:', e);
+        }
+
+        const ownerLower = newOwner.toLowerCase();
         const planCached = localStorage.getItem(`gymlog_workout_day_${newOwner}`);
-        setWorkoutDay(planCached ? JSON.parse(planCached) : 1);
+        const planFromSettings = rawSettings[`builder_workout_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Plan_Day`];
+        setWorkoutDay(planCached ? JSON.parse(planCached) : (parseInt(planFromSettings, 10) || 1));
+
         const circCached = localStorage.getItem(`gymlog_circuit_workout_day_${newOwner}`);
-        setCircuitWorkoutDay(circCached ? JSON.parse(circCached) : 1);
+        const circFromSettings = rawSettings[`builder_circuit_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Circuit_Day`];
+        setCircuitWorkoutDay(circCached ? JSON.parse(circCached) : (parseInt(circFromSettings, 10) || 1));
+
         const fbCached = localStorage.getItem(`gymlog_fullBody_workout_day_${newOwner}`);
-        setFullBodyWorkoutDay(fbCached ? JSON.parse(fbCached) : 1);
+        const fbFromSettings = rawSettings[`builder_fullbody_num_${ownerLower}`] ?? rawSettings[`${newOwner}_FullBody_Day`];
+        setFullBodyWorkoutDay(fbCached ? JSON.parse(fbCached) : (parseInt(fbFromSettings, 10) || 1));
     };
 
     const setExerciseDone = (exName) => {
