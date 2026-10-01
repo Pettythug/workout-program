@@ -103,6 +103,18 @@ export function useGymAPI() {
         }
     }, []);
 
+    const sheetsGet = useCallback(async (params) => {
+        const url = getApiUrl();
+        const searchParams = new URLSearchParams(params);
+        searchParams.append('t', new Date().getTime());
+        const fetchUrl = `${url}${url.includes('?') ? '&' : '?'}${searchParams.toString()}`;
+        
+        const res = await fetch(fetchUrl, { cache: "no-store" });
+        const json = await res.json();
+        if (json.status !== "ok") throw new Error(json.message);
+        return json.data;
+    }, []);
+
     /**
      * Log sets for an exercise.
      * @param {string} exName 
@@ -218,6 +230,7 @@ export function useGymAPI() {
         saveExercise,
         syncMeta,
         sheetsPost,
+        sheetsGet,
         deleteExercise,
         saveSettings,
         saveExerciseNote,

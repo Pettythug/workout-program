@@ -126,7 +126,7 @@ export default function SettingsModal({ isOpen, onClose }) {
     };
 
     return createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 12, boxSizing: 'border-box' }}>
             <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 420, padding: 20, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <h3 style={{ margin: 0, fontSize: 16, letterSpacing: 1, color: 'var(--accent)' }}>SETTINGS</h3>
@@ -250,7 +250,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </div>
                         ))}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                         <input 
                             placeholder="New location..." 
                             value={newLocation} 

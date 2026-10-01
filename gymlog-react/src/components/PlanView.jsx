@@ -13,7 +13,7 @@ export default function PlanView() {
         exercises, workoutDay, updateWorkoutDay, loading, dailySwaps, 
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
-        sessionStartTime, resetSessionTime, saveCompletedSession,
+        sessionStartTime, resetSessionTime, completeWorkoutBatch, deviceOwner,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
@@ -35,7 +35,7 @@ export default function PlanView() {
         try {
             const cached = localStorage.getItem('gymlog_plan_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (_e) {
+        } catch {
             return null;
         }
     });
@@ -46,7 +46,7 @@ export default function PlanView() {
         try {
             const saved = localStorage.getItem('gymlog_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (_e) {
+        } catch {
             return [];
         }
     });
@@ -110,14 +110,17 @@ export default function PlanView() {
             }
             if (subset.length === 0) {
                 subset = availableGroups.filter(g => {
-                    const ex = g.variations["Standard"] || Object.values(g.variations)[0];
                     return categories.includes(g.category);
                 });
             }
             if (subset.length === 0) return null;
             
-            // Deterministic calculation: derive exercise rotation directly from workoutDay
-            const dayCycleIndex = Math.max(0, Math.floor((workoutDay - 1) / 2));
+            // Deterministic calculation: daily categories (like Explosive) increment every day,
+            // while split-specific categories increment on alternating workout days
+            const isDailyCategory = categories.includes('Explosive');
+            const dayCycleIndex = isDailyCategory 
+                ? Math.max(0, workoutDay - 1) 
+                : Math.max(0, Math.floor((workoutDay - 1) / 2));
             const originalPick = subset[dayCycleIndex % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             
@@ -250,9 +253,23 @@ export default function PlanView() {
             endTimestamp: endTime
         };
 
-        const saved = saveCompletedSession(summary);
-        setCompletedSummary(saved || summary);
-        localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(saved || summary));
+        const owner = deviceOwner || "Brian";
+        const ownerLower = owner.toLowerCase();
+        const nextDay = workoutDay + 1;
+        const calcType = (nextDay % 2 === 1) ? 'Push' : 'Pull';
+
+        const updatedSettings = {
+            [`builder_workout_num_${ownerLower}`]: nextDay,
+            [`builder_workout_type_${ownerLower}`]: calcType,
+            'builder_workout_num': nextDay,
+            'builder_workout_type': calcType,
+            [`${owner}_Plan_Day`]: nextDay
+        };
+
+        completeWorkoutBatch(summary, updatedSettings).then(saved => {
+            setCompletedSummary(saved || summary);
+            localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(saved || summary));
+        });
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
@@ -263,7 +280,7 @@ export default function PlanView() {
         clearAllExerciseStatus();
 
         // 2. Progress day (split & exercises automatically derive from workoutDay)
-        updateWorkoutDay(workoutDay + 1);
+        updateWorkoutDay(workoutDay + 1, true);
 
         // 4. Reset completion state & session time
         setIsWorkoutComplete(false);

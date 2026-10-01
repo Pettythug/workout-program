@@ -31,9 +31,9 @@ export default function CircuitView() {
         updateExerciseInLocalState,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
-        sessionStartTime, startSession, resetSessionTime, saveCompletedSession,
+        sessionStartTime, startSession, resetSessionTime,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
-        circuitWorkoutDay, updateCircuitWorkoutDay
+        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutBatch, deviceOwner
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -273,9 +273,20 @@ export default function CircuitView() {
             endTimestamp: endTime
         };
 
-        const saved = saveCompletedSession(summary);
-        setCompletedSummary(saved || summary);
-        localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
+        const owner = deviceOwner || "Brian";
+        const ownerLower = owner.toLowerCase();
+        const nextDay = (circuitWorkoutDay % 16) + 1;
+
+        const updatedSettings = {
+            [`builder_circuit_num_${ownerLower}`]: nextDay,
+            'builder_circuit_num': nextDay,
+            [`${owner}_Circuit_Day`]: nextDay
+        };
+
+        completeWorkoutBatch(summary, updatedSettings).then(saved => {
+            setCompletedSummary(saved || summary);
+            localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
+        });
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_circuit_complete', 'true');
@@ -283,7 +294,7 @@ export default function CircuitView() {
 
     const startNextWorkout = () => {
         const nextDay = (circuitWorkoutDay % 16) + 1;
-        updateCircuitWorkoutDay(nextDay);
+        updateCircuitWorkoutDay(nextDay, true);
         
         updateCircuitState([], {});
         clearAllExerciseStatus();

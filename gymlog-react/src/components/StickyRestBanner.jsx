@@ -23,7 +23,7 @@ export default function StickyRestBanner() {
         return (
             <div style={{
                 width: '100%',
-                padding: '6px 16px',
+                padding: '6px 12px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -31,16 +31,21 @@ export default function StickyRestBanner() {
                 background: '#ef4444',
                 boxSizing: 'border-box',
                 transform: 'translateZ(0)',
-                willChange: 'transform'
+                willChange: 'transform',
+                gap: '8px'
             }}>
                 <div style={{
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: '700',
                     color: '#ffffff',
                     letterSpacing: '0.03em',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    minWidth: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
                 }}>
                     🚨 REST COMPLETE (0:00)
                 </div>
@@ -55,7 +60,9 @@ export default function StickyRestBanner() {
                                 border: '1px solid rgba(255, 255, 255, 0.4)',
                                 color: '#ffffff',
                                 background: 'rgba(0, 0, 0, 0.25)',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                whiteSpace: 'nowrap'
                             }}
                             onClick={() => startRestTimer(restDuration)}
                         >
@@ -71,7 +78,9 @@ export default function StickyRestBanner() {
                             border: '1px solid #ffffff',
                             color: '#ef4444',
                             background: '#ffffff',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            whiteSpace: 'nowrap'
                         }}
                         onClick={resetTimer}
                     >
@@ -85,7 +94,7 @@ export default function StickyRestBanner() {
     return (
         <div style={{
             width: '100%',
-            padding: '6px 16px',
+            padding: '6px 12px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -93,10 +102,11 @@ export default function StickyRestBanner() {
             background: 'var(--surface)',
             boxSizing: 'border-box',
             transform: 'translateZ(0)',
-            willChange: 'transform'
+            willChange: 'transform',
+            gap: '8px'
         }}>
             <div style={{
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: '700',
                 fontFamily: 'var(--mono)',
                 color: timerIsCountdown 
@@ -105,7 +115,11 @@ export default function StickyRestBanner() {
                 letterSpacing: '0.02em',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                minWidth: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
             }}>
                 {timerIsCountdown 
                     ? `⏳ REST ${formatTimerTime(timerSeconds)}` 
@@ -114,7 +128,7 @@ export default function StickyRestBanner() {
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                 <button
                     className="btn-ghost"
-                    style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                    style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                     onClick={toggleTimer}
                 >
                     {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
@@ -123,14 +137,14 @@ export default function StickyRestBanner() {
                     <>
                         <button
                             className="btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                             onClick={() => startRestTimer(timerSeconds + 30)}
                         >
                             +30S
                         </button>
                         <button
                             className="btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                             onClick={resetTimer}
                         >
                             SKIP
@@ -139,7 +153,7 @@ export default function StickyRestBanner() {
                 ) : (
                     <button
                         className="btn-ghost"
-                        style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                        style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
                         onClick={resetTimer}
                     >
                         RESET

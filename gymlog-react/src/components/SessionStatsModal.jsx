@@ -93,7 +93,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1100,
+            zIndex: 2000,
             padding: 12,
             boxSizing: 'border-box'
         }}>
@@ -151,18 +151,18 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                 {new Date(sessionStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({(Math.max(1, Math.round((now - sessionStartTime) / 60000)))}m elapsed)
                             </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                             <button 
                                 className="btn-ghost" 
                                 onClick={() => startSession(Date.now())}
-                                style={{ flex: 1, padding: 8, fontSize: 11, border: '1px solid var(--accent)', color: 'var(--accent)' }}
+                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '8px 6px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid var(--accent)', color: 'var(--accent)' }}
                             >
                                 ⏱️ Reset to 0m
                             </button>
                             <button 
                                 className="btn-ghost" 
                                 onClick={() => resetSessionTime()}
-                                style={{ flex: 1, padding: 8, fontSize: 11, border: '1px solid #ef4444', color: '#ef4444' }}
+                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '8px 6px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid #ef4444', color: '#ef4444' }}
                             >
                                 🗑️ Clear Clock
                             </button>

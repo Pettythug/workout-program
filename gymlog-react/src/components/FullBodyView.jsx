@@ -13,7 +13,7 @@ export default function FullBodyView() {
         exercises, fullBodyWorkoutDay, updateFullBodyWorkoutDay, loading, fullBodySwaps, swapFullBodyExercise,
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
-        sessionStartTime, resetSessionTime, saveCompletedSession,
+        sessionStartTime, resetSessionTime, completeWorkoutBatch, deviceOwner,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
@@ -31,7 +31,7 @@ export default function FullBodyView() {
         try {
             const cached = localStorage.getItem('gymlog_fullBody_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (_e) {
+        } catch {
             return null;
         }
     });
@@ -40,7 +40,7 @@ export default function FullBodyView() {
         try {
             const saved = localStorage.getItem('gymlog_fullBody_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (_e) {
+        } catch {
             return [];
         }
     });
@@ -103,7 +103,6 @@ export default function FullBodyView() {
             }
             if (subset.length === 0) {
                 subset = availableGroups.filter(g => {
-                    const ex = g.variations["Standard"] || Object.values(g.variations)[0];
                     return categories.includes(g.category);
                 });
             }
@@ -243,9 +242,20 @@ export default function FullBodyView() {
             endTimestamp: endTime
         };
 
-        const saved = saveCompletedSession(summary);
-        setCompletedSummary(saved || summary);
-        localStorage.setItem('gymlog_fullBody_last_summary', JSON.stringify(saved || summary));
+        const owner = deviceOwner || "Brian";
+        const ownerLower = owner.toLowerCase();
+        const nextDay = fullBodyWorkoutDay + 1;
+
+        const updatedSettings = {
+            [`builder_fullbody_num_${ownerLower}`]: nextDay,
+            'builder_fullbody_num': nextDay,
+            [`${owner}_FullBody_Day`]: nextDay
+        };
+
+        completeWorkoutBatch(summary, updatedSettings).then(saved => {
+            setCompletedSummary(saved || summary);
+            localStorage.setItem('gymlog_fullBody_last_summary', JSON.stringify(saved || summary));
+        });
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_fullBody_complete', 'true');
@@ -267,7 +277,7 @@ export default function FullBodyView() {
         clearAllExerciseStatus();
 
         // 3. Progress day
-        updateFullBodyWorkoutDay(fullBodyWorkoutDay + 1);
+        updateFullBodyWorkoutDay(fullBodyWorkoutDay + 1, true);
 
         // 4. Reset completion state & session time
         setIsWorkoutComplete(false);

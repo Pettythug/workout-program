@@ -16,7 +16,7 @@ export function getDefaultRestForRepRange(repRange) {
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-    const { syncAll, syncMeta, saveExercise, logSet, sheetsPost } = useGymAPI();
+    const { syncAll, syncMeta, saveExercise, logSet, sheetsPost, sheetsGet } = useGymAPI();
     
     // Core state variables
     const [workoutDay, setWorkoutDay] = useState(() => {
@@ -274,6 +274,7 @@ export function AppProvider({ children }) {
             const cachedExercises = localStorage.getItem('gymlog_exercises');
             const cachedPeople = localStorage.getItem('gymlog_people');
             const cachedLocations = localStorage.getItem('gymlog_locations');
+            const cachedVersion = localStorage.getItem('gymlog_library_version');
             
             if (cachedExercises && cachedPeople) {
                 setLoading(false); // Instant load UI from cache
@@ -283,7 +284,26 @@ export function AppProvider({ children }) {
                 if (!cachedExercises || !cachedPeople) {
                     setLoading(true);
                 }
-                const data = await syncAll(false, controller.signal);
+
+                let shouldSyncAll = true;
+                if (cachedExercises && cachedPeople && sheetsGet) {
+                    try {
+                        const versionData = await sheetsGet({ action: 'checkVersion' });
+                        if (versionData && versionData.version !== undefined) {
+                            if (cachedVersion && parseInt(cachedVersion, 10) === versionData.version) {
+                                shouldSyncAll = false;
+                            }
+                            localStorage.setItem('gymlog_library_version', versionData.version.toString());
+                        }
+                    } catch (e) { console.warn("checkVersion failed", e); }
+                }
+
+                if (shouldSyncAll) {
+                    const data = await syncAll(false, controller.signal);
+                    
+                    if (data && data.settings && data.settings.library_version) {
+                        localStorage.setItem('gymlog_library_version', data.settings.library_version.toString());
+                    }
                 
                 // Merge data
                 const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
@@ -339,6 +359,7 @@ export function AppProvider({ children }) {
                         localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
                     }
                 }
+                }
 
             } catch (error) {
                 if (error.name === 'AbortError' || controller.signal.aborted) return;
@@ -353,13 +374,13 @@ export function AppProvider({ children }) {
 
         loadInitialData();
         return () => controller.abort();
-    }, [syncAll]);
+    }, [syncAll, sheetsGet]);
 
     // State Modifiers
-    const updateWorkoutDay = (day) => {
+    const updateWorkoutDay = (day, skipSync = false) => {
         setWorkoutDay(day);
         localStorage.setItem(`gymlog_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost) {
+        if (sheetsPost && !skipSync) {
             const ownerLower = (deviceOwner || 'brian').toLowerCase();
             const calcType = (day % 2 === 1) ? 'Push' : 'Pull';
             sheetsPost({ 
@@ -375,10 +396,10 @@ export function AppProvider({ children }) {
         }
     };
 
-    const updateCircuitWorkoutDay = (day) => {
+    const updateCircuitWorkoutDay = (day, skipSync = false) => {
         setCircuitWorkoutDay(day);
         localStorage.setItem(`gymlog_circuit_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost) {
+        if (sheetsPost && !skipSync) {
             const ownerLower = (deviceOwner || 'brian').toLowerCase();
             sheetsPost({ 
                 action: 'saveSettings', 
@@ -391,10 +412,10 @@ export function AppProvider({ children }) {
         }
     };
 
-    const updateFullBodyWorkoutDay = (day) => {
+    const updateFullBodyWorkoutDay = (day, skipSync = false) => {
         setFullBodyWorkoutDay(day);
         localStorage.setItem(`gymlog_fullBody_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost) {
+        if (sheetsPost && !skipSync) {
             const ownerLower = (deviceOwner || 'brian').toLowerCase();
             sheetsPost({ 
                 action: 'saveSettings', 
@@ -696,7 +717,7 @@ export function AppProvider({ children }) {
         return `${hh}:${min}:${ss}`;
     };
 
-    const saveCompletedSession = (sessionData) => {
+    const saveCompletedSession = (sessionData, skipServerSync = false) => {
         const startTs = sessionData.startTimestamp || sessionStartTime || Date.now();
         const prog = (sessionData.program || 'Plan').trim().replace(/\s+/g, '');
         
@@ -741,21 +762,55 @@ export function AppProvider({ children }) {
             return next;
         });
 
-        // Background Google Sheets sync via sheetsPost({ action: 'logSession', ...sessionData })
-        (async () => {
-            try {
-                if (sheetsPost) {
-                    await sheetsPost({
-                        action: 'logSession',
-                        ...newSession
-                    });
-                    console.log('[Sheets Sync] Session synced successfully:', newSession.id);
+        if (!skipServerSync) {
+            // Background Google Sheets sync via sheetsPost({ action: 'logSession', ...sessionData })
+            (async () => {
+                try {
+                    if (sheetsPost) {
+                        await sheetsPost({
+                            action: 'logSession',
+                            ...newSession
+                        });
+                        console.log('[Sheets Sync] Session synced successfully:', newSession.id);
+                    }
+                } catch (err) {
+                    console.warn('[Sheets Sync] Background session sync warning:', err.message || err);
                 }
-            } catch (err) {
-                console.warn('[Sheets Sync] Background session sync warning:', err.message || err);
-            }
-        })();
+            })();
+        }
 
+        return newSession;
+    };
+
+    const completeWorkoutBatch = async (sessionData, updatedSettings = {}) => {
+        setIsSyncing(true);
+        const newSession = saveCompletedSession(sessionData, true); // skipServerSync = true
+
+        const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+        
+        const payload = {
+            action: 'batchSyncSession',
+            session: newSession,
+            settings: updatedSettings,
+            sets: pendingSets
+        };
+
+        try {
+            if (sheetsPost) {
+                await sheetsPost(payload);
+                localStorage.setItem('gymlog_pending_sets', '[]'); // clear only on success
+            }
+        } catch (err) {
+            console.warn("Network failed, storing payload in gymlog_pending_sync_queue", err);
+            const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+            queue.push(payload);
+            localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
+            // In a real app we'd also leave gymlog_pending_sets alone, or clear them and depend entirely on the sync queue.
+            // Since we put them in the payload which will be retried, we can clear them here.
+            localStorage.setItem('gymlog_pending_sets', '[]');
+        } finally {
+            setIsSyncing(false);
+        }
         return newSession;
     };
 
@@ -925,18 +980,15 @@ export function AppProvider({ children }) {
 
             if (cancelled) return null;
 
-            // API sync & local history update
-            try {
-                await logSet(ex.name, entries, userPins);
-            } catch (err) {
-                if (err.message && err.message.toLowerCase().includes("invalid pin")) {
-                    // Clean up stored localStorage keys to force re-prompt
-                    activePeople.forEach(p => {
-                        localStorage.removeItem('gymlog_pin_' + p.toLowerCase());
-                    });
-                }
-                throw err;
-            }
+            // Zero-latency local update
+            const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+            pendingSets.push({
+                exercise: ex.name,
+                entries: entries,
+                userPins: userPins
+            });
+            localStorage.setItem('gymlog_pending_sets', JSON.stringify(pendingSets));
+
             addSetToLocalHistory(ex.name, entries);
             return entries;
         }
@@ -972,6 +1024,7 @@ export function AppProvider({ children }) {
         endSession,
         resetSessionTime,
         saveCompletedSession,
+        completeWorkoutBatch,
         deleteSession,
         getRepRangeStats,
         updateWorkoutDay,

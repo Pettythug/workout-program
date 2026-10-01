@@ -121,8 +121,8 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
     if (!isOpen) return null;
 
     return createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }} onClick={onClose}>
-            <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', width: '100%', maxWidth: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 12, boxSizing: 'border-box' }} onClick={onClose}>
+            <div style={{ background: '#111', padding: 16, borderRadius: 12, position: 'relative', width: '100%', maxWidth: 420, maxHeight: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflowX: 'hidden' }} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <div style={{ fontSize: 16, fontWeight: 700 }}>{baseName}</div>
                     <button className="btn-ghost" onClick={onClose} style={{ fontSize: 20, padding: 0, lineHeight: 1 }}>×</button>
