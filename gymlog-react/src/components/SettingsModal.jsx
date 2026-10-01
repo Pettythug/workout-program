@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import SessionStatsModal from './SessionStatsModal';
@@ -30,6 +30,17 @@ export default function SettingsModal({ isOpen, onClose }) {
 
     const [deleteExName, setDeleteExName] = useState('');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+    const [planDayInput, setPlanDayInput] = useState(workoutDay);
+    const [fullBodyDayInput, setFullBodyDayInput] = useState(fullBodyWorkoutDay);
+    const [circuitDayInput, setCircuitDayInput] = useState(circuitWorkoutDay);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setPlanDayInput(workoutDay);
+        setFullBodyDayInput(fullBodyWorkoutDay);
+        setCircuitDayInput(circuitWorkoutDay);
+    }, [workoutDay, fullBodyWorkoutDay, circuitWorkoutDay]);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -378,39 +389,111 @@ export default function SettingsModal({ isOpen, onClose }) {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 13, color: 'white' }}>Plan Workout #</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateWorkoutDay(Math.max(1, workoutDay - 1))}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >-</button>
                                 <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={workoutDay} 
-                                    onChange={e => updateWorkoutDay(parseInt(e.target.value) || 1)}
+                                    type="text" 
+                                    value={planDayInput} 
+                                    onChange={e => {
+                                        setPlanDayInput(e.target.value);
+                                        const parsed = parseInt(e.target.value, 10);
+                                        if (!isNaN(parsed) && parsed >= 1) {
+                                            updateWorkoutDay(parsed);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        const parsed = parseInt(planDayInput, 10);
+                                        if (isNaN(parsed) || parsed < 1) {
+                                            setPlanDayInput(workoutDay);
+                                        } else {
+                                            setPlanDayInput(parsed);
+                                            updateWorkoutDay(parsed);
+                                        }
+                                    }}
                                     style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
                                 />
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateWorkoutDay(workoutDay + 1)}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >+</button>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 13, color: 'white' }}>Full Body Workout #</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateFullBodyWorkoutDay(Math.max(1, fullBodyWorkoutDay - 1))}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >-</button>
                                 <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={fullBodyWorkoutDay} 
-                                    onChange={e => updateFullBodyWorkoutDay(parseInt(e.target.value) || 1)}
+                                    type="text" 
+                                    value={fullBodyDayInput} 
+                                    onChange={e => {
+                                        setFullBodyDayInput(e.target.value);
+                                        const parsed = parseInt(e.target.value, 10);
+                                        if (!isNaN(parsed) && parsed >= 1) {
+                                            updateFullBodyWorkoutDay(parsed);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        const parsed = parseInt(fullBodyDayInput, 10);
+                                        if (isNaN(parsed) || parsed < 1) {
+                                            setFullBodyDayInput(fullBodyWorkoutDay);
+                                        } else {
+                                            setFullBodyDayInput(parsed);
+                                            updateFullBodyWorkoutDay(parsed);
+                                        }
+                                    }}
                                     style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
                                 />
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateFullBodyWorkoutDay(fullBodyWorkoutDay + 1)}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >+</button>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 13, color: 'white' }}>Circuit Workout #</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateCircuitWorkoutDay(Math.max(1, circuitWorkoutDay - 1))}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >-</button>
                                 <input 
-                                    type="number" 
-                                    min="1" 
-                                    value={circuitWorkoutDay} 
-                                    onChange={e => updateCircuitWorkoutDay(parseInt(e.target.value) || 1)}
+                                    type="text" 
+                                    value={circuitDayInput} 
+                                    onChange={e => {
+                                        setCircuitDayInput(e.target.value);
+                                        const parsed = parseInt(e.target.value, 10);
+                                        if (!isNaN(parsed) && parsed >= 1) {
+                                            updateCircuitWorkoutDay(parsed);
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        const parsed = parseInt(circuitDayInput, 10);
+                                        if (isNaN(parsed) || parsed < 1) {
+                                            setCircuitDayInput(circuitWorkoutDay);
+                                        } else {
+                                            setCircuitDayInput(parsed);
+                                            updateCircuitWorkoutDay(parsed);
+                                        }
+                                    }}
                                     style={{ width: 60, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', textAlign: 'center' }}
                                 />
+                                <button 
+                                    className="btn-ghost"
+                                    onClick={() => updateCircuitWorkoutDay(circuitWorkoutDay + 1)}
+                                    style={{ padding: '4px 12px', border: '1px solid var(--border)', borderRadius: 8, color: 'white', background: '#1a1a1a' }}
+                                >+</button>
                             </div>
                         </div>
                     </div>
