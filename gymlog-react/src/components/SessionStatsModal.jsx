@@ -83,25 +83,34 @@ export default function SessionStatsModal({ isOpen, onClose }) {
     return createPortal(
         <div style={{
             position: 'fixed',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
             background: 'rgba(0,0,0,0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1100,
-            padding: 16
+            padding: 12,
+            boxSizing: 'border-box'
         }}>
             <div style={{
                 background: '#111',
                 borderRadius: 16,
                 width: '100%',
-                maxWidth: 480,
-                padding: 24,
+                maxWidth: 420,
+                padding: 20,
                 border: '1px solid var(--border)',
                 maxHeight: '90vh',
+                overflowY: 'auto',
+                overflowX: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
+                boxSizing: 'border-box',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
             }}>
                 {/* Header */}

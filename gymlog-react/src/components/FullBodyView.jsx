@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
@@ -32,7 +31,7 @@ export default function FullBodyView() {
         try {
             const cached = localStorage.getItem('gymlog_fullBody_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
     });
@@ -41,7 +40,7 @@ export default function FullBodyView() {
         try {
             const saved = localStorage.getItem('gymlog_fullBody_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (e) {
+        } catch (_e) {
             return [];
         }
     });
@@ -110,12 +109,9 @@ export default function FullBodyView() {
             }
             if (subset.length === 0) return null;
             
-            // Smart tracking: use an independent counter for each Full Body category block
-            const rotationKey = categories.join('_').replace(/\s/g, '');
-            let idxVal = parseInt(localStorage.getItem('gymlog_fullBody_rotation_' + rotationKey) || '0', 10);
-            if (isNaN(idxVal) || idxVal < 0) idxVal = 0;
-            
-            const originalPick = subset[idxVal % subset.length];
+            // Deterministic calculation: derive rotation directly from fullBodyWorkoutDay
+            const dayCycleIndex = Math.max(0, fullBodyWorkoutDay - 1);
+            const originalPick = subset[dayCycleIndex % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             
             let finalPick = originalPick;
@@ -146,7 +142,6 @@ export default function FullBodyView() {
             return {
                 ...finalPick,
                 originalBaseKey,
-                rotationKey, // Pass this out so we can increment it when the workout completes
                 alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
             };
         };

@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
@@ -19,9 +18,11 @@ export default function PlanView() {
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
     } = useAppContext();
-    const [workoutType, setWorkoutType] = useState(() => {
-        return localStorage.getItem('gymlog_workoutType') || 'Pull';
-    });
+    // Push on odd days (1, 3, 5...), Pull on even days (2, 4, 6...)
+    const [overrideSplit, setOverrideSplit] = useState({ day: workoutDay, type: null });
+    const workoutType = (overrideSplit.day === workoutDay && overrideSplit.type) 
+        ? overrideSplit.type 
+        : ((workoutDay % 2 === 1) ? 'Push' : 'Pull');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function PlanView() {
         try {
             const cached = localStorage.getItem('gymlog_plan_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
     });
@@ -45,7 +46,7 @@ export default function PlanView() {
         try {
             const saved = localStorage.getItem('gymlog_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (e) {
+        } catch (_e) {
             return [];
         }
     });
@@ -115,12 +116,9 @@ export default function PlanView() {
             }
             if (subset.length === 0) return null;
             
-            // Smart tracking: use a unique counter for each category block instead of workoutDay
-            const rotationKey = categories.join('_').replace(/\s/g, '');
-            let idxVal = parseInt(localStorage.getItem('gymlog_rotation_' + rotationKey) || '0', 10);
-            if (isNaN(idxVal) || idxVal < 0) idxVal = 0;
-            
-            const originalPick = subset[idxVal % subset.length];
+            // Deterministic calculation: derive exercise rotation directly from workoutDay
+            const dayCycleIndex = Math.max(0, Math.floor((workoutDay - 1) / 2));
+            const originalPick = subset[dayCycleIndex % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             
             let finalPick = originalPick;
@@ -151,7 +149,6 @@ export default function PlanView() {
             return {
                 ...finalPick,
                 originalBaseKey,
-                rotationKey, // Pass this out so we can increment it when the workout completes
                 alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
             };
         };
@@ -229,8 +226,7 @@ export default function PlanView() {
     const toggleWorkoutType = () => {
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
         if (window.confirm(`You are currently viewing a ${workoutType} workout.\n\nDo you want to switch to a ${newType} workout instead?`)) {
-            setWorkoutType(newType);
-            localStorage.setItem('gymlog_workoutType', newType);
+            setOverrideSplit({ day: workoutDay, type: newType });
         }
     };
 
@@ -263,24 +259,10 @@ export default function PlanView() {
     };
 
     const startNextWorkout = () => {
-        // 1. Increment rotations
-        plannedExercises.forEach(ex => {
-            if (ex && ex.rotationKey) {
-                let currentIdx = parseInt(localStorage.getItem('gymlog_rotation_' + ex.rotationKey) || '0', 10);
-                if (isNaN(currentIdx) || currentIdx < 0) currentIdx = 0;
-                const nextIdx = currentIdx + 1;
-                localStorage.setItem('gymlog_rotation_' + ex.rotationKey, nextIdx.toString());
-                console.log(`[Rotation Audit] Incremented key: ${ex.rotationKey} | Old: ${currentIdx} | New: ${nextIdx}`);
-            }
-        });
-
-        // 2. Clear global checkmarks
+        // 1. Clear global checkmarks
         clearAllExerciseStatus();
 
-        // 3. Progress day and swap type
-        const newType = workoutType === 'Push' ? 'Pull' : 'Push';
-        setWorkoutType(newType);
-        localStorage.setItem('gymlog_workoutType', newType);
+        // 2. Progress day (split & exercises automatically derive from workoutDay)
         updateWorkoutDay(workoutDay + 1);
 
         // 4. Reset completion state & session time

@@ -104,6 +104,7 @@ function doGet(e) {
       if (payload.action === "saveExercise")   return withLock(gymlog_handleSaveExercise, payload);
       if (payload.action === "getSettings")    return gymlog_handleGetSettings();
       if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
+      if (payload.action === "updateSetting")  return withLock(gymlog_handleUpdateSetting, payload);
       if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
       if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
       if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
@@ -136,6 +137,7 @@ function doPost(e) {
     if (payload.action === "savePeople")     return withLock(gymlog_handleSavePeople, payload);
     if (payload.action === "saveExercise")   return withLock(gymlog_handleSaveExercise, payload);
     if (payload.action === "saveSettings")   return withLock(gymlog_handleSaveSettings, payload);
+    if (payload.action === "updateSetting")  return withLock(gymlog_handleUpdateSetting, payload);
     if (payload.action === "saveExerciseNote") return withLock(gymlog_handleSaveExerciseNote, payload);
     if (payload.action === "renameExercise") return withLock(gymlog_handleRenameExercise, payload);
     if (payload.action === "uploadImage")    return withLock(gymlog_handleUploadImage, payload);
@@ -757,6 +759,27 @@ function gymlog_handleSaveSettings(payload) {
     }
   }
   return ok({ saved: Object.keys(settings).length });
+}
+
+function gymlog_handleUpdateSetting(payload) {
+  const { key, value } = payload;
+  if (!key) return err("No key provided");
+  const sheet = getOrCreateSheet(SETTINGS_TAB, SETTINGS_HEADERS);
+  const lastRow = sheet.getLastRow();
+  let rowIndex = -1;
+  if (lastRow > 1) {
+    const keys = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < keys.length; i++) {
+      if (String(keys[i][0]).trim() === String(key).trim()) { rowIndex = i + 2; break; }
+    }
+  }
+  
+  if (rowIndex > 0) {
+    sheet.getRange(rowIndex, 2).setValue(value);
+  } else {
+    sheet.appendRow([key, value]);
+  }
+  return ok({ updated: key });
 }
 
 
