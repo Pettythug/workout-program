@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
@@ -32,7 +31,7 @@ export default function FullBodyView() {
         try {
             const cached = localStorage.getItem('gymlog_fullBody_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
     });
@@ -41,7 +40,7 @@ export default function FullBodyView() {
         try {
             const saved = localStorage.getItem('gymlog_fullBody_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (e) {
+        } catch (_e) {
             return [];
         }
     });
@@ -143,7 +142,6 @@ export default function FullBodyView() {
             return {
                 ...finalPick,
                 originalBaseKey,
-                rotationKey, // Pass this out so we can increment it when the workout completes
                 alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
             };
         };

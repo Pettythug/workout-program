@@ -1,4 +1,3 @@
-/* eslint-disable */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
@@ -20,13 +19,10 @@ export default function PlanView() {
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
     } = useAppContext();
     // Push on odd days (1, 3, 5...), Pull on even days (2, 4, 6...)
-    const calculatedType = (workoutDay % 2 === 1) ? 'Push' : 'Pull';
-    const [overrideType, setOverrideType] = useState(null);
-    const workoutType = overrideType || calculatedType;
-
-    useEffect(() => {
-        setOverrideType(null);
-    }, [workoutDay]);
+    const [overrideSplit, setOverrideSplit] = useState({ day: workoutDay, type: null });
+    const workoutType = (overrideSplit.day === workoutDay && overrideSplit.type) 
+        ? overrideSplit.type 
+        : ((workoutDay % 2 === 1) ? 'Push' : 'Pull');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -39,7 +35,7 @@ export default function PlanView() {
         try {
             const cached = localStorage.getItem('gymlog_plan_last_summary');
             return cached ? JSON.parse(cached) : null;
-        } catch (e) {
+        } catch (_e) {
             return null;
         }
     });
@@ -50,7 +46,7 @@ export default function PlanView() {
         try {
             const saved = localStorage.getItem('gymlog_session_accessories');
             return saved ? JSON.parse(saved) : [];
-        } catch (e) {
+        } catch (_e) {
             return [];
         }
     });
@@ -153,7 +149,6 @@ export default function PlanView() {
             return {
                 ...finalPick,
                 originalBaseKey,
-                rotationKey, // Pass this out so we can increment it when the workout completes
                 alternatives: subset.filter(g => g.baseName.toLowerCase() !== finalPick.baseName.toLowerCase())
             };
         };
@@ -231,7 +226,7 @@ export default function PlanView() {
     const toggleWorkoutType = () => {
         const newType = workoutType === 'Push' ? 'Pull' : 'Push';
         if (window.confirm(`You are currently viewing a ${workoutType} workout.\n\nDo you want to switch to a ${newType} workout instead?`)) {
-            setOverrideType(newType);
+            setOverrideSplit({ day: workoutDay, type: newType });
         }
     };
 
