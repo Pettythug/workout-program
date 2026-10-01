@@ -1,6 +1,6 @@
 # TASK-QA-R94: QA Pre-Merge Validation for Device Owner Progress Sync & Settings Override
 
-> **For Human & QA Readers:** This QA specification validates all deliverables in `TASK-R94` on branch `TASK-R94`.
+> **For Human & QA Readers:** This QA specification validates all deliverables in `TASK-R94` and `TASK-R94-REVISION` on branch `TASK-R94`.
 
 ```text
 <TASK_EXECUTION_PROTOCOL>
@@ -27,8 +27,10 @@
          - Initial data fetch initializes owner workout days from `data.settings` if present.
          - `updateDeviceOwner` updates the active workout days to the new owner's cached progress.
        - Verify `gymlog-react/src/components/SettingsModal.jsx`:
-         - "WORKOUT PROGRESS OVERRIDE" section added with inputs for `Plan Workout #`, `Full Body Workout #`, and `Circuit Workout #`.
-         - Inputs invoke `updateWorkoutDay`, `updateFullBodyWorkoutDay`, and `updateCircuitWorkoutDay`.
+         - "WORKOUT PROGRESS OVERRIDE" section includes direct text inputs with buffered local state allowing backspacing/clearing and multi-digit typing (e.g. "24").
+         - Stepper buttons `[-]` and `[+]` added alongside each progress input.
+         - `useEffect` synchronizes local input state with context values upon external changes.
+         - `onBlur` handles fallback clamping gracefully.
        - Verify `Combined_AppScript_v2.gs`:
          - `updateSetting` action handler added to `doGet` and `doPost`.
          - `gymlog_handleUpdateSetting` correctly updates or appends key-value pairs in `GymLog_Settings`.
