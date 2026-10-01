@@ -126,8 +126,8 @@ export default function SettingsModal({ isOpen, onClose }) {
     };
 
     return createPortal(
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-            <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 12, boxSizing: 'border-box' }}>
+            <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 420, padding: 20, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <h3 style={{ margin: 0, fontSize: 16, letterSpacing: 1, color: 'var(--accent)' }}>SETTINGS</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>&#x2715;</button>
@@ -217,14 +217,14 @@ export default function SettingsModal({ isOpen, onClose }) {
                             );
                         })}
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                         <input 
                             placeholder="New person name..." 
                             value={newPerson} 
                             onChange={e => setNewPerson(e.target.value)}
-                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                            style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                         />
-                        <button className="btn-secondary" onClick={handleAddPerson}>ADD</button>
+                        <button className="btn-secondary" onClick={handleAddPerson} style={{ flexShrink: 0, padding: "10px 14px" }}>ADD</button>
                     </div>
                 </div>
 
@@ -255,9 +255,9 @@ export default function SettingsModal({ isOpen, onClose }) {
                             placeholder="New location..." 
                             value={newLocation} 
                             onChange={e => setNewLocation(e.target.value)}
-                            style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                            style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                         />
-                        <button className="btn-secondary" onClick={handleAddLocation}>ADD</button>
+                        <button className="btn-secondary" onClick={handleAddLocation} style={{ flexShrink: 0, padding: "10px 14px" }}>ADD</button>
                     </div>
                 </div>
 
@@ -285,7 +285,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 <select 
                                     value={exCategory}
                                     onChange={handleCategoryChange}
-                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                    style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                                 >
                                     <option value="">Select Category...</option>
                                     {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -296,7 +296,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 <select 
                                     value={exLocation}
                                     onChange={e => setExLocation(e.target.value)}
-                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                    style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                                 >
                                     <option value="Anywhere">Anywhere</option>
                                     {locations.filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
