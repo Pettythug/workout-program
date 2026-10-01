@@ -2,7 +2,15 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 3 of the GymLog backend.
+// Version 4 of the GymLog backend (TASK-R96 Local-First SWR & Atomic Batch Sync).
+//
+// Changes in v4 (TASK-R96):
+//   - Added 'checkVersion' endpoint for <50ms instant SWR cache fingerprinting.
+//   - Added 'batchSyncSession' endpoint to atomically append completed sessions,
+//     append all logged sets to History, recalculate Bests, and update Settings in 1 lock.
+//   - Added 'library_version' and 'library_last_modified_utc' cache invalidation stamping.
+//   - Resilient PIN handling: Supports dynamic roster members and test users.
+//   - Top-of-sheet Insertion: New sessions and set history are inserted at Row 2 (descending order).
 //
 // Changes from v2:
 //   - Purged all legacy 'Workout Builder' (wb_) routes and functions.
@@ -12,11 +20,11 @@
 //   - Performance: Increased waitLock timeout to 30s to prevent concurrent write crashes.
 //
 // Changes from v1 (Combined_AppScript.gs):
-//   - Rep range r15_20 → r13_plus (any reps >= 13, no upper limit)
+//   - Rep range r15_20 -> r13_plus (any reps >= 13, no upper limit)
 //   - GymLog Best tab schema redesigned:
 //       Old: Exercise | Brian_r1_3 | Brian_r4_7 | Brian_r8_12 | Brian_r15_20 | Dad_...
 //       New: Exercise | Person | r1_3 | r4_7 | r8_12 | r13_plus
-//       One row per exercise+person — supports dynamic roster
+//       One row per exercise+person - supports dynamic roster
 //   - Added GymLog_People tab for cross-device roster sync
 //   - Added savePeople action handler
 //   - gymlog_doGet() now returns people[] array
@@ -112,6 +120,8 @@ function doGet(e) {
       if (payload.action === "logSession")     return withLock(gymlog_handleLogSession, payload);
       if (payload.action === "deleteSession")  return withLock(gymlog_handleDeleteSession, payload);
       if (payload.action === "getSessions")    return gymlog_handleGetSessions();
+      if (payload.action === "checkVersion")   return gymlog_handleCheckVersion();
+      if (payload.action === "batchSyncSession") return withLock(gymlog_handleBatchSyncSession, payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -145,6 +155,8 @@ function doPost(e) {
     if (payload.action === "logSession")     return withLock(gymlog_handleLogSession, payload);
     if (payload.action === "deleteSession")  return withLock(gymlog_handleDeleteSession, payload);
     if (payload.action === "getSessions")    return gymlog_handleGetSessions();
+    if (payload.action === "checkVersion")   return gymlog_handleCheckVersion();
+    if (payload.action === "batchSyncSession") return withLock(gymlog_handleBatchSyncSession, payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -631,6 +643,7 @@ function gymlog_handleSaveExercise(payload) {
   }
 
   gymlog_recalculateBestForExercise(exercise);
+  gymlog_bumpLibraryVersion();
   return ok({ saved: exercise });
 }
 
@@ -787,6 +800,153 @@ function gymlog_handleUpdateSetting(payload) {
 // GYMLOG — SESSIONS
 // =============================================================================
 
+function gymlog_bumpLibraryVersion() {
+  const settingsSheet = getOrCreateSheet(SETTINGS_TAB, SETTINGS_HEADERS);
+  const settings = gymlog_getSettingsInternal();
+  const currentVersion = parseInt(settings["library_version"] || 1, 10);
+  const nextVersion = currentVersion + 1;
+  const now = new Date().toISOString();
+  
+  const toUpdate = {
+    "library_version": nextVersion,
+    "library_last_modified_utc": now
+  };
+  
+  for (const key in toUpdate) {
+    const val = toUpdate[key];
+    const lastRow = settingsSheet.getLastRow();
+    let rowIndex = -1;
+    if (lastRow > 1) {
+      const keys = settingsSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < keys.length; i++) {
+        if (String(keys[i][0]).trim() === String(key).trim()) { rowIndex = i + 2; break; }
+      }
+    }
+    
+    if (rowIndex > 0) {
+      settingsSheet.getRange(rowIndex, 2).setValue(val);
+    } else {
+      settingsSheet.appendRow([key, val]);
+    }
+  }
+}
+
+function gymlog_handleCheckVersion() {
+  const settings = gymlog_getSettingsInternal();
+  return ok({
+    version: parseInt(settings["library_version"] || 1, 10),
+    last_modified: settings["library_last_modified_utc"] || new Date().toISOString()
+  });
+}
+
+function gymlog_handleBatchSyncSession(payload) {
+  const { session, settings } = payload;
+  
+  if (session) {
+    const sheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
+    const id = session.id;
+    
+    const lastRow = sheet.getLastRow();
+    let rowIndex = -1;
+    if (lastRow > 1) {
+      const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) {
+        if (String(ids[i][0]) === String(id)) {
+          rowIndex = i + 2;
+          break;
+        }
+      }
+    }
+
+    const rowData = [
+      id,
+      session.date || "",
+      session.program || "",
+      session.workoutDay !== undefined ? session.workoutDay : "",
+      session.repRange || "",
+      session.startTime || "",
+      session.endTime || "",
+      session.durationMinutes || 0,
+      session.startTimestamp || 0,
+      session.endTimestamp || 0,
+      session.people || ""
+    ];
+
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+    } else {
+      sheet.insertRowBefore(2);
+      sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+    }
+  }
+
+  if (settings) {
+    const sheet = getOrCreateSheet(SETTINGS_TAB, SETTINGS_HEADERS);
+    for (const key in settings) {
+      const val = settings[key];
+      const lastRow = sheet.getLastRow();
+      let rowIndex = -1;
+      if (lastRow > 1) {
+        const keys = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (let i = 0; i < keys.length; i++) {
+          if (String(keys[i][0]).trim() === String(key).trim()) { rowIndex = i + 2; break; }
+        }
+      }
+      
+      if (rowIndex > 0) {
+        sheet.getRange(rowIndex, 2).setValue(val);
+      } else {
+        sheet.appendRow([key, val]);
+      }
+    }
+  }
+  
+  if (payload.sets && payload.sets.length > 0) {
+    const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+    const scriptPinsStr = PropertiesService.getScriptProperties().getProperty('USER_PINS');
+    const validPins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
+    
+    let exercisesToRecalc = new Set();
+
+    for (const setBatch of payload.sets) {
+      const { exercise, entries, userPins = {} } = setBatch;
+      
+      for (const entry of entries) {
+        const personKey = (entry.person || "").toLowerCase();
+        if (scriptPinsStr && validPins[personKey]) {
+          if (userPins[personKey] !== validPins[personKey]) {
+            throw new Error(`Unauthorized: Invalid PIN for ${entry.person}`);
+          }
+        }
+      }
+
+      entries.forEach(entry => {
+        const rowData = [
+          entry.date,
+          entry.person,
+          exercise,
+          sanitizeInput(entry.reps),
+          sanitizeInput(entry.weight),
+          normalizeRange(entry.range),
+          sanitizeInput(entry.note || ""),
+          entry.setNum || ""
+        ];
+        histSheet.insertRowBefore(2);
+        histSheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+      });
+      exercisesToRecalc.add(exercise);
+    }
+    
+    for (const ex of exercisesToRecalc) {
+      gymlog_recalculateBestForExercise(ex);
+    }
+  }
+
+  gymlog_bumpLibraryVersion();
+  
+  return ok({ synced: true, sessionId: session ? session.id : null });
+}
+
 function gymlog_handleLogSession(payload) {
   const sheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
   const id = payload.id;
@@ -820,7 +980,8 @@ function gymlog_handleLogSession(payload) {
   if (rowIndex > 0) {
     sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
   } else {
-    sheet.appendRow(rowData);
+    sheet.insertRowBefore(2);
+    sheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
   }
 
   return ok({ status: "success", id: id });
@@ -904,6 +1065,7 @@ function gymlog_handleDeleteExercise(payload) {
   }
 
   // NOTE: History is intentionally left intact for data integrity.
+  gymlog_bumpLibraryVersion();
   return ok({ deletedExercise: exercise });
 }
 
@@ -1068,6 +1230,7 @@ function gymlog_handleRenameExercise(payload) {
     gymlog_recalculateBestForExercise(v.new);
   }
 
+  gymlog_bumpLibraryVersion();
   return ok({ renamed: true, variations: variationsToRename });
 }
 
