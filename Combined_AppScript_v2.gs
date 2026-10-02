@@ -2,7 +2,11 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4 of the GymLog backend (TASK-R96 Local-First SWR & Atomic Batch Sync).
+// Version 4.1 of the GymLog backend (TASK-R99 Unified Deletion Buffer & Batch Sync).
+//
+// Changes in v4.1 (TASK-R99):
+//   - Added atomic 'payload.deletes' support to batchSyncSession to clean up deleted
+//     history rows and recalculate Personal Bests in the same single atomic transaction.
 //
 // Changes in v4 (TASK-R96):
 //   - Added 'checkVersion' endpoint for <50ms instant SWR cache fingerprinting.
@@ -901,12 +905,37 @@ function gymlog_handleBatchSyncSession(payload) {
     }
   }
   
+  let exercisesToRecalc = new Set();
+
+  if (payload.deletes && payload.deletes.length > 0) {
+    const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
+    for (const del of payload.deletes) {
+      const { exercise, person, reps, weight, range } = del;
+      if (histSheet.getLastRow() > 1) {
+        const data = histSheet.getRange(2, 1, histSheet.getLastRow() - 1, HISTORY_HEADERS.length).getValues();
+        for (let i = data.length - 1; i >= 0; i--) {
+          const matchPerson = String(data[i][1]).toLowerCase().trim() === String(person || "").toLowerCase().trim();
+          const matchExercise = String(data[i][2]).toLowerCase().trim() === String(exercise || "").toLowerCase().trim();
+          const matchReps = String(data[i][3]).trim() === String(reps !== undefined ? reps : "").trim();
+          const matchWeight = String(data[i][4]).trim() === String(weight !== undefined ? weight : "").trim();
+          const matchRange = !range || normalizeRange(data[i][5]) === normalizeRange(range);
+
+          if (matchPerson && matchExercise && matchReps && matchWeight && matchRange) {
+            histSheet.deleteRow(i + 2);
+            break;
+          }
+        }
+      }
+      if (exercise) {
+        exercisesToRecalc.add(exercise);
+      }
+    }
+  }
+
   if (payload.sets && payload.sets.length > 0) {
     const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
     const scriptPinsStr = PropertiesService.getScriptProperties().getProperty('USER_PINS');
     const validPins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
-    
-    let exercisesToRecalc = new Set();
 
     for (const setBatch of payload.sets) {
       const { exercise, entries, userPins = {} } = setBatch;
@@ -936,10 +965,10 @@ function gymlog_handleBatchSyncSession(payload) {
       });
       exercisesToRecalc.add(exercise);
     }
-    
-    for (const ex of exercisesToRecalc) {
-      gymlog_recalculateBestForExercise(ex);
-    }
+  }
+
+  for (const ex of exercisesToRecalc) {
+    gymlog_recalculateBestForExercise(ex);
   }
 
   gymlog_bumpLibraryVersion();

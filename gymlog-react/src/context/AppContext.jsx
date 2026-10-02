@@ -792,18 +792,21 @@ export function AppProvider({ children }) {
         const newSession = saveCompletedSession(sessionData, true); // skipServerSync = true
 
         const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+        const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
         
         const payload = {
             action: 'batchSyncSession',
             session: newSession,
             settings: updatedSettings,
-            sets: pendingSets
+            sets: pendingSets,
+            deletes: pendingDeletes
         };
 
         try {
             if (sheetsPost) {
                 await sheetsPost(payload);
                 localStorage.setItem('gymlog_pending_sets', '[]'); // clear only on success
+                localStorage.setItem('gymlog_pending_deletes', '[]');
             }
         } catch (err) {
             console.warn("Network failed, storing payload in gymlog_pending_sync_queue", err);
@@ -813,6 +816,7 @@ export function AppProvider({ children }) {
             // In a real app we'd also leave gymlog_pending_sets alone, or clear them and depend entirely on the sync queue.
             // Since we put them in the payload which will be retried, we can clear them here.
             localStorage.setItem('gymlog_pending_sets', '[]');
+            localStorage.setItem('gymlog_pending_deletes', '[]');
         } finally {
             setIsSyncing(false);
         }
