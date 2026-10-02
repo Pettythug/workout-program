@@ -2,11 +2,13 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4.1 of the GymLog backend (TASK-R99 Unified Deletion Buffer & Batch Sync).
+// Version 4.1 of the GymLog backend (TASK-R100 Unified Deletion Buffer & Batch Sync).
 //
-// Changes in v4.1 (TASK-R99):
+// Changes in v4.1 (TASK-R100):
 //   - Added atomic 'payload.deletes' support to batchSyncSession to clean up deleted
 //     history rows and recalculate Personal Bests in the same single atomic transaction.
+//   - Precision single-row matching: Evaluates exact timestamp (del.date) and set number
+//     (del.setNum) in addition to person, exercise, reps, and weight to prevent duplicate set wiping.
 //
 // Changes in v4 (TASK-R96):
 //   - Added 'checkVersion' endpoint for <50ms instant SWR cache fingerprinting.
