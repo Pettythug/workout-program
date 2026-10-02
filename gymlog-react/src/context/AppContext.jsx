@@ -724,15 +724,20 @@ export function AppProvider({ children }) {
         const activePeopleStr = (activePeople && activePeople.length > 0) ? activePeople.join('+') : 'Solo';
         const peopleText = (activePeople && activePeople.length > 0) ? activePeople.join(', ') : 'Solo';
 
-        // Human-readable session ID: ${program}_${activePeopleStr}_${formatDate(startTimestamp)}_${formatTime(startTimestamp)}
-        // (e.g. Plan_Brian_2026-09-29_10:56:00)
-        const generatedId = `${prog}_${activePeopleStr}_${formatDate(startTs)}_${formatTime(startTs)}`;
-        const sessionId = (sessionData.id && !sessionData.id.startsWith('session_'))
+        // Deterministic session ID: ${program}_${person}_${date}_day${workoutDay}
+        // (e.g. Plan_Brian_2026-10-01_day25)
+        const date = sessionData.date || new Date().toISOString().split('T')[0];
+        const daySuffix = (sessionData.workoutDay !== undefined && sessionData.workoutDay !== null)
+            ? `_day${sessionData.workoutDay}`
+            : '';
+        const fallbackPerson = sessionData.people || (activePeopleStr !== 'Solo' ? activePeopleStr : (deviceOwner || 'User'));
+        const fallbackId = `${sessionData.program || prog || 'Plan'}_${fallbackPerson}_${date}${daySuffix}`;
+        const id = (sessionData.id && !sessionData.id.startsWith('session_'))
             ? sessionData.id
-            : generatedId;
+            : fallbackId;
 
         const newSession = {
-            id: sessionId,
+            id,
             date: sessionData.date || new Date(startTs).toLocaleDateString('en-US'),
             program: sessionData.program || 'Plan',
             workoutDay: sessionData.workoutDay !== undefined ? sessionData.workoutDay : '',
