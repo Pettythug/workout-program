@@ -446,36 +446,19 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         }
     };
 
-    const handleDeleteHistory = async (entry) => {
-        const pin = prompt("Admin PIN required:");
-        if (pin === null) return;
-        try {
-            await deleteHistory({ exercise: ex.name, ...entry }, pin);
-            deleteSetFromLocalHistory(ex.name, entry);
-            setToast("Entry deleted!");
-        } catch (e) {
-            console.error(e);
-            setToast("Error deleting");
-            setTimeout(() => setToast(""), 2000);
-        }
+    const handleDeleteHistory = (entry) => {
+        deleteSetFromLocalHistory(ex.name, entry);
+        setToast("Entry removed");
+        setTimeout(() => setToast(""), 2000);
     };
 
-    const handleDeleteLoggedSet = async (setEntries) => {
+    const handleDeleteLoggedSet = (setEntries) => {
         if (!setEntries || setEntries.length === 0) return;
-        const pin = prompt("Admin PIN required:");
-        if (pin === null) return;
-        try {
-            setToast("Deleting set...");
-            for (const entry of setEntries) {
-                await deleteHistory({ exercise: ex.name, ...entry }, pin);
-                deleteSetFromLocalHistory(ex.name, entry);
-            }
-            setToast("Set deleted!");
-        } catch (e) {
-            console.error(e);
-            setToast("Error deleting");
-            setTimeout(() => setToast(""), 2000);
+        for (const entry of setEntries) {
+            deleteSetFromLocalHistory(ex.name, entry);
         }
+        setToast("Set removed");
+        setTimeout(() => setToast(""), 2000);
     };
 
     const getBest = (personKey) => {

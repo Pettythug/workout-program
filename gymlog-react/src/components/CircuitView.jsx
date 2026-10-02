@@ -419,52 +419,31 @@ export default function CircuitView() {
         resetExerciseStatus(exName);
     };
 
-    const handleDeleteSet = async (exName, setEntries) => {
-        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
-        if (pin === null) return;
-
-        try {
-            for (const entry of setEntries) {
-                await deleteHistory({ ...entry, exercise: exName }, pin);
-                deleteSetFromLocalHistory(exName, entry);
-            }
-            const ex = exercises.find(e => e.name === exName);
-            if (ex && ex.history) {
-                const remainingTodays = ex.history.filter(h => {
-                    const isToday = h.date && new Date(h.date).toDateString() === new Date().toDateString();
-                    if (!isToday) return false;
-                    const isDeleted = setEntries.some(del => del.date === h.date && del.person === h.person && del.reps === h.reps && del.weight === h.weight);
-                    return !isDeleted;
-                });
-                if (remainingTodays.length === 0) {
-                    resetExerciseStatus(exName);
-                }
-            } else {
+    const handleDeleteSet = (exName, setEntries) => {
+        if (!setEntries || setEntries.length === 0) return;
+        for (const entry of setEntries) {
+            deleteSetFromLocalHistory(exName, entry);
+        }
+        const ex = exercises.find(e => e.name === exName);
+        if (ex && ex.history) {
+            const remainingTodays = ex.history.filter(h => {
+                const isToday = h.date && new Date(h.date).toDateString() === new Date().toDateString();
+                if (!isToday) return false;
+                const isDeleted = setEntries.some(del => del.date === h.date && del.person === h.person && del.reps === h.reps && del.weight === h.weight);
+                return !isDeleted;
+            });
+            if (remainingTodays.length === 0) {
                 resetExerciseStatus(exName);
             }
-        } catch (e) {
-            console.error("Error deleting set:", e);
-            alert("Failed to delete set: " + e.message);
+        } else {
+            resetExerciseStatus(exName);
         }
     };
 
-    const handleDeleteHistoryEntry = async (entry) => {
-        const pin = window.prompt("Enter Admin PIN to confirm deletion:");
-        if (pin === null) return;
-
+    const handleDeleteHistoryEntry = (entry) => {
         const exName = entry.exercise;
-        if (!exName) {
-            alert("Exercise name is missing in history entry.");
-            return;
-        }
-
-        try {
-            await deleteHistory(entry, pin);
-            deleteSetFromLocalHistory(exName, entry);
-        } catch (e) {
-            console.error("Error deleting history entry:", e);
-            alert("Failed to delete history entry: " + e.message);
-        }
+        if (!exName) return;
+        deleteSetFromLocalHistory(exName, entry);
     };
 
     if (loading) {
