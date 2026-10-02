@@ -910,7 +910,7 @@ function gymlog_handleBatchSyncSession(payload) {
   if (payload.deletes && payload.deletes.length > 0) {
     const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
     for (const del of payload.deletes) {
-      const { exercise, person, reps, weight, range } = del;
+      const { exercise, person, reps, weight, range, date, setNum } = del;
       if (histSheet.getLastRow() > 1) {
         const data = histSheet.getRange(2, 1, histSheet.getLastRow() - 1, HISTORY_HEADERS.length).getValues();
         for (let i = data.length - 1; i >= 0; i--) {
@@ -920,7 +920,25 @@ function gymlog_handleBatchSyncSession(payload) {
           const matchWeight = String(data[i][4]).trim() === String(weight !== undefined ? weight : "").trim();
           const matchRange = !range || normalizeRange(data[i][5]) === normalizeRange(range);
 
-          if (matchPerson && matchExercise && matchReps && matchWeight && matchRange) {
+          let matchDate = true;
+          if (date) {
+            const sheetDateStr = String(data[i][0]).trim();
+            const targetDateStr = String(date).trim();
+            if (sheetDateStr === targetDateStr) {
+              matchDate = true;
+            } else {
+              const d1 = new Date(sheetDateStr);
+              const d2 = new Date(targetDateStr);
+              matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && Math.abs(d1.getTime() - d2.getTime()) < 3000;
+            }
+          }
+
+          let matchSetNum = true;
+          if (setNum !== undefined && setNum !== null && setNum !== "") {
+            matchSetNum = String(data[i][7]).trim() === String(setNum).trim();
+          }
+
+          if (matchPerson && matchExercise && matchReps && matchWeight && matchRange && matchDate && matchSetNum) {
             histSheet.deleteRow(i + 2);
             break;
           }

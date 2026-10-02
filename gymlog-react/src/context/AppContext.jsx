@@ -520,13 +520,64 @@ export function AppProvider({ children }) {
     };
 
     const deleteSetFromLocalHistory = (exName, entryDetails) => {
+        if (!exName || !entryDetails) return;
+
+        // 1. Check if the set was logged in today's active workout (in gymlog_pending_sets)
+        const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+        let removedFromPending = false;
+        
+        const updatedPendingSets = pendingSets.map(batch => {
+            if (batch.exercise && batch.exercise.toLowerCase() === exName.toLowerCase()) {
+                const matchIdx = (batch.entries || []).findIndex(e => 
+                    e.person && entryDetails.person && e.person.toLowerCase() === entryDetails.person.toLowerCase() &&
+                    String(e.reps) === String(entryDetails.reps) &&
+                    String(e.weight) === String(entryDetails.weight) &&
+                    (!entryDetails.date || !e.date || String(e.date) === String(entryDetails.date))
+                );
+                if (matchIdx !== -1) {
+                    removedFromPending = true;
+                    const newEntries = [...batch.entries];
+                    newEntries.splice(matchIdx, 1);
+                    return { ...batch, entries: newEntries };
+                }
+            }
+            return batch;
+        }).filter(batch => batch.entries && batch.entries.length > 0);
+
+        if (removedFromPending) {
+            localStorage.setItem('gymlog_pending_sets', JSON.stringify(updatedPendingSets));
+        } else {
+            // 2. Historical set (persisted in Google Sheets): Buffer into gymlog_pending_deletes!
+            const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
+            pendingDeletes.push({
+                exercise: exName,
+                person: entryDetails.person,
+                reps: entryDetails.reps,
+                weight: entryDetails.weight,
+                range: entryDetails.range || entryDetails.repRange,
+                date: entryDetails.date,
+                setNum: entryDetails.setNum
+            });
+            localStorage.setItem('gymlog_pending_deletes', JSON.stringify(pendingDeletes));
+        }
+
+        // 3. Remove ONLY the single specific entry from local state ex.history (splice by index)
         setExercises(prev => {
             const next = prev.map(ex => {
-                if (ex.name === exName) {
-                    const newHistory = (ex.history || []).filter(h => 
-                        !(h.date === entryDetails.date && h.person === entryDetails.person && h.reps === entryDetails.reps && h.weight === entryDetails.weight)
+                if (ex.name.toLowerCase() === exName.toLowerCase()) {
+                    const hist = ex.history || [];
+                    const targetIdx = hist.findIndex(h => 
+                        h.person && entryDetails.person && h.person.toLowerCase() === entryDetails.person.toLowerCase() &&
+                        String(h.reps) === String(entryDetails.reps) &&
+                        String(h.weight) === String(entryDetails.weight) &&
+                        (!entryDetails.date || !h.date || String(h.date) === String(entryDetails.date)) &&
+                        (entryDetails.setNum === undefined || h.setNum === undefined || String(h.setNum) === String(entryDetails.setNum))
                     );
-                    return { ...ex, history: newHistory };
+                    if (targetIdx !== -1) {
+                        const newHistory = [...hist];
+                        newHistory.splice(targetIdx, 1);
+                        return { ...ex, history: newHistory };
+                    }
                 }
                 return ex;
             });
