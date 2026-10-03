@@ -2,7 +2,12 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4.1 of the GymLog backend (TASK-R100 Unified Deletion Buffer & Batch Sync).
+// Version 4.2 of the GymLog backend (TASK-R101 Device Onboarding & Dynamic PIN Management).
+//
+// Changes in v4.2 (TASK-R101):
+//   - Added 'verifyPin' endpoint for dynamic PIN verification against USER_PINS / ADMIN_PIN.
+//   - Added 'saveUserPin' endpoint to securely register and update USER_PINS in Script Properties
+//     with Admin PIN authorization or new user self-registration, bumping library_version.
 //
 // Changes in v4.1 (TASK-R100):
 //   - Added atomic 'payload.deletes' support to batchSyncSession to clean up deleted
@@ -128,6 +133,8 @@ function doGet(e) {
       if (payload.action === "getSessions")    return gymlog_handleGetSessions();
       if (payload.action === "checkVersion")   return gymlog_handleCheckVersion();
       if (payload.action === "batchSyncSession") return withLock(gymlog_handleBatchSyncSession, payload);
+      if (payload.action === "verifyPin")     return gymlog_handleVerifyPin(payload);
+      if (payload.action === "saveUserPin")   return withLock(gymlog_handleSaveUserPin, payload);
       return err("Unknown payload action: " + payload.action);
     } catch (ex) {
       return err(ex.message);
@@ -163,6 +170,8 @@ function doPost(e) {
     if (payload.action === "getSessions")    return gymlog_handleGetSessions();
     if (payload.action === "checkVersion")   return gymlog_handleCheckVersion();
     if (payload.action === "batchSyncSession") return withLock(gymlog_handleBatchSyncSession, payload);
+    if (payload.action === "verifyPin")     return gymlog_handleVerifyPin(payload);
+    if (payload.action === "saveUserPin")   return withLock(gymlog_handleSaveUserPin, payload);
     return err("Unknown action: " + payload.action);
   } catch (ex) {
     return err(ex.message);
@@ -703,9 +712,67 @@ function gymlog_handleSavePeople(payload) {
 // =============================================================================
 
 function verifyAdminPin(payload) {
-  if (payload.pin !== ADMIN_PIN) {
+  if (payload.pin !== ADMIN_PIN && payload.adminPin !== ADMIN_PIN) {
     throw new Error("Unauthorized: Invalid Admin PIN");
   }
+}
+
+// =============================================================================
+// GYMLOG — USER PIN MANAGEMENT (TASK-R101)
+// =============================================================================
+
+function gymlog_handleVerifyPin(payload) {
+  const { person, pin } = payload;
+  if (!pin) return err("PIN is required");
+
+  // Allow Master Admin PIN to bypass any verification
+  if (pin === ADMIN_PIN) {
+    return ok({ valid: true, isAdmin: true, person: person || "Admin" });
+  }
+
+  if (!person) {
+    return err("Person name is required");
+  }
+
+  const personKey = person.toLowerCase().trim();
+  const scriptPinsStr = PropertiesService.getScriptProperties().getProperty('USER_PINS');
+  const validPins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
+
+  if (!validPins[personKey]) {
+    return err(`No PIN configured on server for ${person}`);
+  }
+
+  if (String(validPins[personKey]) === String(pin)) {
+    return ok({ valid: true, person: person });
+  }
+
+  return err(`Invalid PIN for ${person}`);
+}
+
+function gymlog_handleSaveUserPin(payload) {
+  const { person, pin, adminPin, currentPin } = payload;
+  if (!person) return err("Person is required");
+  if (!pin) return err("New PIN is required");
+
+  const personKey = person.toLowerCase().trim();
+  const scriptProps = PropertiesService.getScriptProperties();
+  const scriptPinsStr = scriptProps.getProperty('USER_PINS');
+  const pins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
+
+  const hasExistingPin = !!pins[personKey];
+  const isAdmin = adminPin && adminPin === ADMIN_PIN;
+  const isCurrentValid = currentPin && String(pins[personKey]) === String(currentPin);
+  const isSelfRegister = !hasExistingPin;
+
+  if (!isAdmin && !isCurrentValid && !isSelfRegister) {
+    return err("Unauthorized: Admin PIN or current PIN required to update PIN");
+  }
+
+  pins[personKey] = String(pin);
+  scriptProps.setProperty('USER_PINS', JSON.stringify(pins));
+  gymlog_bumpLibraryVersion();
+
+  return ok({ saved: true, person: person });
 }
 function gymlog_handleDeleteHistory(payload) {
   verifyAdminPin(payload);
@@ -724,14 +791,15 @@ function gymlog_handleDeleteHistory(payload) {
 
     let matchDate = true;
     if (date) {
-      const sheetDateStr = String(data[i][0]).trim();
+      const sheetVal = data[i][0];
+      const sheetDateStr = String(sheetVal).trim();
       const targetDateStr = String(date).trim();
       if (sheetDateStr === targetDateStr) {
         matchDate = true;
       } else {
-        const d1 = new Date(sheetDateStr);
+        const d1 = sheetVal instanceof Date ? sheetVal : new Date(sheetDateStr);
         const d2 = new Date(targetDateStr);
-        matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d1.getTime() === d2.getTime();
+        matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && (d1.getTime() === d2.getTime() || Math.abs(d1.getTime() - d2.getTime()) < 3000);
       }
     }
 
@@ -942,12 +1010,13 @@ function gymlog_handleBatchSyncSession(payload) {
 
           let matchDate = true;
           if (date) {
-            const sheetDateStr = String(data[i][0]).trim();
+            const sheetVal = data[i][0];
+            const sheetDateStr = String(sheetVal).trim();
             const targetDateStr = String(date).trim();
             if (sheetDateStr === targetDateStr) {
               matchDate = true;
             } else {
-              const d1 = new Date(sheetDateStr);
+              const d1 = sheetVal instanceof Date ? sheetVal : new Date(sheetDateStr);
               const d2 = new Date(targetDateStr);
               matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d1.getTime() === d2.getTime();
             }

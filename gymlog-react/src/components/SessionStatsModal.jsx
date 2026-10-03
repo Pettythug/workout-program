@@ -2,10 +2,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { createPortal } from 'react-dom';
+import GuestUpgradeModal from './GuestUpgradeModal';
 
 export default function SessionStatsModal({ isOpen, onClose }) {
-    const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime } = useAppContext();
+    const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner } = useAppContext();
     const [activeFilter, setActiveFilter] = useState('ALL');
+    const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     const participantTabs = useMemo(() => {
         const tabs = new Set(['ALL']);
@@ -131,6 +133,41 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                         &#x2715;
                     </button>
                 </div>
+
+                {/* Guest Mode Cloud Upgrade Banner */}
+                {(deviceOwner === 'Guest' || !deviceOwner) && (
+                    <div style={{
+                        background: 'linear-gradient(90deg, rgba(249, 115, 22, 0.15), rgba(56, 189, 248, 0.15))',
+                        border: '1px solid rgba(249, 115, 22, 0.4)',
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10
+                    }}>
+                        <div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>☁️ Guest Sandbox Mode</div>
+                            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>Sessions saved locally. Upgrade to sync with Google Sheets.</div>
+                        </div>
+                        <button 
+                            onClick={() => setIsUpgradeOpen(true)}
+                            style={{
+                                background: 'var(--accent)',
+                                color: '#000',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '6px 12px',
+                                fontSize: 11,
+                                fontWeight: 800,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            UPGRADE
+                        </button>
+                    </div>
+                )}
 
                 {/* Active Session Card */}
                 {sessionStartTime && (
@@ -421,6 +458,11 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                     </button>
                 </div>
             </div>
+
+            <GuestUpgradeModal
+                isOpen={isUpgradeOpen}
+                onClose={() => setIsUpgradeOpen(false)}
+            />
         </div>,
         document.body
     );

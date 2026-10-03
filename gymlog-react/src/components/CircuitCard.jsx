@@ -111,6 +111,12 @@ const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
 
 export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
+
+    const handleDeleteHistory = (h, i) => {
+        if (onDeleteHistoryEntry) {
+            onDeleteHistoryEntry({ ...h, exercise: ex.name }, i);
+        }
+    };
     
     const sets = useMemo(() => {
         if (!ex.history) return [];
@@ -520,7 +526,10 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                 {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
                                     <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                                 ) : (
-                                    ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
+                                    ex.history.map((h, i) => ({ h, i }))
+                                        .filter(({ h }) => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase()))
+                                        .slice(0, 5)
+                                        .map(({ h, i }) => (
                                         <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div>
@@ -532,7 +541,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                         {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
                                                     </div>
                                                     <button 
-                                                        onClick={() => onDeleteHistoryEntry({ ...h, exercise: ex.name })}
+                                                        onClick={() => handleDeleteHistory(h, i)}
                                                         style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
                                                         title="Delete History Entry"
                                                     >

@@ -446,8 +446,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         }
     };
 
-    const handleDeleteHistory = (entry) => {
-        deleteSetFromLocalHistory(ex.name, entry);
+    const handleDeleteHistory = (entry, targetIndex) => {
+        deleteSetFromLocalHistory(ex.name, entry, targetIndex);
         setToast("Entry removed");
         setTimeout(() => setToast(""), 2000);
     };
@@ -723,7 +723,10 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                         {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
                                             <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
                                         ) : (
-                                            ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).slice(0, 5).map((h, i) => (
+                                            ex.history.map((h, i) => ({ h, i }))
+                                                .filter(({ h }) => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase()))
+                                                .slice(0, 5)
+                                                .map(({ h, i }) => (
                                                 <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <div>
@@ -735,7 +738,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                                                 {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
                                                             </div>
                                                             <button 
-                                                                onClick={() => handleDeleteHistory(h)}
+                                                                onClick={() => handleDeleteHistory(h, i)}
                                                                 style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
                                                                 title="Delete History Entry"
                                                             >

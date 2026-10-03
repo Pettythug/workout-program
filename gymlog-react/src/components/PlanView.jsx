@@ -7,6 +7,7 @@ import AccessoryBlock from './AccessoryBlock';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 import SessionStatsModal from './SessionStatsModal';
+import GuestUpgradeModal from './GuestUpgradeModal';
 
 export default function PlanView() {
     const { 
@@ -26,6 +27,7 @@ export default function PlanView() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [view, setView] = useState('tracker'); // 'tracker' | 'full-list'
     const [viewingWarmUp, setViewingWarmUp] = useState(false);
     const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
@@ -273,6 +275,9 @@ export default function PlanView() {
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
+        if (deviceOwner === 'Guest' || !deviceOwner) {
+            setIsUpgradeModalOpen(true);
+        }
     };
 
     const startNextWorkout = () => {
@@ -367,6 +372,12 @@ export default function PlanView() {
                                             {completedSummary.repRange}
                                         </span>
                                     </div>
+                                </div>
+                            )}
+
+                            {(deviceOwner === 'Guest' || !deviceOwner) && (
+                                <div style={{ width: '100%', maxWidth: 360, margin: '8px 0' }}>
+                                    <GuestUpgradeModal isInline={true} />
                                 </div>
                             )}
 
@@ -676,6 +687,11 @@ export default function PlanView() {
             <HelpDrawer 
                 showHelp={isHelpOpen} 
                 setShowHelp={setIsHelpOpen} 
+            />
+
+            <GuestUpgradeModal
+                isOpen={isUpgradeModalOpen}
+                onClose={() => setIsUpgradeModalOpen(false)}
             />
         </div>
     );

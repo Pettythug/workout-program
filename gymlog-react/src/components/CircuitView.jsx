@@ -8,6 +8,7 @@ import WarmUpCard from './WarmUpCard';
 import SessionStatsModal from './SessionStatsModal';
 import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
+import GuestUpgradeModal from './GuestUpgradeModal';
 
 const CATEGORY_ORDER = [
     "Explosive",
@@ -42,6 +43,7 @@ export default function CircuitView() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isHelpOpen, setIsHelpOpen] = useState(false);
     const [isStatsOpen, setIsStatsOpen] = useState(false);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [viewingWarmUp, setViewingWarmUp] = useState(false);
 
     const [isWorkoutComplete, setIsWorkoutComplete] = useState(() => {
@@ -290,6 +292,9 @@ export default function CircuitView() {
 
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_circuit_complete', 'true');
+        if (deviceOwner === 'Guest' || !deviceOwner) {
+            setIsUpgradeModalOpen(true);
+        }
     };
 
     const startNextWorkout = () => {
@@ -440,10 +445,10 @@ export default function CircuitView() {
         }
     };
 
-    const handleDeleteHistoryEntry = (entry) => {
+    const handleDeleteHistoryEntry = (entry, targetIndex) => {
         const exName = entry.exercise;
         if (!exName) return;
-        deleteSetFromLocalHistory(exName, entry);
+        deleteSetFromLocalHistory(exName, entry, targetIndex);
     };
 
     if (loading) {
@@ -513,6 +518,12 @@ export default function CircuitView() {
                         📊 VIEW TIME STATS & AVERAGES
                     </button>
 
+                    {(deviceOwner === 'Guest' || !deviceOwner) && (
+                        <div style={{ width: '100%', maxWidth: 360, margin: '8px 0' }}>
+                            <GuestUpgradeModal isInline={true} />
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: '240px' }}>
                         <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                             START NEW CIRCUIT
@@ -529,6 +540,7 @@ export default function CircuitView() {
                 <SessionStatsModal isOpen={isStatsOpen} onClose={() => setIsStatsOpen(false)} />
                 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
                 <HelpDrawer showHelp={isHelpOpen} setShowHelp={setIsHelpOpen} />
+                <GuestUpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
             </div>
         );
     }
@@ -893,6 +905,11 @@ export default function CircuitView() {
             <HelpDrawer 
                 showHelp={isHelpOpen} 
                 setShowHelp={setIsHelpOpen} 
+            />
+
+            <GuestUpgradeModal 
+                isOpen={isUpgradeModalOpen} 
+                onClose={() => setIsUpgradeModalOpen(false)} 
             />
         </div>
     );

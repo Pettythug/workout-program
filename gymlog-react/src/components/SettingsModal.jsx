@@ -11,12 +11,20 @@ export default function SettingsModal({ isOpen, onClose }) {
         addLocationToRoster, removeLocationFromRoster, togglePersonActive, 
         createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus,
         workoutDay, fullBodyWorkoutDay, circuitWorkoutDay,
-        updateWorkoutDay, updateFullBodyWorkoutDay, updateCircuitWorkoutDay
+        updateWorkoutDay, updateFullBodyWorkoutDay, updateCircuitWorkoutDay,
+        verifyUserPin, resetUserPinWithAdmin
     } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
     const [newLocation, setNewLocation] = useState('');
     const [isStatsOpen, setIsStatsOpen] = useState(false);
+
+    // Admin PIN Management state
+    const [isAdminPinOpen, setIsAdminPinOpen] = useState(false);
+    const [targetUserForPin, setTargetUserForPin] = useState('');
+    const [newPinInput, setNewPinInput] = useState('');
+    const [adminPinInput, setAdminPinInput] = useState('');
+    const [adminPinStatus, setAdminPinStatus] = useState('');
 
     const [exName, setExName] = useState('');
     const [exTimed, setExTimed] = useState(false);
@@ -125,6 +133,63 @@ export default function SettingsModal({ isOpen, onClose }) {
         }
     };
 
+    const handleDeviceOwnerChange = async (newOwner) => {
+        if (newOwner === deviceOwner) return;
+        if (newOwner === 'Guest') {
+            updateDeviceOwner('Guest');
+            return;
+        }
+        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        const key = newOwner.toLowerCase();
+        let pin = cachedPins[key] || localStorage.getItem('gymlog_pin_' + key);
+
+        if (!pin) {
+            pin = window.prompt(`Enter 4-digit PIN for ${newOwner} to switch device owner:`);
+            if (!pin) return;
+
+            const res = await verifyUserPin(newOwner, pin);
+            if (!res || !res.success) {
+                alert(`Invalid PIN for ${newOwner}: ${res?.error || 'Verification failed'}`);
+                return;
+            }
+
+            cachedPins[key] = pin;
+            localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+            localStorage.setItem('gymlog_pin_' + key, pin);
+        }
+        updateDeviceOwner(newOwner);
+    };
+
+    const handleResetUserPin = async (e) => {
+        if (e) e.preventDefault();
+        const target = targetUserForPin || people[0];
+        if (!target) {
+            alert('Please select a roster member.');
+            return;
+        }
+        if (!newPinInput || newPinInput.length < 4) {
+            alert('New PIN must be at least 4 digits.');
+            return;
+        }
+        if (!adminPinInput) {
+            alert('Master Admin PIN is required.');
+            return;
+        }
+
+        setAdminPinStatus('Updating PIN...');
+        try {
+            await resetUserPinWithAdmin(target, newPinInput, adminPinInput);
+            setAdminPinStatus('');
+            alert(`Successfully updated PIN for ${target}.`);
+            setNewPinInput('');
+            setAdminPinInput('');
+            setIsAdminPinOpen(false);
+        } catch (err) {
+            setAdminPinStatus('');
+            alert(`Failed to reset PIN: ${err.message || 'Unauthorized'}`);
+        }
+    };
+
     return createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 12, boxSizing: 'border-box' }}>
             <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 420, padding: 20, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -161,9 +226,10 @@ export default function SettingsModal({ isOpen, onClose }) {
                     <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>DEVICE OWNER</label>
                     <select 
                         value={deviceOwner}
-                        onChange={e => updateDeviceOwner(e.target.value)}
+                        onChange={e => handleDeviceOwnerChange(e.target.value)}
                         style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
                     >
+                        <option value="Guest">Guest (Local Sandbox)</option>
                         {people.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                     <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 8 }}>The device owner is locked as an active participant.</p>
@@ -499,6 +565,69 @@ export default function SettingsModal({ isOpen, onClose }) {
                     </div>
                 </div>
 
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <div 
+                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setIsAdminPinOpen(!isAdminPinOpen)}
+                    >
+                        <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', margin: 0, cursor: 'pointer' }}>
+                            🔐 ADMIN PIN RESET
+                        </label>
+                        <span style={{ color: 'var(--muted)' }}>{isAdminPinOpen ? '▲' : '▼'}</span>
+                    </div>
+
+                    {isAdminPinOpen && (
+                        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <p style={{ fontSize: 11, color: 'var(--muted)', margin: 0 }}>
+                                Reset any member's 4-digit PIN using the Master Admin PIN.
+                            </p>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 4 }}>TARGET MEMBER</label>
+                                <select 
+                                    value={targetUserForPin || (people[0] || '')}
+                                    onChange={e => setTargetUserForPin(e.target.value)}
+                                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', fontSize: 13 }}
+                                >
+                                    {people.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 4 }}>NEW 4-DIGIT PIN</label>
+                                <input 
+                                    type="password"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    value={newPinInput}
+                                    onChange={e => setNewPinInput(e.target.value.replace(/\D/g, ''))}
+                                    placeholder="e.g. 5678"
+                                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', fontSize: 14, fontFamily: 'var(--mono)', boxSizing: 'border-box' }}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 4 }}>MASTER ADMIN PIN</label>
+                                <input 
+                                    type="password"
+                                    value={adminPinInput}
+                                    onChange={e => setAdminPinInput(e.target.value)}
+                                    placeholder="Enter Admin PIN"
+                                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 8, color: 'white', fontSize: 14, fontFamily: 'var(--mono)', boxSizing: 'border-box' }}
+                                />
+                            </div>
+
+                            <button 
+                                className="btn-secondary"
+                                onClick={handleResetUserPin}
+                                disabled={adminPinStatus === 'Updating PIN...'}
+                                style={{ width: '100%', padding: 10, fontWeight: 'bold', fontSize: 12, border: '1px solid var(--accent)', color: 'var(--accent)' }}
+                            >
+                                {adminPinStatus || 'UPDATE MEMBER PIN'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+
                 <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <button 
                         className="btn-danger" 
@@ -521,6 +650,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         localStorage.removeItem(key);
                                     }
                                 });
+                                localStorage.removeItem('gymlog_user_pins');
                                 alert("Stored PINs cleared from device.");
                             }
                         }}

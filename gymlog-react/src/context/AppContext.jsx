@@ -13,6 +13,21 @@ export function getDefaultRestForRepRange(repRange) {
     return '90';
 }
 
+export function getUrlParamUser() {
+    try {
+        const searchParams = new URLSearchParams(window.location.search);
+        let u = searchParams.get('user') || searchParams.get('u');
+        if (!u && window.location.hash.includes('?')) {
+            const hashQuery = window.location.hash.split('?')[1];
+            const hashParams = new URLSearchParams(hashQuery);
+            u = hashParams.get('user') || hashParams.get('u');
+        }
+        return u ? u.trim() : null;
+    } catch (e) {
+        return null;
+    }
+}
+
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
@@ -20,8 +35,9 @@ export function AppProvider({ children }) {
     
     // Core state variables
     const [workoutDay, setWorkoutDay] = useState(() => {
-        const owner = localStorage.getItem('builder_primary_user') || "Brian";
-        const cached = localStorage.getItem(`gymlog_workout_day_${owner}`);
+        const owner = localStorage.getItem('builder_primary_user');
+        const key = (owner && owner !== 'Guest') ? owner : 'Guest';
+        const cached = localStorage.getItem(`gymlog_workout_day_${key}`);
         return cached ? JSON.parse(cached) : 1;
     });
     const [people, setPeople] = useState(() => {
@@ -50,13 +66,15 @@ export function AppProvider({ children }) {
         return cached ? JSON.parse(cached) : {};
     });
     const [circuitWorkoutDay, setCircuitWorkoutDay] = useState(() => {
-        const owner = localStorage.getItem('builder_primary_user') || "Brian";
-        const cached = localStorage.getItem(`gymlog_circuit_workout_day_${owner}`);
+        const owner = localStorage.getItem('builder_primary_user');
+        const key = (owner && owner !== 'Guest') ? owner : 'Guest';
+        const cached = localStorage.getItem(`gymlog_circuit_workout_day_${key}`);
         return cached ? JSON.parse(cached) : 1;
     });
     const [fullBodyWorkoutDay, setFullBodyWorkoutDay] = useState(() => {
-        const owner = localStorage.getItem('builder_primary_user') || "Brian";
-        const cached = localStorage.getItem(`gymlog_fullBody_workout_day_${owner}`);
+        const owner = localStorage.getItem('builder_primary_user');
+        const key = (owner && owner !== 'Guest') ? owner : 'Guest';
+        const cached = localStorage.getItem(`gymlog_fullBody_workout_day_${key}`);
         return cached ? JSON.parse(cached) : 1;
     });
     const [fullBodySwaps, setFullBodySwaps] = useState(() => {
@@ -78,8 +96,9 @@ export function AppProvider({ children }) {
         return loc;
     });
     const [deviceOwner, setDeviceOwner] = useState(() => {
-        return localStorage.getItem('builder_primary_user') || "Brian";
+        return localStorage.getItem('builder_primary_user') || "";
     });
+    const [urlParamUser] = useState(() => getUrlParamUser());
     const [loading, setLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(true);
 
@@ -332,31 +351,33 @@ export function AppProvider({ children }) {
 
                 if (data && data.settings) {
                     localStorage.setItem('gymlog_raw_settings', JSON.stringify(data.settings));
-                    const owner = localStorage.getItem('builder_primary_user') || "Brian";
-                    const ownerLower = owner.toLowerCase();
-                    
-                    // Plan Day mapping
-                    const planVal = data.settings[`builder_workout_num_${ownerLower}`] ?? data.settings[`${owner}_Plan_Day`] ?? data.settings['builder_workout_num'];
-                    if (planVal !== undefined) {
-                        const val = parseInt(planVal, 10) || 1;
-                        setWorkoutDay(val);
-                        localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(val));
-                    }
+                    const owner = localStorage.getItem('builder_primary_user');
+                    if (owner && owner !== 'Guest') {
+                        const ownerLower = owner.toLowerCase();
+                        
+                        // Plan Day mapping
+                        const planVal = data.settings[`builder_workout_num_${ownerLower}`] ?? data.settings[`${owner}_Plan_Day`] ?? data.settings['builder_workout_num'];
+                        if (planVal !== undefined) {
+                            const val = parseInt(planVal, 10) || 1;
+                            setWorkoutDay(val);
+                            localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(val));
+                        }
 
-                    // Circuit Day mapping
-                    const circVal = data.settings[`builder_circuit_num_${ownerLower}`] ?? data.settings[`${owner}_Circuit_Day`] ?? data.settings['builder_circuit_num'];
-                    if (circVal !== undefined) {
-                        const val = parseInt(circVal, 10) || 1;
-                        setCircuitWorkoutDay(val);
-                        localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(val));
-                    }
+                        // Circuit Day mapping
+                        const circVal = data.settings[`builder_circuit_num_${ownerLower}`] ?? data.settings[`${owner}_Circuit_Day`] ?? data.settings['builder_circuit_num'];
+                        if (circVal !== undefined) {
+                            const val = parseInt(circVal, 10) || 1;
+                            setCircuitWorkoutDay(val);
+                            localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(val));
+                        }
 
-                    // Full Body Day mapping
-                    const fbVal = data.settings[`builder_fullbody_num_${ownerLower}`] ?? data.settings[`${owner}_FullBody_Day`] ?? data.settings['builder_fullbody_num'];
-                    if (fbVal !== undefined) {
-                        const val = parseInt(fbVal, 10) || 1;
-                        setFullBodyWorkoutDay(val);
-                        localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
+                        // Full Body Day mapping
+                        const fbVal = data.settings[`builder_fullbody_num_${ownerLower}`] ?? data.settings[`${owner}_FullBody_Day`] ?? data.settings['builder_fullbody_num'];
+                        if (fbVal !== undefined) {
+                            const val = parseInt(fbVal, 10) || 1;
+                            setFullBodyWorkoutDay(val);
+                            localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
+                        }
                     }
                 }
                 }
@@ -379,9 +400,10 @@ export function AppProvider({ children }) {
     // State Modifiers
     const updateWorkoutDay = (day, skipSync = false) => {
         setWorkoutDay(day);
-        localStorage.setItem(`gymlog_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost && !skipSync) {
-            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+        const owner = (deviceOwner && deviceOwner !== 'Guest') ? deviceOwner : 'Guest';
+        localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(day));
+        if (sheetsPost && !skipSync && owner !== 'Guest') {
+            const ownerLower = owner.toLowerCase();
             const calcType = (day % 2 === 1) ? 'Push' : 'Pull';
             sheetsPost({ 
                 action: 'saveSettings', 
@@ -390,7 +412,7 @@ export function AppProvider({ children }) {
                     [`builder_workout_type_${ownerLower}`]: calcType,
                     'builder_workout_num': day,
                     'builder_workout_type': calcType,
-                    [`${deviceOwner}_Plan_Day`]: day
+                    [`${owner}_Plan_Day`]: day
                 }
             }).catch(console.warn);
         }
@@ -398,15 +420,16 @@ export function AppProvider({ children }) {
 
     const updateCircuitWorkoutDay = (day, skipSync = false) => {
         setCircuitWorkoutDay(day);
-        localStorage.setItem(`gymlog_circuit_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost && !skipSync) {
-            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+        const owner = (deviceOwner && deviceOwner !== 'Guest') ? deviceOwner : 'Guest';
+        localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(day));
+        if (sheetsPost && !skipSync && owner !== 'Guest') {
+            const ownerLower = owner.toLowerCase();
             sheetsPost({ 
                 action: 'saveSettings', 
                 settings: {
                     [`builder_circuit_num_${ownerLower}`]: day,
                     'builder_circuit_num': day,
-                    [`${deviceOwner}_Circuit_Day`]: day
+                    [`${owner}_Circuit_Day`]: day
                 }
             }).catch(console.warn);
         }
@@ -414,24 +437,50 @@ export function AppProvider({ children }) {
 
     const updateFullBodyWorkoutDay = (day, skipSync = false) => {
         setFullBodyWorkoutDay(day);
-        localStorage.setItem(`gymlog_fullBody_workout_day_${deviceOwner}`, JSON.stringify(day));
-        if (sheetsPost && !skipSync) {
-            const ownerLower = (deviceOwner || 'brian').toLowerCase();
+        const owner = (deviceOwner && deviceOwner !== 'Guest') ? deviceOwner : 'Guest';
+        localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(day));
+        if (sheetsPost && !skipSync && owner !== 'Guest') {
+            const ownerLower = owner.toLowerCase();
             sheetsPost({ 
                 action: 'saveSettings', 
                 settings: {
                     [`builder_fullbody_num_${ownerLower}`]: day,
                     'builder_fullbody_num': day,
-                    [`${deviceOwner}_FullBody_Day`]: day
+                    [`${owner}_FullBody_Day`]: day
                 }
             }).catch(console.warn);
         }
     };
 
-    const togglePersonActive = (person) => {
+    // Partner Workout 1-Time PIN Check-In
+    const togglePersonActive = async (person) => {
         if (person === deviceOwner && activePeople.includes(person)) {
             return;
         }
+        const key = (person || '').toLowerCase();
+        const isActivating = !activePeople.includes(person);
+
+        if (isActivating && person !== 'Guest') {
+            const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+            const legacyPin = localStorage.getItem('gymlog_pin_' + key);
+            let pin = cachedPins[key] || legacyPin;
+
+            if (!pin) {
+                pin = window.prompt(`Enter 4-digit PIN for partner check-in (${person}):`);
+                if (!pin) return;
+
+                const verifyRes = await verifyUserPin(person, pin);
+                if (!verifyRes.success) {
+                    alert(`Invalid PIN for ${person}: ${verifyRes.error || 'Verification failed'}`);
+                    return;
+                }
+
+                cachedPins[key] = pin;
+                localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+                localStorage.setItem('gymlog_pin_' + key, pin);
+            }
+        }
+
         setActivePeople(prev => {
             const next = prev.includes(person)
                 ? prev.filter(p => p !== person)
@@ -455,6 +504,16 @@ export function AppProvider({ children }) {
             return prev;
         });
 
+        if (newOwner === 'Guest' || !newOwner) {
+            const planCached = localStorage.getItem('gymlog_workout_day_Guest');
+            setWorkoutDay(planCached ? JSON.parse(planCached) : 1);
+            const circCached = localStorage.getItem('gymlog_circuit_workout_day_Guest');
+            setCircuitWorkoutDay(circCached ? JSON.parse(circCached) : 1);
+            const fbCached = localStorage.getItem('gymlog_fullBody_workout_day_Guest');
+            setFullBodyWorkoutDay(fbCached ? JSON.parse(fbCached) : 1);
+            return;
+        }
+
         let rawSettings = {};
         try {
             rawSettings = JSON.parse(localStorage.getItem('gymlog_raw_settings') || '{}');
@@ -465,21 +524,27 @@ export function AppProvider({ children }) {
         const ownerLower = newOwner.toLowerCase();
         const planFromSettings = rawSettings[`builder_workout_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Plan_Day`];
         const planCached = localStorage.getItem(`gymlog_workout_day_${newOwner}`);
-        const chosenPlan = planFromSettings !== undefined ? (parseInt(planFromSettings, 10) || 1) : (planCached ? JSON.parse(planCached) : 1);
-        setWorkoutDay(chosenPlan);
-        localStorage.setItem(`gymlog_workout_day_${newOwner}`, JSON.stringify(chosenPlan));
+        const resolvedPlanDay = (planFromSettings !== undefined && planFromSettings !== null && planFromSettings !== '')
+            ? (parseInt(planFromSettings, 10) || 1)
+            : (planCached ? JSON.parse(planCached) : 1);
+        setWorkoutDay(resolvedPlanDay);
+        localStorage.setItem(`gymlog_workout_day_${newOwner}`, JSON.stringify(resolvedPlanDay));
 
         const circFromSettings = rawSettings[`builder_circuit_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Circuit_Day`];
         const circCached = localStorage.getItem(`gymlog_circuit_workout_day_${newOwner}`);
-        const chosenCirc = circFromSettings !== undefined ? (parseInt(circFromSettings, 10) || 1) : (circCached ? JSON.parse(circCached) : 1);
-        setCircuitWorkoutDay(chosenCirc);
-        localStorage.setItem(`gymlog_circuit_workout_day_${newOwner}`, JSON.stringify(chosenCirc));
+        const resolvedCircDay = (circFromSettings !== undefined && circFromSettings !== null && circFromSettings !== '')
+            ? (parseInt(circFromSettings, 10) || 1)
+            : (circCached ? JSON.parse(circCached) : 1);
+        setCircuitWorkoutDay(resolvedCircDay);
+        localStorage.setItem(`gymlog_circuit_workout_day_${newOwner}`, JSON.stringify(resolvedCircDay));
 
         const fbFromSettings = rawSettings[`builder_fullbody_num_${ownerLower}`] ?? rawSettings[`${newOwner}_FullBody_Day`];
         const fbCached = localStorage.getItem(`gymlog_fullBody_workout_day_${newOwner}`);
-        const chosenFb = fbFromSettings !== undefined ? (parseInt(fbFromSettings, 10) || 1) : (fbCached ? JSON.parse(fbCached) : 1);
-        setFullBodyWorkoutDay(chosenFb);
-        localStorage.setItem(`gymlog_fullBody_workout_day_${newOwner}`, JSON.stringify(chosenFb));
+        const resolvedFbDay = (fbFromSettings !== undefined && fbFromSettings !== null && fbFromSettings !== '')
+            ? (parseInt(fbFromSettings, 10) || 1)
+            : (fbCached ? JSON.parse(fbCached) : 1);
+        setFullBodyWorkoutDay(resolvedFbDay);
+        localStorage.setItem(`gymlog_fullBody_workout_day_${newOwner}`, JSON.stringify(resolvedFbDay));
     };
 
     const setExerciseDone = (exName) => {
@@ -525,7 +590,7 @@ export function AppProvider({ children }) {
         });
     };
 
-    const deleteSetFromLocalHistory = (exName, entryDetails) => {
+    const deleteSetFromLocalHistory = (exName, entryDetails, targetIndex) => {
         if (!exName || !entryDetails) return;
 
         // 1. Check if the set was logged in today's active workout (in gymlog_pending_sets)
@@ -568,21 +633,23 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_pending_deletes', JSON.stringify(pendingDeletes));
         }
 
-        // 3. Remove ONLY the single specific entry from local state ex.history (splice by index)
+        // 3. Remove the set at targetIndex from local state ex.history
         setExercises(prev => {
             const next = prev.map(ex => {
                 if (ex.name.toLowerCase() === exName.toLowerCase()) {
                     const hist = ex.history || [];
-                    const targetIdx = hist.findIndex(h => 
-                        h.person && entryDetails.person && h.person.toLowerCase() === entryDetails.person.toLowerCase() &&
-                        String(h.reps) === String(entryDetails.reps) &&
-                        String(h.weight) === String(entryDetails.weight) &&
-                        (!entryDetails.date || !h.date || String(h.date) === String(entryDetails.date)) &&
-                        (entryDetails.setNum === undefined || h.setNum === undefined || String(h.setNum) === String(entryDetails.setNum))
-                    );
-                    if (targetIdx !== -1) {
+                    const removeIdx = (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex < hist.length)
+                        ? targetIndex
+                        : hist.findIndex(h => 
+                            h.person && entryDetails.person && h.person.toLowerCase() === entryDetails.person.toLowerCase() &&
+                            String(h.reps) === String(entryDetails.reps) &&
+                            String(h.weight) === String(entryDetails.weight) &&
+                            (!entryDetails.date || !h.date || String(h.date) === String(entryDetails.date)) &&
+                            (entryDetails.setNum === undefined || h.setNum === undefined || String(h.setNum) === String(entryDetails.setNum))
+                        );
+                    if (removeIdx !== -1) {
                         const newHistory = [...hist];
-                        newHistory.splice(targetIdx, 1);
+                        newHistory.splice(removeIdx, 1);
                         return { ...ex, history: newHistory };
                     }
                 }
@@ -782,23 +849,23 @@ export function AppProvider({ children }) {
         const activePeopleStr = (activePeople && activePeople.length > 0) ? activePeople.join('+') : 'Solo';
         const peopleText = (activePeople && activePeople.length > 0) ? activePeople.join(', ') : 'Solo';
 
-        // Format ISO date (YYYY-MM-DD) with zero slashes
-        const d = new Date(startTs);
-        const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        // Deterministic session ID: ${prog}_${cleanPerson}_${YYYY-MM-DD}_day${workoutDay} (no slashes)
+        const dateObj = new Date(startTs);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const isoDate = `${yyyy}-${mm}-${dd}`;
 
-        // Deterministic session ID: ${program}_${person}_${isoDate}_day${workoutDay}
-        // (e.g. Plan_Brian_2026-10-01_day25)
-        const daySuffix = (sessionData.workoutDay !== undefined && sessionData.workoutDay !== null && sessionData.workoutDay !== '')
-            ? `_day${sessionData.workoutDay}`
-            : '';
-        const fallbackPerson = sessionData.people || (activePeopleStr !== 'Solo' ? activePeopleStr : (deviceOwner || 'User'));
-        const cleanPerson = String(fallbackPerson).replace(/[/\\?%*:|"<>]/g, '_');
-        const deterministicId = `${prog}_${cleanPerson}_${isoDate}${daySuffix}`;
+        const rawPerson = sessionData.people || (activePeopleStr !== 'Solo' ? activePeopleStr : (deviceOwner || 'User'));
+        const cleanPerson = String(rawPerson).replace(/\s*,\s*/g, '+').replace(/[/\\?%*:|"<>]/g, '_').trim();
+        const currentWorkoutDay = (sessionData.workoutDay !== undefined && sessionData.workoutDay !== null && sessionData.workoutDay !== '')
+            ? sessionData.workoutDay
+            : (workoutDay || 1);
 
-        let id = deterministicId;
-        if (sessionData.id && !sessionData.id.startsWith('session_') && !sessionData.id.includes('/')) {
-            id = sessionData.id;
-        }
+        const fallbackId = `${prog}_${cleanPerson}_${isoDate}_day${currentWorkoutDay}`;
+        const id = (sessionData.id && !sessionData.id.startsWith('session_') && !sessionData.id.includes('/'))
+            ? sessionData.id
+            : fallbackId;
 
         const newSession = {
             id,
@@ -831,7 +898,7 @@ export function AppProvider({ children }) {
             return next;
         });
 
-        if (!skipServerSync) {
+        if (!skipServerSync && deviceOwner && deviceOwner !== 'Guest') {
             // Background Google Sheets sync via sheetsPost({ action: 'logSession', ...sessionData })
             (async () => {
                 try {
@@ -855,6 +922,14 @@ export function AppProvider({ children }) {
         setIsSyncing(true);
         const newSession = saveCompletedSession(sessionData, true); // skipServerSync = true
 
+        // Guest Sandbox Isolation: Zero writes to Google Sheets
+        if (!deviceOwner || deviceOwner === 'Guest') {
+            localStorage.setItem('gymlog_pending_sets', '[]');
+            localStorage.setItem('gymlog_pending_deletes', '[]');
+            setIsSyncing(false);
+            return newSession;
+        }
+
         const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
         const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
         
@@ -877,8 +952,6 @@ export function AppProvider({ children }) {
             const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
             queue.push(payload);
             localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
-            // In a real app we'd also leave gymlog_pending_sets alone, or clear them and depend entirely on the sync queue.
-            // Since we put them in the payload which will be retried, we can clear them here.
             localStorage.setItem('gymlog_pending_sets', '[]');
             localStorage.setItem('gymlog_pending_deletes', '[]');
         } finally {
@@ -1038,16 +1111,23 @@ export function AppProvider({ children }) {
                 if (!input) continue;
 
                 if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
-                    let pin = localStorage.getItem('gymlog_pin_' + key);
-                    if (!pin) {
-                        pin = window.prompt(`Enter PIN for ${person}:`);
-                        if (pin === null) {
-                            cancelled = true;
-                            break;
+                    if (person === 'Guest') {
+                        userPins[key] = "guest";
+                    } else {
+                        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+                        let pin = cachedPins[key] || localStorage.getItem('gymlog_pin_' + key);
+                        if (!pin) {
+                            pin = window.prompt(`Enter PIN for ${person}:`);
+                            if (pin === null) {
+                                cancelled = true;
+                                break;
+                            }
+                            cachedPins[key] = pin;
+                            localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+                            localStorage.setItem('gymlog_pin_' + key, pin);
                         }
-                        localStorage.setItem('gymlog_pin_' + key, pin);
+                        userPins[key] = pin;
                     }
-                    userPins[key] = pin;
                 }
             }
 
@@ -1068,14 +1148,139 @@ export function AppProvider({ children }) {
         return null;
     };
 
+    // PIN Management & Dynamic Authentication (TASK-R101)
+    const verifyUserPin = async (name, pin) => {
+        if (!pin) return { success: false, error: 'PIN is required' };
+        try {
+            if (sheetsPost) {
+                const res = await sheetsPost({ action: 'verifyPin', person: name, pin: String(pin) });
+                if (res && res.valid) {
+                    return { success: true, isAdmin: res.isAdmin, person: res.person || name };
+                }
+            }
+        } catch (err) {
+            const errMsg = err.message || '';
+            if (errMsg.includes('Invalid PIN') || errMsg.includes('Unauthorized') || errMsg.includes('No PIN configured')) {
+                return { success: false, error: errMsg };
+            }
+            // Offline fallback to locally cached PIN
+            const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+            const localPin = cachedPins[(name || '').toLowerCase()] || localStorage.getItem('gymlog_pin_' + (name || '').toLowerCase());
+            if (localPin && String(localPin) === String(pin)) {
+                return { success: true, offline: true };
+            }
+            return { success: false, error: errMsg || 'Verification error' };
+        }
+        return { success: false, error: 'Verification failed' };
+    };
+
+    const registerNewUser = async (name, pin) => {
+        const trimmedName = (name || '').trim();
+        if (!trimmedName) throw new Error('Name cannot be empty');
+        if (!pin || String(pin).length < 4) throw new Error('A 4-digit PIN is required');
+
+        // 1. Save user PIN to backend
+        if (sheetsPost) {
+            await sheetsPost({ action: 'saveUserPin', person: trimmedName, pin: String(pin) });
+        }
+
+        // 2. Add to people roster if not already present
+        if (!people.includes(trimmedName)) {
+            const updatedPeople = [...people, trimmedName];
+            setPeople(updatedPeople);
+            localStorage.setItem('gymlog_people', JSON.stringify(updatedPeople));
+            if (sheetsPost) {
+                sheetsPost({ action: 'savePeople', people: updatedPeople }).catch(console.warn);
+            }
+        }
+
+        // 3. Cache PIN locally
+        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        cachedPins[trimmedName.toLowerCase()] = String(pin);
+        localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+        localStorage.setItem('gymlog_pin_' + trimmedName.toLowerCase(), String(pin));
+
+        // 4. Set as device owner
+        updateDeviceOwner(trimmedName);
+        return { success: true };
+    };
+
+    const resetUserPinWithAdmin = async (targetUser, newPin, adminPin) => {
+        if (!targetUser) throw new Error('Target user is required');
+        if (!newPin || String(newPin).length < 4) throw new Error('A 4-digit PIN is required');
+        if (!adminPin) throw new Error('Master Admin PIN is required');
+
+        if (sheetsPost) {
+            await sheetsPost({
+                action: 'saveUserPin',
+                person: targetUser,
+                pin: String(newPin),
+                adminPin: String(adminPin)
+            });
+        }
+
+        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        cachedPins[targetUser.toLowerCase()] = String(newPin);
+        localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+        localStorage.setItem('gymlog_pin_' + targetUser.toLowerCase(), String(newPin));
+
+        return { success: true };
+    };
+
+    const upgradeGuestToCloudUser = async (name, pin) => {
+        const trimmedName = (name || '').trim();
+        if (!trimmedName) throw new Error('Name is required');
+        if (!pin || String(pin).length < 4) throw new Error('A 4-digit PIN is required');
+
+        const isExisting = people.some(p => p.toLowerCase() === trimmedName.toLowerCase());
+        if (isExisting) {
+            const verify = await verifyUserPin(trimmedName, pin);
+            if (!verify.success) {
+                throw new Error(verify.error || 'Invalid PIN for profile');
+            }
+        } else {
+            await registerNewUser(trimmedName, pin);
+        }
+
+        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        cachedPins[trimmedName.toLowerCase()] = String(pin);
+        localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
+        localStorage.setItem('gymlog_pin_' + trimmedName.toLowerCase(), String(pin));
+
+        updateDeviceOwner(trimmedName);
+
+        // Migrate guest session history to Sheets
+        const guestHistory = JSON.parse(localStorage.getItem('gymlog_session_history') || '[]');
+        if (guestHistory.length > 0 && sheetsPost) {
+            for (const s of guestHistory) {
+                try {
+                    await sheetsPost({
+                        action: 'logSession',
+                        ...s,
+                        people: trimmedName
+                    });
+                } catch (e) {
+                    console.warn('Failed to sync guest session to cloud:', e);
+                }
+            }
+        }
+
+        return { success: true };
+    };
+
     const contextValue = {
         workoutDay,
         fullBodyWorkoutDay,
         circuitWorkoutDay,
         people,
-        activePeople: [...new Set(activePeople)].filter(p => people.includes(p)),
+        activePeople: [...new Set(activePeople)].filter(p => p === 'Guest' || people.includes(p)),
         deviceOwner,
+        urlParamUser,
         updateDeviceOwner,
+        verifyUserPin,
+        registerNewUser,
+        resetUserPinWithAdmin,
+        upgradeGuestToCloudUser,
         exercises,
         exerciseStatus,
         dailySwaps,
