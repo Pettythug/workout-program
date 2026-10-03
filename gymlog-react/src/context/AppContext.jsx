@@ -463,17 +463,23 @@ export function AppProvider({ children }) {
         }
 
         const ownerLower = newOwner.toLowerCase();
-        const planCached = localStorage.getItem(`gymlog_workout_day_${newOwner}`);
         const planFromSettings = rawSettings[`builder_workout_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Plan_Day`];
-        setWorkoutDay(planCached ? JSON.parse(planCached) : (parseInt(planFromSettings, 10) || 1));
+        const planCached = localStorage.getItem(`gymlog_workout_day_${newOwner}`);
+        const chosenPlan = planFromSettings !== undefined ? (parseInt(planFromSettings, 10) || 1) : (planCached ? JSON.parse(planCached) : 1);
+        setWorkoutDay(chosenPlan);
+        localStorage.setItem(`gymlog_workout_day_${newOwner}`, JSON.stringify(chosenPlan));
 
-        const circCached = localStorage.getItem(`gymlog_circuit_workout_day_${newOwner}`);
         const circFromSettings = rawSettings[`builder_circuit_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Circuit_Day`];
-        setCircuitWorkoutDay(circCached ? JSON.parse(circCached) : (parseInt(circFromSettings, 10) || 1));
+        const circCached = localStorage.getItem(`gymlog_circuit_workout_day_${newOwner}`);
+        const chosenCirc = circFromSettings !== undefined ? (parseInt(circFromSettings, 10) || 1) : (circCached ? JSON.parse(circCached) : 1);
+        setCircuitWorkoutDay(chosenCirc);
+        localStorage.setItem(`gymlog_circuit_workout_day_${newOwner}`, JSON.stringify(chosenCirc));
 
-        const fbCached = localStorage.getItem(`gymlog_fullBody_workout_day_${newOwner}`);
         const fbFromSettings = rawSettings[`builder_fullbody_num_${ownerLower}`] ?? rawSettings[`${newOwner}_FullBody_Day`];
-        setFullBodyWorkoutDay(fbCached ? JSON.parse(fbCached) : (parseInt(fbFromSettings, 10) || 1));
+        const fbCached = localStorage.getItem(`gymlog_fullBody_workout_day_${newOwner}`);
+        const chosenFb = fbFromSettings !== undefined ? (parseInt(fbFromSettings, 10) || 1) : (fbCached ? JSON.parse(fbCached) : 1);
+        setFullBodyWorkoutDay(chosenFb);
+        localStorage.setItem(`gymlog_fullBody_workout_day_${newOwner}`, JSON.stringify(chosenFb));
     };
 
     const setExerciseDone = (exName) => {
@@ -532,7 +538,8 @@ export function AppProvider({ children }) {
                     e.person && entryDetails.person && e.person.toLowerCase() === entryDetails.person.toLowerCase() &&
                     String(e.reps) === String(entryDetails.reps) &&
                     String(e.weight) === String(entryDetails.weight) &&
-                    (!entryDetails.date || !e.date || String(e.date) === String(entryDetails.date))
+                    (!entryDetails.date || !e.date || String(e.date) === String(entryDetails.date)) &&
+                    (entryDetails.setNum === undefined || e.setNum === undefined || String(e.setNum) === String(entryDetails.setNum))
                 );
                 if (matchIdx !== -1) {
                     removedFromPending = true;
@@ -775,21 +782,27 @@ export function AppProvider({ children }) {
         const activePeopleStr = (activePeople && activePeople.length > 0) ? activePeople.join('+') : 'Solo';
         const peopleText = (activePeople && activePeople.length > 0) ? activePeople.join(', ') : 'Solo';
 
-        // Deterministic session ID: ${program}_${person}_${date}_day${workoutDay}
+        // Format ISO date (YYYY-MM-DD) with zero slashes
+        const d = new Date(startTs);
+        const isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        // Deterministic session ID: ${program}_${person}_${isoDate}_day${workoutDay}
         // (e.g. Plan_Brian_2026-10-01_day25)
-        const date = sessionData.date || new Date().toISOString().split('T')[0];
-        const daySuffix = (sessionData.workoutDay !== undefined && sessionData.workoutDay !== null)
+        const daySuffix = (sessionData.workoutDay !== undefined && sessionData.workoutDay !== null && sessionData.workoutDay !== '')
             ? `_day${sessionData.workoutDay}`
             : '';
         const fallbackPerson = sessionData.people || (activePeopleStr !== 'Solo' ? activePeopleStr : (deviceOwner || 'User'));
-        const fallbackId = `${sessionData.program || prog || 'Plan'}_${fallbackPerson}_${date}${daySuffix}`;
-        const id = (sessionData.id && !sessionData.id.startsWith('session_'))
-            ? sessionData.id
-            : fallbackId;
+        const cleanPerson = String(fallbackPerson).replace(/[/\\?%*:|"<>]/g, '_');
+        const deterministicId = `${prog}_${cleanPerson}_${isoDate}${daySuffix}`;
+
+        let id = deterministicId;
+        if (sessionData.id && !sessionData.id.startsWith('session_') && !sessionData.id.includes('/')) {
+            id = sessionData.id;
+        }
 
         const newSession = {
             id,
-            date: sessionData.date || new Date(startTs).toLocaleDateString('en-US'),
+            date: isoDate,
             program: sessionData.program || 'Plan',
             workoutDay: sessionData.workoutDay !== undefined ? sessionData.workoutDay : '',
             workoutType: sessionData.workoutType || '',

@@ -1,32 +1,35 @@
-# TASK-QA-R100: QA Pre-Merge Verification Specification
+# TASK-QA-R100: Pre-Merge Verification & Exact-Second Sync Testing
 
-## 1. Task Summary
-- **Target App:** `gymlog-react`
-- **Branch:** `TASK-R100`
-- **Focus Area:** Decouple card set deletions from immediate network calls & verify local-first buffering until COMPLETE WORKOUT.
-
----
-
-## 2. Changes Under Review
-1. **`gymlog-react/src/components/ExerciseCard.jsx`**:
-   - Stripped `prompt()` and `deleteHistory()` API calls from `handleDeleteHistory` and `handleDeleteLoggedSet`.
-   - Unified on `deleteSetFromLocalHistory`.
-2. **`gymlog-react/src/components/CircuitView.jsx`**:
-   - Stripped `prompt()` and `deleteHistory()` API calls from `handleDeleteSet` and `handleDeleteHistoryEntry`.
-   - Unified on `deleteSetFromLocalHistory`.
+## 1. Scope of Audit
+This QA protocol verifies the implementation of [TASK-R100.md](file:///C:/Users/wance/Documents/Git/workout-program/docs/jira_tasks/TASK-R100.md):
+- Exact-second timestamp preservation and matching.
+- Set number (`setNum`) matching in deletion buffers.
+- Server-first workout day synchronization in `AppContext.jsx`.
+- Clean ISO session IDs (`YYYY-MM-DD`) without slashes.
+- Build and ESLint clean pass.
 
 ---
 
-## 3. QA Pre-Merge Checklist
-1. [ ] **Automated Build & Linting**:
-   - `npm.cmd run build` $\rightarrow$ 0 errors.
-   - `npx.cmd eslint src/` $\rightarrow$ 0 errors.
-2. [ ] **0ms UI Deletion & No Prompts**:
-   - Tapping delete on a set removes it in 0ms without prompting for PIN or firing network requests.
-3. [ ] **Complete Workout Batch Sync**:
-   - Verify `batchSyncSession` payload sends `deletes` array on workout completion.
+## 2. Automated Test Checks
+- [x] **Vite Build**: `npm run build` completed with code 0 (0 errors).
+- [x] **ESLint**: `npx eslint src/` completed with 0 errors.
 
 ---
 
-## 4. Signal Requirement
-When all tests pass, output `QA_PREMERGE_PASS`.
+## 3. Manual Live Testing Checklist
+1. **Timestamp Precision Display**:
+   - In Recent History cards, confirm timestamps show seconds (e.g. `Yesterday, 3:33:05 PM`).
+2. **Instant Local Deletion**:
+   - Tapping the 🗑️ trash icon removes the target set immediately in 0ms with zero PIN prompts.
+3. **Atomic Backend Deletion**:
+   - Tapping **COMPLETE WORKOUT** sends `deletes` payload.
+   - The exact targeted row in `GymLog_History` is deleted from Google Sheets matching on exact seconds and `Set #`.
+4. **Session ID Formatting**:
+   - `GymLog_Sessions` row is appended with clean ID: `Plan_Test_YYYY-MM-DD_dayN` (no slashes).
+5. **Workout Day Priority**:
+   - Switching `Device Owner` in Settings updates the active workout day from the server settings.
+
+---
+
+## 4. Verdict
+- Pre-Merge Validation: **READY FOR LIVE USER TEST & APPROVAL**

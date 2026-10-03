@@ -13,14 +13,14 @@ const formatLogDate = (dateStr) => {
         if (isNaN(d.getTime())) return dateStr;
         const today = new Date();
         if (d.toDateString() === today.toDateString()) {
-            return `Today, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+            return `Today, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
         }
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         if (d.toDateString() === yesterday.toDateString()) {
-            return `Yesterday, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+            return `Yesterday, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}`;
         }
-        return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + `, ` + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) + `, ` + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
     } catch (e) {
         return dateStr;
     }

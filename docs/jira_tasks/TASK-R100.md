@@ -1,41 +1,52 @@
-# TASK-R100: Frontend Deletion Decoupling & Pure Local-First Buffering in Workout Cards
+# TASK-R100: Frontend Deletion Decoupling, Exact-Second Timestamp Precision & Server-First Sync
 
 ## 1. Overview & Objectives
-In `TASK-R99`, the backend and `AppContext.jsx` were upgraded to support atomic batch deletions on workout completion via `batchSyncSession`. However, the individual card components (`ExerciseCard.jsx` and `CircuitView.jsx`) still contained legacy logic that fired immediate individual `deleteHistory` network calls and triggered blocking PIN prompts on every set deletion.
-
-The objective of `TASK-R100` is to completely decouple set deletions from immediate network I/O in the frontend:
-1. **Remove Immediate Network Calls**: Remove `await deleteHistory(...)` from `ExerciseCard.jsx` and `CircuitView.jsx`.
-2. **Remove Blocking Deletion Prompts**: Remove `prompt("Admin PIN required:")` from active workout card set deletions.
-3. **Pure 0ms Local-First Deletion**: When tapping the trash can on any set (logged today or historical), immediately execute `deleteSetFromLocalHistory(ex.name, entry)`.
-4. **Deferred Cloud Deletion**: Ensure deleted rows are strictly buffered in `gymlog_pending_deletes` and sent to Google Sheets only when the user taps **COMPLETE WORKOUT** via `completeWorkoutBatch`.
+This task resolves all set deletion, timestamp precision, and workout day synchronization issues:
+1. **0ms Instant UI Deletion**: Set deletions in `ExerciseCard.jsx` and `CircuitView.jsx` immediately update local state and buffer into `gymlog_pending_deletes` with zero blocking prompts and zero intermediate network calls.
+2. **Exact-Second Precision**: Historical set logging and deletions must retain exact hour, minute, and second timestamps (`M/d/yyyy, h:mm:ss a`), combined with the exact Set # (`setNum`), ensuring zero collision or ambiguity even for sets logged with short rest periods.
+3. **Server-First Workout Day Priority**: In `AppContext.jsx`, when switching `Device Owner` in `updateDeviceOwner`, the settings downloaded from Google Sheets (`GymLog_Settings`) must take precedence over stale browser `localStorage` (`gymlog_workout_day_*`).
+4. **Clean Session IDs**: In `saveCompletedSession`, Session IDs must use ISO `YYYY-MM-DD` formatting (e.g. `Plan_Test_2026-10-02_day22`) with zero slash characters and guaranteed alignment with the completed workout day number.
+5. **Atomic Backend Batch Sync**: `Combined_AppScript_v2.gs` must match deletions using exact timestamp down to the second and `setNum`, deleting target rows cleanly from `GymLog_History` in the same single lock as `GymLog_Sessions` and `GymLog_Settings`.
 
 ---
 
 ## 2. Technical Scope of Changes
 
-### A. `gymlog-react/src/components/ExerciseCard.jsx`
-1. In `handleDeleteHistory(entry)`:
-   - Remove `prompt("Admin PIN required:")` and `await deleteHistory(...)`.
-   - Directly call `deleteSetFromLocalHistory(ex.name, entry)`.
-   - Set toast: `"Entry removed from session"`.
-2. In `handleDeleteLoggedSet(setEntries)`:
-   - Remove `prompt("Admin PIN required:")` and `await deleteHistory(...)`.
-   - Loop over `setEntries` and call `deleteSetFromLocalHistory(ex.name, entry)` for each.
-   - Set toast: `"Set removed"`.
+### A. `gymlog-react/src/context/AppContext.jsx`
+1. In `updateDeviceOwner(newOwner)`:
+   - Read `rawSettings` for `newOwner` (e.g. `rawSettings['builder_workout_num_' + ownerLower]` or `rawSettings[newOwner + '_Plan_Day']`).
+   - If present and valid, prioritize this server setting over `planCached`.
+   - Update `setWorkoutDay`, `setCircuitWorkoutDay`, and `setFullBodyWorkoutDay` accordingly and save to `localStorage`.
+2. In `saveCompletedSession(sessionData, skipServerSync)`:
+   - Format `date` as ISO `YYYY-MM-DD` (e.g. `2026-10-02`) so Session IDs never contain slashes.
+   - Construct deterministic ID: `${program}_${person}_${isoDate}_day${workoutDay}`.
+3. In `deleteSetFromLocalHistory(exName, entryDetails)`:
+   - Ensure `pendingDeletes` stores `date` (exact full timestamp with seconds), `setNum`, `exercise`, `person`, `reps`, `weight`, and `range`.
 
-### B. `gymlog-react/src/components/CircuitView.jsx`
-1. In `handleDeleteSet(exName, setEntries)`:
-   - Remove `window.prompt(...)` and `await deleteHistory(...)`.
-   - Call `deleteSetFromLocalHistory(exName, entry)` for each entry.
-2. In `handleDeleteHistoryEntry(entry)`:
-   - Remove `window.prompt(...)` and `await deleteHistory(...)`.
-   - Call `deleteSetFromLocalHistory(exName, entry)`.
+### B. `gymlog-react/src/components/ExerciseCard.jsx`
+1. In `formatLogDate(dateStr)`:
+   - Include `second: '2-digit'` in `toLocaleTimeString` so the UI displays the exact second (`Yesterday, 3:33:05 PM`).
+
+### C. `Combined_AppScript_v2.gs`
+1. In `gymlog_doGet()`:
+   - In history mapping, format `date` to retain exact seconds:
+     ```javascript
+     date: r[0] ? (r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), "M/d/yyyy, h:mm:ss a") : String(r[0])) : "",
+     ```
+   - Ensure `setNum: r[7]` is passed.
+2. In `gymlog_handleBatchSyncSession(payload)`:
+   - In `payload.deletes` matching loop:
+     - Match exact timestamp: compare raw strings or `d1.getTime() === d2.getTime()`.
+     - Match `setNum`: if `setNum` is provided, match `String(data[i][7]).trim() === String(setNum).trim()`.
+     - Match `person`, `exercise`, `reps`, `weight`, `range`.
+     - Delete matched row with `histSheet.deleteRow(i + 2)` and break.
 
 ---
 
 ## 3. Acceptance Criteria
-1. [ ] **0ms Instant UI Removal**: Tapping delete on any set in `ExerciseCard` or `CircuitView` removes it instantly with zero prompts, zero network delay, and zero loading spinners.
-2. [ ] **Zero Intermediate Network Calls**: Deleting sets during an active workout produces 0 network calls in the browser DevTools Network tab.
-3. [ ] **Google Sheets Untouched During Workout**: Google Sheets `GymLog_History` is not modified when sets are deleted during an active session.
-4. [ ] **Atomic Deletion on Complete Workout**: Tapping **COMPLETE WORKOUT** sends `deletes` inside `batchSyncSession`, removing deleted rows from Google Sheets atomically in 1 transaction.
-5. [ ] **Build & Lint Verification**: `npm.cmd run build` and `npx.cmd eslint src/` compile with 0 errors.
+1. [ ] **Instant Local Deletion**: Tapping the trash can removes the set immediately in 0ms without PIN popups or network delays.
+2. [ ] **Exact Timestamp Display**: Recent History shows timestamps with seconds (`Yesterday, 3:33:05 PM`).
+3. [ ] **Clean Session ID**: `GymLog_Sessions` receives IDs in `Plan_Test_YYYY-MM-DD_dayN` format with no slashes.
+4. [ ] **Server-First Workout Day**: Switching Device Owner in Settings immediately pulls the correct workout day number from Google Sheets.
+5. [ ] **Atomic Cloud Deletion**: Tapping **COMPLETE WORKOUT** cleanly deletes the target row from `GymLog_History` in Google Sheets.
+6. [ ] **Build Verification**: `npm.cmd run build` compiles with 0 errors.

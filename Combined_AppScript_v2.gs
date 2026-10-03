@@ -272,7 +272,7 @@ function gymlog_doGet() {
       : [];
 
     const history = histRaw.map(r => ({
-      date:     r[0] ? Utilities.formatDate(new Date(r[0]), Session.getScriptTimeZone(), "MMM d, yyyy, h:mm a") : "",
+      date:     r[0] ? (r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), "M/d/yyyy, h:mm:ss a") : String(r[0])) : "",
       person:   String(r[1]),
       exercise: String(r[2]),
       reps:     String(r[3]),
@@ -709,20 +709,38 @@ function verifyAdminPin(payload) {
 }
 function gymlog_handleDeleteHistory(payload) {
   verifyAdminPin(payload);
-  const { exercise, person, reps, weight, range } = payload;
+  const { exercise, person, reps, weight, range, date, setNum } = payload;
   const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
 
   if (histSheet.getLastRow() <= 1) return ok({ deleted: 0 });
 
   const data = histSheet.getRange(2, 1, histSheet.getLastRow() - 1, HISTORY_HEADERS.length).getValues();
   for (let i = data.length - 1; i >= 0; i--) {
-    if (
-      data[i][1] === person   &&
-      data[i][2] === exercise &&
-      String(data[i][3]) === String(reps)   &&
-      String(data[i][4]) === String(weight) &&
-      normalizeRange(data[i][5]) === normalizeRange(range)
-    ) {
+    const matchPerson = String(data[i][1]).toLowerCase().trim() === String(person || "").toLowerCase().trim();
+    const matchExercise = String(data[i][2]).toLowerCase().trim() === String(exercise || "").toLowerCase().trim();
+    const matchReps = String(data[i][3]).trim() === String(reps !== undefined ? reps : "").trim();
+    const matchWeight = String(data[i][4]).trim() === String(weight !== undefined ? weight : "").trim();
+    const matchRange = !range || normalizeRange(data[i][5]) === normalizeRange(range);
+
+    let matchDate = true;
+    if (date) {
+      const sheetDateStr = String(data[i][0]).trim();
+      const targetDateStr = String(date).trim();
+      if (sheetDateStr === targetDateStr) {
+        matchDate = true;
+      } else {
+        const d1 = new Date(sheetDateStr);
+        const d2 = new Date(targetDateStr);
+        matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d1.getTime() === d2.getTime();
+      }
+    }
+
+    let matchSetNum = true;
+    if (setNum !== undefined && setNum !== null && setNum !== "") {
+      matchSetNum = String(data[i][7]).trim() === String(setNum).trim();
+    }
+
+    if (matchPerson && matchExercise && matchReps && matchWeight && matchRange && matchDate && matchSetNum) {
       histSheet.deleteRow(i + 2);
       break;
     }
@@ -931,7 +949,7 @@ function gymlog_handleBatchSyncSession(payload) {
             } else {
               const d1 = new Date(sheetDateStr);
               const d2 = new Date(targetDateStr);
-              matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && Math.abs(d1.getTime() - d2.getTime()) < 3000;
+              matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d1.getTime() === d2.getTime();
             }
           }
 
