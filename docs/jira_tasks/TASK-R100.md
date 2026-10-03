@@ -1,52 +1,58 @@
-# TASK-R100: Frontend Deletion Decoupling, Exact-Second Timestamp Precision & Server-First Sync
+# TASK-R100: Frontend Deletion Decoupling, Exact-Second Precision & Index-Safe Sync
 
 ## 1. Overview & Objectives
-This task resolves all set deletion, timestamp precision, and workout day synchronization issues:
-1. **0ms Instant UI Deletion**: Set deletions in `ExerciseCard.jsx` and `CircuitView.jsx` immediately update local state and buffer into `gymlog_pending_deletes` with zero blocking prompts and zero intermediate network calls.
-2. **Exact-Second Precision**: Historical set logging and deletions must retain exact hour, minute, and second timestamps (`M/d/yyyy, h:mm:ss a`), combined with the exact Set # (`setNum`), ensuring zero collision or ambiguity even for sets logged with short rest periods.
-3. **Server-First Workout Day Priority**: In `AppContext.jsx`, when switching `Device Owner` in `updateDeviceOwner`, the settings downloaded from Google Sheets (`GymLog_Settings`) must take precedence over stale browser `localStorage` (`gymlog_workout_day_*`).
-4. **Clean Session IDs**: In `saveCompletedSession`, Session IDs must use ISO `YYYY-MM-DD` formatting (e.g. `Plan_Test_2026-10-02_day22`) with zero slash characters and guaranteed alignment with the completed workout day number.
-5. **Atomic Backend Batch Sync**: `Combined_AppScript_v2.gs` must match deletions using exact timestamp down to the second and `setNum`, deleting target rows cleanly from `GymLog_History` in the same single lock as `GymLog_Sessions` and `GymLog_Settings`.
+This task guarantees that set deletions in the active workout UI are 100% deterministic, instant (0ms), and free of collision:
+1. **0ms Local Deletion & Deletion Buffering**: Set deletions in `ExerciseCard.jsx` and `CircuitCard.jsx` immediately remove the targeted set from the UI in 0ms with zero PIN prompts and zero intermediate network calls.
+2. **Index-Safe Deletion Targeting**: When deleting from a list of historical entries, the exact index `i` (or unique set identifier) is used so that the app removes the exact item clicked without falling back to searching from the top of the array (`findIndex(0)`).
+3. **Exact-Second & Set # Multi-Factor Precision**: Historical sets retain exact timestamps with seconds (`M/d/yyyy, h:mm:ss a`) and exact Set Numbers (`setNum`), ensuring that sets performed in the same minute with short rest periods are completely distinct.
+4. **Server-First Workout Day Priority**: In `AppContext.jsx` (`updateDeviceOwner`), settings downloaded from Google Sheets (`GymLog_Settings`) take precedence over stale browser `localStorage`.
+5. **Clean ISO Session IDs**: In `saveCompletedSession`, Session IDs are generated as `${program}_${person}_${YYYY-MM-DD}_day${workoutDay}` with zero slash characters.
+6. **Atomic Backend Deletion**: `Combined_AppScript_v2.gs` matches deletions on `date` + `setNum` + `person` + `exercise` + `reps` + `weight`, deleting the exact target row from `GymLog_History` in the same single lock as `GymLog_Sessions` and `GymLog_Settings`.
 
 ---
 
 ## 2. Technical Scope of Changes
 
-### A. `gymlog-react/src/context/AppContext.jsx`
-1. In `updateDeviceOwner(newOwner)`:
-   - Read `rawSettings` for `newOwner` (e.g. `rawSettings['builder_workout_num_' + ownerLower]` or `rawSettings[newOwner + '_Plan_Day']`).
-   - If present and valid, prioritize this server setting over `planCached`.
-   - Update `setWorkoutDay`, `setCircuitWorkoutDay`, and `setFullBodyWorkoutDay` accordingly and save to `localStorage`.
-2. In `saveCompletedSession(sessionData, skipServerSync)`:
-   - Format `date` as ISO `YYYY-MM-DD` (e.g. `2026-10-02`) so Session IDs never contain slashes.
-   - Construct deterministic ID: `${program}_${person}_${isoDate}_day${workoutDay}`.
-3. In `deleteSetFromLocalHistory(exName, entryDetails)`:
-   - Ensure `pendingDeletes` stores `date` (exact full timestamp with seconds), `setNum`, `exercise`, `person`, `reps`, `weight`, and `range`.
+### A. `gymlog-react/src/components/ExerciseCard.jsx` & `CircuitCard.jsx`
+1. In `RECENT HISTORY` mapping:
+   ```jsx
+   ex.history.filter(...).slice(0, 5).map((h, i) => (
+     ...
+     <button onClick={() => handleDeleteHistory(h, i)} ...>🗑</button>
+   ))
+   ```
+2. In `handleDeleteHistory(entry, index)`:
+   - Pass both `entry` and `index` to `deleteSetFromLocalHistory(ex.name, entry, index)`.
+3. In `formatLogDate(dateStr)`:
+   - Include `second: '2-digit'` in `toLocaleTimeString` so the UI displays seconds (`Yesterday, 3:33:05 PM`).
 
-### B. `gymlog-react/src/components/ExerciseCard.jsx`
-1. In `formatLogDate(dateStr)`:
-   - Include `second: '2-digit'` in `toLocaleTimeString` so the UI displays the exact second (`Yesterday, 3:33:05 PM`).
+### B. `gymlog-react/src/context/AppContext.jsx`
+1. In `deleteSetFromLocalHistory(exName, entryDetails, targetIndex = null)`:
+   - If `entryDetails` is a historical set, buffer `{ exercise, person, reps, weight, range, date, setNum }` into `gymlog_pending_deletes`.
+   - When modifying `ex.history` in local state:
+     - If `targetIndex !== null` and valid, splice at `targetIndex`.
+     - Otherwise, match on `date` + `setNum` + `reps` + `weight` + `person`.
+2. In `updateDeviceOwner(newOwner)`:
+   - Prioritize `rawSettings['builder_workout_num_' + ownerLower]` or `rawSettings[newOwner + '_Plan_Day']` over `planCached`.
+3. In `saveCompletedSession(sessionData, skipServerSync)`:
+   - Format `isoDate` as `YYYY-MM-DD` (e.g. `2026-10-03`).
+   - Construct deterministic ID: `${prog}_${cleanPerson}_${isoDate}${daySuffix}`.
 
 ### C. `Combined_AppScript_v2.gs`
 1. In `gymlog_doGet()`:
-   - In history mapping, format `date` to retain exact seconds:
-     ```javascript
-     date: r[0] ? (r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), "M/d/yyyy, h:mm:ss a") : String(r[0])) : "",
-     ```
-   - Ensure `setNum: r[7]` is passed.
-2. In `gymlog_handleBatchSyncSession(payload)`:
-   - In `payload.deletes` matching loop:
-     - Match exact timestamp: compare raw strings or `d1.getTime() === d2.getTime()`.
-     - Match `setNum`: if `setNum` is provided, match `String(data[i][7]).trim() === String(setNum).trim()`.
-     - Match `person`, `exercise`, `reps`, `weight`, `range`.
-     - Delete matched row with `histSheet.deleteRow(i + 2)` and break.
+   - Format history date: `r[0] ? (r[0] instanceof Date ? Utilities.formatDate(r[0], Session.getScriptTimeZone(), "M/d/yyyy, h:mm:ss a") : String(r[0])) : ""`.
+   - Pass `setNum: r[7]`.
+2. In `gymlog_handleBatchSyncSession(payload)` and `gymlog_handleDeleteHistory(payload)`:
+   - Match on `person`, `exercise`, `reps`, `weight`, `range`, exact `date`, and `setNum`.
+   - Delete matched row with `histSheet.deleteRow(i + 2)` and break.
 
 ---
 
 ## 3. Acceptance Criteria
-1. [ ] **Instant Local Deletion**: Tapping the trash can removes the set immediately in 0ms without PIN popups or network delays.
-2. [ ] **Exact Timestamp Display**: Recent History shows timestamps with seconds (`Yesterday, 3:33:05 PM`).
-3. [ ] **Clean Session ID**: `GymLog_Sessions` receives IDs in `Plan_Test_YYYY-MM-DD_dayN` format with no slashes.
-4. [ ] **Server-First Workout Day**: Switching Device Owner in Settings immediately pulls the correct workout day number from Google Sheets.
-5. [ ] **Atomic Cloud Deletion**: Tapping **COMPLETE WORKOUT** cleanly deletes the target row from `GymLog_History` in Google Sheets.
-6. [ ] **Build Verification**: `npm.cmd run build` compiles with 0 errors.
+1. [ ] **0ms Instant UI Removal**: Tapping delete removes the item immediately in 0ms without PIN prompts.
+2. [ ] **Index-Safe Deletion**: Tapping the second entry on screen removes the second entry on screen.
+3. [ ] **Exact Timestamp Display**: Timestamps display seconds in Recent History (`Yesterday, 3:33:05 PM`).
+4. [ ] **Clean Session IDs**: Session IDs format as `Plan_Test_YYYY-MM-DD_dayN` (no slashes).
+5. [ ] **Server-First Workout Day**: Switching users in Settings pulls the latest workout day from Google Sheets.
+6. [ ] **Atomic Backend Deletion**: Tapping Complete Workout deletes the exact targeted row from Google Sheets.
+7. [ ] **Build Verification**: `npm.cmd run build` compiles with 0 errors.
