@@ -47,7 +47,9 @@ export function AppProvider({ children }) {
     const [activePeople, setActivePeople] = useState(() => {
         const cached = localStorage.getItem('gymlog_activePeople');
         const parsed = cached ? JSON.parse(cached) : [];
-        return [...new Set(parsed)];
+        if (parsed.length > 0) return [...new Set(parsed)];
+        const owner = localStorage.getItem('builder_primary_user');
+        return (owner && owner !== 'Guest') ? [owner] : (owner === 'Guest' ? ['Guest'] : []);
     });
     const [exercises, setExercises] = useState(() => {
         const cached = localStorage.getItem('gymlog_exercises');
@@ -280,7 +282,7 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify({}));
             localStorage.setItem('gymlog_active_warmup_status', 'pending');
             const currentOwner = localStorage.getItem('builder_primary_user');
-            const soloOwner = (currentOwner && currentOwner !== 'Guest') ? [currentOwner] : [];
+            const soloOwner = (currentOwner && currentOwner !== 'Guest') ? [currentOwner] : (currentOwner === 'Guest' ? ['Guest'] : []);
             localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
             setActivePeople(soloOwner);
             setExerciseStatus({});
@@ -498,7 +500,7 @@ export function AppProvider({ children }) {
     const updateDeviceOwner = (newOwner) => {
         setDeviceOwner(newOwner);
         localStorage.setItem('builder_primary_user', newOwner);
-        const defaultActive = (newOwner && newOwner !== 'Guest') ? [newOwner] : [];
+        const defaultActive = (newOwner && newOwner !== 'Guest') ? [newOwner] : (newOwner === 'Guest' ? ['Guest'] : []);
         setActivePeople(defaultActive);
         localStorage.setItem('gymlog_activePeople', JSON.stringify(defaultActive));
 
@@ -925,6 +927,9 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_pending_sets', '[]');
             localStorage.setItem('gymlog_pending_deletes', '[]');
             setIsSyncing(false);
+            const soloOwner = (deviceOwner && deviceOwner !== 'Guest') ? [deviceOwner] : (deviceOwner === 'Guest' ? ['Guest'] : []);
+            setActivePeople(soloOwner);
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
             return newSession;
         }
 
@@ -955,7 +960,7 @@ export function AppProvider({ children }) {
         } finally {
             setIsSyncing(false);
             // Auto-reset active roster back to solo device owner for the next workout
-            const soloOwner = (deviceOwner && deviceOwner !== 'Guest') ? [deviceOwner] : [];
+            const soloOwner = (deviceOwner && deviceOwner !== 'Guest') ? [deviceOwner] : (deviceOwner === 'Guest' ? ['Guest'] : []);
             setActivePeople(soloOwner);
             localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
         }
@@ -1270,12 +1275,16 @@ export function AppProvider({ children }) {
         return { success: true };
     };
 
+    const effectiveActivePeople = (activePeople.length === 0 && deviceOwner === 'Guest')
+        ? ['Guest']
+        : [...new Set(activePeople)].filter(p => p === 'Guest' || people.includes(p));
+
     const contextValue = {
         workoutDay,
         fullBodyWorkoutDay,
         circuitWorkoutDay,
         people,
-        activePeople: [...new Set(activePeople)].filter(p => p === 'Guest' || people.includes(p)),
+        activePeople: effectiveActivePeople,
         deviceOwner,
         urlParamUser,
         updateDeviceOwner,
