@@ -30,8 +30,8 @@ The objective of this task is to implement an enterprise-grade **First-Time Devi
    - Add `registerNewUser(name, pin)`: Syncs to `saveUserPin` and `savePeople`, sets device owner.
    - Add `verifyUserPin(name, pin)`: Validates PIN against backend or cached script properties.
    - Add `resetUserPinWithAdmin(targetUser, newPin, adminPin)`: Validates Admin PIN and updates target user's PIN in backend.
-3. **`gymlog-react/src/components/SessionStatsModal.jsx` / `PlanView.jsx`**:
-   - In Guest Mode, render the cloud benefits upgrade card on workout completion.
+3. **`gymlog-react/src/components/GuestUpgradeModal.jsx` (New Component)**:
+   - In Guest Mode, render the cloud benefits upgrade modal on workout completion.
 4. **`gymlog-react/src/components/SettingsModal.jsx`**:
    - When switching `DEVICE OWNER / PRIMARY USER`, prompt for the selected user's PIN.
    - Add PIN Management section in Admin Area to allow resetting any member's PIN using the Master Admin PIN.
@@ -48,11 +48,17 @@ The objective of this task is to implement an enterprise-grade **First-Time Devi
 ---
 
 ## 3. Acceptance Criteria
-1. [ ] **First-Time Welcome Modal**: A fresh browser / cleared localStorage displays the onboarding modal without defaulting to "Brian".
-2. [ ] **PIN Protection**: Claiming an existing user requires entering their correct 4-digit PIN.
-3. [ ] **URL Param Support**: Navigating to `?user=Dad` automatically pre-selects Dad and opens the PIN claim prompt.
-4. [ ] **Guest Sandbox Isolation**: Completing workouts in Guest Mode updates local storage without creating rows or changing day counters in Google Sheets.
-5. [ ] **Guest Upgrade Flow**: Tapping "Create Profile & Sync to Cloud" registers the user, pushes their guest history to Sheets, and claims the device.
-6. [ ] **Partner PIN Check-In**: Checking an active partner into a session verifies their PIN once and permits dual logging.
-7. [ ] **Admin Reset**: Admin PIN can update any user's PIN in Settings.
-8. [ ] **Build & Lint**: `npm.cmd run build` and `npx.cmd eslint src/` compile with 0 errors.
+1. [x] **First-Time Welcome Modal**: A fresh browser / cleared localStorage displays the onboarding modal without defaulting to "Brian".
+2. [x] **PIN Protection**: Claiming an existing user requires entering their correct 4-digit PIN.
+3. [x] **URL Param Support**: Navigating to `?user=Dad` automatically pre-selects Dad and opens the PIN claim prompt.
+4. [x] **Guest Sandbox Isolation**: Completing workouts in Guest Mode updates local storage without creating rows or changing day counters in Google Sheets.
+5. [x] **Guest Upgrade Flow**: Tapping "Create Profile & Sync to Cloud" registers the user, pushes their guest history to Sheets, and claims the device.
+6. [x] **Partner PIN Check-In**: Checking an active partner into a session verifies their PIN once and permits dual logging.
+7. [x] **Admin Reset**: Admin PIN can update any user's PIN in Settings.
+8. [x] **Build & Lint**: `npm.cmd run build` and `npx.cmd eslint src/` compile with 0 errors.
+
+---
+
+## 4. Final Sign-Off
+- **Status**: COMPLETED & VERIFIED
+- **Sign-Off**: `TASK_COMPLETE: TASK-R101`
