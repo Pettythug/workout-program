@@ -494,15 +494,9 @@ export function AppProvider({ children }) {
     const updateDeviceOwner = (newOwner) => {
         setDeviceOwner(newOwner);
         localStorage.setItem('builder_primary_user', newOwner);
-        setActivePeople(prev => {
-            if (!prev.includes(newOwner)) {
-                const next = [...prev, newOwner];
-                const uniqueNext = [...new Set(next)];
-                localStorage.setItem('gymlog_activePeople', JSON.stringify(uniqueNext));
-                return uniqueNext;
-            }
-            return prev;
-        });
+        const defaultActive = (newOwner && newOwner !== 'Guest') ? [newOwner] : [];
+        setActivePeople(defaultActive);
+        localStorage.setItem('gymlog_activePeople', JSON.stringify(defaultActive));
 
         if (newOwner === 'Guest' || !newOwner) {
             const planCached = localStorage.getItem('gymlog_workout_day_Guest');

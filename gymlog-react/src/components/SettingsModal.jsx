@@ -617,10 +617,21 @@ export default function SettingsModal({ isOpen, onClose }) {
                             </div>
 
                             <button 
-                                className="btn-secondary"
+                                type="button"
                                 onClick={handleResetUserPin}
                                 disabled={adminPinStatus === 'Updating PIN...'}
-                                style={{ width: '100%', padding: 10, fontWeight: 'bold', fontSize: 12, border: '1px solid var(--accent)', color: 'var(--accent)' }}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px', 
+                                    fontWeight: 'bold', 
+                                    fontSize: '13px', 
+                                    background: 'var(--accent)', 
+                                    color: '#000000', 
+                                    border: 'none', 
+                                    borderRadius: '8px', 
+                                    cursor: adminPinStatus === 'Updating PIN...' ? 'wait' : 'pointer',
+                                    marginTop: '4px'
+                                }}
                             >
                                 {adminPinStatus || 'UPDATE MEMBER PIN'}
                             </button>
