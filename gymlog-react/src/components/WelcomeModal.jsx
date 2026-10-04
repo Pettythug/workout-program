@@ -5,7 +5,6 @@ import { useAppContext } from '../context/AppContext';
 export default function WelcomeModal({ isOpen: overrideIsOpen, onClose }) {
     const { 
         people, 
-        deviceOwner, 
         urlParamUser, 
         updateDeviceOwner, 
         verifyUserPin, 
