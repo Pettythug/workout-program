@@ -279,6 +279,10 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_dailySwaps', JSON.stringify({}));
             localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify({}));
             localStorage.setItem('gymlog_active_warmup_status', 'pending');
+            const currentOwner = localStorage.getItem('builder_primary_user');
+            const soloOwner = (currentOwner && currentOwner !== 'Guest') ? [currentOwner] : [];
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
+            setActivePeople(soloOwner);
             setExerciseStatus({});
             setDailySwaps({});
             setFullBodySwaps({});
@@ -950,6 +954,10 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_pending_deletes', '[]');
         } finally {
             setIsSyncing(false);
+            // Auto-reset active roster back to solo device owner for the next workout
+            const soloOwner = (deviceOwner && deviceOwner !== 'Guest') ? [deviceOwner] : [];
+            setActivePeople(soloOwner);
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
         }
         return newSession;
     };
