@@ -1,89 +1,77 @@
-Hey there,
+# GymLog Strategic Future Development Roadmap
 
-Here is a quick look at where we stand with the GymLog ecosystem and what is left on the radar for future development.
+This document outlines the high-level roadmap and architectural direction for future milestones in the GymLog ecosystem following the completion of the core React SPA migration (v4.2 / TASK-R101).
 
-Right now, we have successfully aligned all the standalone pro logging and builder apps with the main master SPA. The styling, settings modals, Done/Skip logic, settings gears, and recent history drawers are fully synced. Everything is currently sitting in the src folder as release candidates ready to overwrite the root production files when we want to do the final deployment.
+---
 
-## Prioritized Roadmap & Model Assignments
+## 🧭 Milestone Overview
 
-Below is the execution plan ordered from lowest to highest difficulty, indicating the recommended Gemini model to use for each step.
+```mermaid
+flowchart LR
+    M1["Milestone 1: Category Parity"] --> M2["Milestone 2: Offline-First PWA"]
+    M2 --> M3["Milestone 3: 1RM Progression Engine"]
+    M3 --> M4["Milestone 4: Analytics Dashboard"]
+    M4 --> M5["Milestone 5: Multi-Device Realtime Sync"]
+```
 
-### Group 1: UI Polish & Formatting (Low Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] UI Alignments: Adjust the card history drawer layout to match the session log style.
-- [x] UI Alignments: Clean up button labels and borders.
-- [x] UI Alignments: Verify mobile layout headers.
+---
 
-### Group 2: Basic Persistence & Security (Low-Medium Difficulty)
-*Recommended Model: Gemini 3.1 Pro (Low)*
-- [x] Category Persistence: Make the "+ Add new category" UI write changes permanently to Google Sheets.
-- [x] Admin Permissions: Admin PIN code locking for destructive actions (e.g., deleting history or editing categories).
+## 📌 Milestone Details & Feature Breakdown
 
-### Group 3: Domain Logic Adjustments (Medium Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] Explosive Category Overhaul: Alternate 1-3 power and 1-5 volume ranges, suppressing standard ranges.
+### Milestone 1: Dynamic Category Sync & UI Standardization (v4.3)
+* **Goal**: Full parity with legacy category creation across all views and modals.
+* **Scope**:
+  1. **Standardized Dropdown Selector**: Replace raw `<input>` elements in custom exercise creation (`CircuitCard.jsx`) with the standardized `<select>` dropdown populated from `uniqueCategories`.
+  2. **Inline Creation Trigger**: Choosing `+ Add new...` triggers a clean prompt and creates the category across local state and backend Google Sheets.
+  3. **Alphabetical Sorting**: Ensure all category lists display sorted alphabetically across Plan, Lift, Circuit, and Full Body views.
+* **Target Cards**: `Story 1.4` / `TASK-R102`
 
-### Group 4: Complex Data Management & Concurrency (High Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] Global Exercise Rename/Merge: Atomic multi-tab renames with duplicate detection on the backend.
-- [x] Sync Safety: Address concurrent device write conflicts.
+---
 
-### Group 5: Major Feature Development (High Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] Circuit Training Mode: Develop the Custom sequential deck tracker.
-- [x] Circuit Training Mode: Develop the Auto-Circuit planner.
+### Milestone 2: Offline-First PWA & Gym Dead-Zone Resilience (v4.4)
+* **Goal**: Guarantee zero latency and 100% functionality inside gym environments with poor cellular service.
+* **Scope**:
+  1. **Web App Manifest (`manifest.json`)**: Configures app icons, splash screens, theme colors, and standalone display mode for 1-tap installation on iOS and Android home screens.
+  2. **Service Worker Asset Caching**: Pre-caches React production bundles (`index.html`, `index.css`, `index.js`, exercise image assets) via Vite PWA plugin.
+  3. **Offline Set Buffering**: Ensure all logged sets, deletions, and day changes are automatically buffered in `localStorage` when offline and seamlessly flushed to Google Sheets once connection is restored.
+* **Target Cards**: `EPIC-PWA` / `TASK-R103`
 
-### Group 5A: Circuit App Polish & Parity Sync (Medium Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] Rep-Range Edge Visualization: Redesign the machine-max UI block to display all available historical maxes side-by-side (1-3 Max, 4-7 Max, 8-12 Max, 13+ Max) for complete edge progression visibility.
-- [x] Code Cleanup: Audit `circuit-training-pro-beta.html` line-by-line, abstract inline styles to CSS, and consolidate redundant mapping.
-- [x] Feature Parity: Standardize and sync the custom exercise creation, variation toggling/max recalculation, and inline history viewer back to the standard GymLog beta (`gymlog-variation-beta.html`).
+---
 
-### Group 6: End-to-End Verification & Optimization Audit (Low Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] Code Quality Audit: Review all code changes in `gymlog-variation-beta.html` and App Script to ensure no syntax errors or resource leaks.
-- [x] Browser E2E Test: Run manual browser tests on both desktop and mobile viewports to verify UI alignment parity.
-- [x] Admin PIN Validation: Verify that cancelling the Admin PIN prompt or entering an incorrect PIN properly blocks destructive actions on both frontend and backend.
-- [x] Sheets Sync Verification: Verify that new categories and skipped/logged sets successfully write back to Google Sheets.
-- [x] Explosive Category Test: Verify that changing the workout number correctly toggles the target range between "1-3" and "1-5" on Explosive exercises, and hides standard ranges.
+### Milestone 3: 1RM Progression Engine & Target Lock Polish (v4.5)
+* **Goal**: Enhance the smart target calculator to guide progressive overload.
+* **Scope**:
+  1. **Standardized 1RM Calculation**: Apply proven formulas (Brzycki / Epley) to compute accurate estimated 1-Rep Maxes from logged sub-maximal sets.
+  2. **Dynamic Target Highlighting**: The `useTargetLock` hook suggests optimal target weight ranges for upcoming workouts based on previous performance in that rep bracket.
+  3. **Variation Linkage**: Map personal bests between Standard, Single, and Alternating variations to ensure consistent progressive overload tracking.
+* **Target Cards**: `EPIC-TARGET-LOCK` / `TASK-R104`
 
+---
 
-### Group 7: Circuit Trainer Refinements & Fixes (Medium Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High) or Flash*
-- [x] Save Feedback: Add visual UI feedback confirming when a set has been successfully saved in the circuit trainer.
-- [x] Multi-Set Counter & Done Button: Implement sequential set logging (Log 1, Log 2...) and a separate "DONE" button to mark the machine complete, matching the standard Plan/Lift card behavior.
-- [x] Resolute UI State: Only shade cards green/skipped and collapse them after receiving a successful API response from Sheets (no optimistic UI state changes).
-- [x] Intermittent Log Failure Bug: Troubleshoot and fix the false failure message that claims logging failed when the set actually logged successfully.
-- [x] Shaded State Retention: Keep completed exercises in place and shade them green, rather than sorting them to the bottom, to preserve circuit order and readability.
+### Milestone 4: Advanced Analytics Dashboard & Lifetime Progress (v4.6)
+* **Goal**: Provide rich visual insights into workout consistency and strength progression over time.
+* **Scope**:
+  1. **Interactive Charts**: Render weekly workout frequency, muscle group volume distribution, and rep range breakdowns directly inside `SessionStatsModal.jsx`.
+  2. **Personal Best Badges**: Celebrate all-time personal records (highest weight, most reps, longest duration) with visual badges and milestone indicators.
+  3. **Export & Backup Tools**: One-click JSON / CSV export of complete workout history and settings directly from the Settings drawer.
+* **Target Cards**: `EPIC-ANALYTICS` / `TASK-R105`
 
-### Group 8: Circuit Trainer History & Deletion (Medium Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High) or Flash*
-- [x] Remove Card-Level Set Undo: Remove the local set-level "UNDO" button to prevent state mismatch with the spreadsheet database.
-- [x] Instant History Update: Append newly logged sets to the local history state immediately upon successful sheetsPost resolution so they show up in the history list without reloading.
-- [x] History Deletion UI & Integration: Add delete buttons to the card's history drawer entries, prompting for the Admin PIN and sending the deleteHistory API request.
-- [x] Sync Session Sets on Delete: When a session set is deleted from the history list, automatically remove it from the card's completed sets array to keep the counts aligned.
+---
 
-### Group 9: Circuit Trainer Logging Pin Prompt Fix (Low Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] Fix Logging PIN Prompt: Remove the admin PIN prompt from the standard set logging action in the Circuit Trainer by removing the dynamic call to requireAdminPin for non-destructive actions.
+### Milestone 5: Multi-Device Real-Time Sync & WebSocket Bridge (Future Exploration)
+* **Goal**: Real-time live synchronization between workout partners on separate devices at the same time.
+* **Scope**:
+  1. Lightweight WebSocket / Firebase / Supabase realtime bridge to broadcast logged sets instantly between partner phones during shared workouts.
+  2. Live rest timer synchronization across devices.
 
-### Group 10: Circuit Trainer Usability & Logging Polish (Medium Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] Fix False Failure on Set Log: Resolve the intermittent false failure alert that prevents the UI from updating/syncing and leads to double-logging or out-of-order set logging.
-- [x] Category Tag Visibility: Adjust .category-tag text color to use ar(--accent) (orange) instead of ar(--muted) (gray) for better legibility.
-- [x] Clear Notes After Logging: Automatically clear note input state after a set is successfully logged.
-- [x] Single/Alternate Quick Toggles: Add "Single Leg" and "Alternating" checkbox toggles under the note input to quickly update the note text.
-- [x] Show Notes in History List: Display the logged note under each entry in the card's history list.
+---
 
-Let me know if you need any other details on this.
+## 🎯 Prioritization & Model Allocation
 
-
-
-
-
-
-
-
-
-
-
+| Milestone | Complexity | Recommended AI Model Tier |
+|---|---|---|
+| **Milestone 1: Dynamic Category Sync** | Low-Medium | `MEDIUM_TIER` (Gemini 3.8 Flash / Claude Sonnet) |
+| **Milestone 2: Offline-First PWA** | Medium | `MEDIUM_TIER` (Gemini 3.8 Flash / Gemini 3.1 Pro) |
+| **Milestone 3: 1RM Progression Engine** | Medium-High | `HIGH_TIER` (Gemini 3.8 Pro / Claude Opus) |
+| **Milestone 4: Analytics Dashboard** | Medium-High | `HIGH_TIER` (Gemini 3.8 Pro / Claude Opus) |
+| **Milestone 5: Real-Time Sync Bridge** | High (Architecture) | `HIGH_TIER` (Gemini 3.8 Pro / Claude Opus) |

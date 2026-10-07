@@ -1,54 +1,74 @@
-# Architecture Roadmap: React Migration
+# Architecture Blueprint: GymLog React Single Page Application
 
-## The "Why" (Technical Debt)
-- **Monolithic Architecture**: The large monolith file creates significant maintenance overhead and increases the risk of regressions.
-- **Performance Drag**: Running Babel directly in the mobile browser to compile the Lift view creates noticeable load delays. 
-- **State Complexity**: Utilizing DOM manipulation for state management (Plan view) causes edge cases requiring workarounds like saveTempInputs() and restoreTempInputs().
+## 1. Overview & Architecture Rationale
+GymLog has been migrated from a legacy multi-file monolithic application (`gymlog-ultimate.html` and `circuit-training-pro.html`) to a high-performance **Vite + React 18 Single Page Application (SPA)** located in `/gymlog-react/`.
 
-## The "How" (React vs Modular Vanilla)
-- **Modular Vanilla**: Splits the app into ES6 modules. While solving file size, it fails to address the underlying state management complexity.
-- **Full React SPA (Selected Path)**: Moving entirely to a Vite-based React SPA provides strict state management via hooks, fast build processes (no in-browser Babel), and modular component architecture.
+---
 
-## The "What" (Jira Breakdowns)
+## 2. Core Technical Stack
+* **Framework**: React 18 (Functional Components + Hooks)
+* **Build Tooling**: Vite 8.x + ESBuild
+* **State Management**: React Context (`AppContext.jsx`) + LocalStorage Caching
+* **Styling**: Vanilla CSS Modules & CSS Custom Properties (`gym-core.css`, `index.css`)
+* **Backend / Database**: Google Apps Script Webhook API (`Combined_AppScript_v2.gs` v4.2) backed by Google Sheets
+* **CI/CD & Hosting**: GitHub Actions (`deploy.yml`) $\to$ GitHub Pages
 
-### Epic 1: Project Setup & Modernization (Low Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] **Story 1.1**: Initialize Vite + React project in a new subfolder (gymlog-react) with standard folder structure (src/components, src/hooks, etc.).
-- [x] **Story 1.2**: Configure CSS Modules or global styles to port over the existing gym-core.css and custom UI tokens.
-- [x] **Story 1.3**: Set up React Router for navigation between the "PLAN" and "LIFT" tabs.
+---
 
-### Epic 2: Core Data & State Migration (Medium-High Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] **Story 2.1**: Port Combined_AppScript_v2.gs integration logic into a dedicated React custom hook or context provider (useGymAPI).
-- [x] **Story 2.2**: Migrate global AppState (workout day, people, maxes, active person) into React Context or Zustand for global availability.
-- [x] **Story 2.3**: Implement caching and payload tunneling strategies in the new data layer to maintain the single source of truth.
+## 3. Data Flow & Security Architecture
 
-### Epic 3: Lift View Migration (React to Vite/React) (Medium Difficulty)
-*Recommended Model: Gemini Flash or 3.1 Pro (Low)*
-- [x] **Story 3.1**: Extract existing React components (from gymlog-ultimate.html Zone 2) into standalone .jsx files.
-- [x] **Story 3.2**: Remove in-browser Babel dependencies and replace with Vite build steps.
-- [x] **Story 3.3**: Refactor state props and inline functions to use the new global React Context data layer.
+```mermaid
+flowchart TD
+    UI["React UI (Plan, Lift, Circuit, Full Body)"] --> Context["React AppContext.jsx"]
+    Context <--> LocalStorage["Browser LocalStorage (0ms Cache)"]
+    Context --> Hook["useGymAPI.js Hook"]
+    Hook --> Network["HTTPS POST / GET"]
+    Network --> GAS["Google Apps Script (Combined_AppScript_v2.gs)"]
+    GAS <--> Props["Script Properties (USER_PINS, ADMIN_PIN)"]
+    GAS <--> Sheets["Google Sheets Database (GymLog_History, Sessions, Settings)"]
+```
 
-### Epic 4: Plan View Migration (Vanilla JS to React) (High Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- **Story 4.1**: Rebuild the "PLAN" view layout and history drawer as React components.
-- [x] **Story 4.2**: Convert DOM-based inline editing and saveTempInputs() workaround into controlled React inputs.
-- [x] **Story 4.3**: Port the "Target Lock" max logic (fullMaxString) into a custom React hook that automatically highlights ranges.
-- **Story 4.4**: Implement the "Add New Category" and multi-user sync features using the unified data layer.
+### Key Architectural Pillars:
+1. **0ms Frictionless Local-First Execution**:
+   - Set logging, deletions, and day counter adjustments occur instantly (0ms) in local state and `localStorage`.
+   - Network sync to Google Sheets happens asynchronously in the background via atomic batch flushes.
+2. **Dynamic Multi-User PIN Authentication & Guest Sandbox**:
+   - Profiles are claimed using 4-digit PINs validated against Google Apps Script `USER_PINS`.
+   - Guest Sandbox mode isolates all sets, timers, and progress strictly in `localStorage` with **0 network calls to Google Sheets**.
+3. **Exact-Second Precision & Index-Safe Deletions**:
+   - History entries store exact seconds (`M/d/yyyy, h:mm:ss a`) and set numbers (`setNum`), enabling conflict-free set deletions and atomic Google Sheet row removals.
+4. **Single-Card Native Stepper & Modality Warm-Up**:
+   - Workouts operate as a single-card stepper with Step 0 dedicated to pre-workout warm-up routines.
 
+---
 
+## 4. Component Hierarchy
 
-
-
-
-
-
-
-
-
-### Epic 5: Circuit Trainer Migration (Medium-High Difficulty)
-*Recommended Model: Gemini 3.1 Pro (High)*
-- [x] **Story 5.1**: Scaffold Circuit Tracker routing and view structure in the React SPA.
-- [x] **Story 5.2**: Port circuit selection, deck tracking, and card state sequence.
-- [x] **Story 5.3**: Implement the multi-set logging list and DONE completion triggers, integrating sheets sync.
-- [ ] **Story 5.4**: Port history viewing and inline session deletion UI.
+```
+gymlog-react/src/
+├── App.jsx                       # Top-level view router and global container
+├── main.jsx                      # React 18 root mount
+├── context/
+│   └── AppContext.jsx            # Single source of truth for global state, auth, and sync
+├── hooks/
+│   ├── useGymAPI.js              # HTTP client communicating with Google Apps Script
+│   └── useTargetLock.js          # Dynamic 1RM & target rep range bracket calculator
+├── components/
+│   ├── Header.jsx                # Global navigation bar, live timer, and drawer triggers
+│   ├── StickyRestBanner.jsx      # Hardware-accelerated sticky rest countdown timer
+│   ├── PlanView.jsx              # Main daily split workout tracker (Push / Pull)
+│   ├── LiftView.jsx              # Custom manual workout builder
+│   ├── CircuitView.jsx           # High-intensity circuit trainer view
+│   ├── FullBodyView.jsx          # Alternate full-body routine tracker
+│   ├── ExerciseCard.jsx          # Decoupled exercise card with logging & history
+│   ├── CircuitCard.jsx           # Specialized circuit exercise card with swap support
+│   ├── WarmUpCard.jsx            # Pre-workout warm-up card (Step 0)
+│   ├── WelcomeModal.jsx          # First-time device onboarding & PIN claim modal
+│   ├── GuestUpgradeModal.jsx     # Workout completion modal for guest cloud upgrade
+│   ├── SessionStatsModal.jsx     # Workout duration history & rep range analytics
+│   ├── SettingsModal.jsx         # Global configuration, profile switcher, and Admin tools
+│   └── ImageModal.jsx            # Exercise demonstration image viewer and uploader
+└── utils/
+    ├── locationHelper.js         # Gym equipment location matching utilities
+    └── imageMapping.js           # Machine to image file lookup dictionary
+```
