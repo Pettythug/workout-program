@@ -208,8 +208,8 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSwap }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation } = useAppContext();
-    const { logSet, deleteHistory, saveExercise } = useGymAPI();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+    const { logSet, deleteHistory, saveExercise, deleteExercise } = useGymAPI();
     
     const [isOpenState, setIsOpenState] = useState(false);
     const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
@@ -236,6 +236,42 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                (group.name ? group : { ...group, name: group.baseName });
     if (!ex) return null;
     const exerciseName = ex?.name || group.baseName || "Unknown Exercise";
+
+    const baseName = ex.name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+    const hasSingle = (exercises || []).some(e => e.name === `${baseName} (Single)`);
+    const hasAlt = (exercises || []).some(e => e.name === `${baseName} (Alt)`);
+
+    const handleToggleVariation = async (type, isChecked) => {
+        const variationName = `${baseName} (${type})`;
+        const pin = prompt(`Admin PIN required to ${isChecked ? 'generate' : 'remove'} ${variationName}:`);
+        if (pin === null) return;
+        
+        try {
+            setToast(`${isChecked ? 'Generating' : 'Removing'} ${variationName}...`);
+            if (!isChecked) {
+                await deleteExercise(variationName, pin);
+                removeExerciseFromLocalState(variationName);
+                setToast(`${variationName} removed!`);
+            } else {
+                await createExerciseMeta({
+                    baseName: baseName,
+                    category: ex.category || "General",
+                    muscleGroups: ex.muscleGroups || ex.muscle || "",
+                    timed: ex.timed,
+                    location: ex.location || "Anywhere",
+                    isCircuit: ex.isCircuit,
+                    createStandard: false,
+                    createSingle: type === 'Single',
+                    createAlt: type === 'Alt'
+                }, pin);
+                setToast(`${variationName} generated!`);
+            }
+        } catch (e) {
+            console.error(e);
+            setToast(`Error ${isChecked ? 'generating' : 'removing'} variation`);
+            setTimeout(() => setToast(""), 2000);
+        }
+    };
 
     const todaysSets = useMemo(() => {
         const todayStr = new Date().toDateString();
@@ -881,6 +917,29 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                                 {ex.isCircuit ? "★ IN CIRCUIT" : "☆ ADD TO CIRCUIT"}
                                             </button>
                                         </>
+                                    )}
+                                    {!editMode && (
+                                        <div style={{ width: '100%', marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                                            <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Generate Modalities</div>
+                                            <div style={{ display: 'flex', gap: 16 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={hasAlt} 
+                                                        onChange={e => handleToggleVariation('Alt', e.target.checked)}
+                                                    />
+                                                    Alternating
+                                                </label>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={hasSingle} 
+                                                        onChange={e => handleToggleVariation('Single', e.target.checked)}
+                                                    />
+                                                    Singles
+                                                </label>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             )}
