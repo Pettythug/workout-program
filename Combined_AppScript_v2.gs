@@ -657,6 +657,7 @@ function gymlog_handleSaveExercise(payload) {
     exSheet.appendRow(newRow);
   }
 
+  gymlog_sortExercisesAlphabetically();
   gymlog_recalculateBestForExercise(exercise);
   gymlog_bumpLibraryVersion();
   return ok({ saved: exercise });
@@ -686,7 +687,17 @@ function gymlog_handleSaveExerciseNote(payload) {
   } else {
     // If exercise doesn't exist in metadata, create it with just the note
     exSheet.appendRow([exercise, false, "", "Anywhere", note || "", "", "", "", "", ""]);
+    gymlog_sortExercisesAlphabetically();
     return ok({ createdMetadata: exercise });
+  }
+}
+
+function gymlog_sortExercisesAlphabetically() {
+  const exSheet = getOrCreateSheet(EXERCISES_TAB, EXERCISES_HEADERS);
+  const lastRow = exSheet.getLastRow();
+  if (lastRow > 1) {
+    // Sort range from Row 2 to Last Row, by Column 1 (Exercise Name) A-Z
+    exSheet.getRange(2, 1, lastRow - 1, EXERCISES_HEADERS.length).sort({column: 1, ascending: true});
   }
 }
 
