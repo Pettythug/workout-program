@@ -111,7 +111,10 @@ export default function FullBodyView() {
             if (subset.length === 0) return null;
             
             // Deterministic calculation: derive rotation directly from fullBodyWorkoutDay
-            const dayCycleIndex = Math.max(0, fullBodyWorkoutDay - 1);
+            const isAlternatingCategory = categories.includes('Plank Core') || categories.includes('Rotational Core');
+            const dayCycleIndex = isAlternatingCategory 
+                ? Math.max(0, Math.floor((fullBodyWorkoutDay - 1) / 2))
+                : Math.max(0, fullBodyWorkoutDay - 1);
             const originalPick = subset[dayCycleIndex % subset.length];
             const originalBaseKey = originalPick.baseName.toLowerCase();
             

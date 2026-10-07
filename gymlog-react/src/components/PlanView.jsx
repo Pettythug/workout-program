@@ -119,7 +119,7 @@ export default function PlanView() {
             
             // Deterministic calculation: daily categories (like Explosive) increment every day,
             // while split-specific categories increment on alternating workout days
-            const isDailyCategory = categories.includes('Explosive');
+            const isDailyCategory = categories.includes('Explosive') || categories.includes('Rotational Core') || categories.includes('Plank Core');
             const dayCycleIndex = isDailyCategory 
                 ? Math.max(0, workoutDay - 1) 
                 : Math.max(0, Math.floor((workoutDay - 1) / 2));
