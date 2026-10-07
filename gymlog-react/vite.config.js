@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.VERCEL ? '/' : '/workout-program/',
+  base: process.env.VERCEL ? '/' : '/workout-program/react/',
   plugins: [react()],
 })
