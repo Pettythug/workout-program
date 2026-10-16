@@ -262,6 +262,13 @@ export default function FullBodyView() {
             localStorage.setItem('gymlog_fullBody_last_summary', JSON.stringify(saved || summary));
         });
 
+        // Advance local workout day state cleanly
+        updateFullBodyWorkoutDay(nextDay, true);
+
+        // Reset active timer and clear session clock
+        resetTimer();
+        resetSessionTime();
+
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_fullBody_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
@@ -284,10 +291,7 @@ export default function FullBodyView() {
         // 2. Clear global checkmarks
         clearAllExerciseStatus();
 
-        // 3. Progress day
-        updateFullBodyWorkoutDay(fullBodyWorkoutDay + 1, true);
-
-        // 4. Reset completion state & session time
+        // 3. Reset completion state & session time (day already advanced during completion)
         setIsWorkoutComplete(false);
         localStorage.setItem('gymlog_fullBody_complete', 'false');
         localStorage.removeItem('gymlog_fullBody_last_summary');
@@ -297,7 +301,7 @@ export default function FullBodyView() {
         setViewingWarmUp(false);
         setView('tracker');
 
-        // 5. Clean up accessories
+        // 4. Clean up accessories
         localStorage.removeItem('gymlog_fullBody_session_accessories');
         setAccessoriesList([]);
     };

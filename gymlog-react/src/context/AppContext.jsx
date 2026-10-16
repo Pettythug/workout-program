@@ -281,6 +281,12 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_dailySwaps', JSON.stringify({}));
             localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify({}));
             localStorage.setItem('gymlog_active_warmup_status', 'pending');
+            localStorage.removeItem('gymlog_plan_complete');
+            localStorage.removeItem('gymlog_fullBody_complete');
+            localStorage.removeItem('gymlog_circuit_complete');
+            localStorage.removeItem('gymlog_plan_last_summary');
+            localStorage.removeItem('gymlog_fullBody_last_summary');
+            localStorage.removeItem('gymlog_circuit_last_summary');
             const currentOwner = localStorage.getItem('builder_primary_user');
             const soloOwner = (currentOwner && currentOwner !== 'Guest') ? [currentOwner] : (currentOwner === 'Guest' ? ['Guest'] : []);
             localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));

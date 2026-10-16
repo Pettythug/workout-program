@@ -290,6 +290,13 @@ export default function CircuitView() {
             localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
         });
 
+        // Advance local circuit workout day state cleanly
+        updateCircuitWorkoutDay(nextDay, true);
+
+        // Reset active timer and clear session clock
+        resetTimer();
+        resetSessionTime();
+
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_circuit_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
@@ -298,9 +305,6 @@ export default function CircuitView() {
     };
 
     const startNextWorkout = () => {
-        const nextDay = (circuitWorkoutDay % 16) + 1;
-        updateCircuitWorkoutDay(nextDay, true);
-        
         updateCircuitState([], {});
         clearAllExerciseStatus();
         setIsWorkoutComplete(false);
