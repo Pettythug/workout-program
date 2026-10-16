@@ -1,4 +1,4 @@
-# GymLog React Migration Backlog & Completed Epics
+﻿# GymLog React Migration Backlog & Completed Epics
 
 This document is the official tracking backlog for the GymLog React Migration project. It records completed architectural milestones and active backlog items across the application.
 
@@ -57,6 +57,14 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ---
 
+### Epic 7: Session History, Duration Analytics & Zero-Rep Logging
+- [x] **Story 7.1: Rep-Range History Drilldown (`SessionStatsModal.jsx`)**: Added interactive drilldown view showing past completed sessions per rep range (`1-3`, `4-7`, `8-12`, `13+`) with duration pills and direct workout-launching. (`TASK-R116`)
+- [x] **Story 7.2: Program & Device Owner Data Isolation (`SessionStatsModal.jsx`)**: Scoped session statistics and historical session lists to the active program and active device owner. (`TASK-R119`)
+- [x] **Story 7.3: 0-Rep / 0-Sec Attempt Logging & PB Exclusion**: Full support for logging failed attempts (0 reps / 0 secs) with active day target range tagging, rest timer triggers, and strict exclusion from Personal Bests across frontend and backend. (`TASK-R117`)
+- [x] **Story 7.4: Pure Plain-Text Rep Range Storage**: Formatted Column E in Google Sheets to Plain Text, eliminated temporary date-cleaning translation helpers, and enforced leading apostrophe on writes. (`TASK-R117`)
+
+---
+
 ## 🎯 Active & Upcoming Backlog
 
 ### Priority 1: Category Management Parity
@@ -80,3 +88,4 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [ ] **Story 4.1: Lifetime Volume & Progress Visualizations**:
   - Expand `SessionStatsModal.jsx` into an interactive analytics dashboard.
   - Add weekly workout frequency charts, muscle group volume distribution, and personal best tracking badges.
+

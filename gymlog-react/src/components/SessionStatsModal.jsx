@@ -104,13 +104,19 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
     const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner, activePeople } = useAppContext();
     const location = useLocation();
     const [selectedRepRange, setSelectedRepRange] = useState(null);
+    const [isSessionsExpanded, setIsSessionsExpanded] = useState(false);
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
     useEffect(() => {
         if (!isOpen) {
             setSelectedRepRange(null);
+            setIsSessionsExpanded(false);
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        setIsSessionsExpanded(false);
+    }, [selectedRepRange]);
 
     // 1. Program Scope Detection
     const activeProgram = useMemo(() => {
@@ -196,6 +202,11 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
             return false;
         });
     }, [scopedSessions, selectedRepRange]);
+
+    const displayedSessions = useMemo(() => {
+        if (isSessionsExpanded) return filteredSessions;
+        return filteredSessions.slice(0, 4);
+    }, [filteredSessions, isSessionsExpanded]);
 
     // 5. Scoped Stats calculation strictly from scopedSessions
     const stats = useMemo(() => {
@@ -315,6 +326,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 maxHeight: '90vh',
                 overflowY: 'auto',
                 overflowX: 'hidden',
+                WebkitOverflowScrolling: 'touch',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -526,7 +538,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 </div>
 
                 {/* Recent Session History List */}
-                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
                             Recent Completed Workouts
@@ -594,14 +606,9 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                     )}
                     
                     <div style={{
-                        flex: 1,
-                        overflowY: 'auto',
-                        overscrollBehavior: 'contain',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
-                        paddingRight: 4,
-                        maxHeight: 380
+                        gap: 8
                     }}>
                         {scopedSessions.length === 0 ? (
                             <div style={{
@@ -628,117 +635,152 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                                 No {activeProgram} sessions found for this rep range.
                             </div>
                         ) : (
-                            filteredSessions.map(session => (
-                                <div 
-                                    key={session.id}
-                                    style={{
-                                        background: 'var(--surface)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: 8,
-                                        padding: '8px 12px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: 5
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>
-                                                {session.program || 'Workout'} #{session.workoutDay}
-                                            </span>
-                                            {session.repRange && (
+                            <>
+                                {displayedSessions.map(session => (
+                                    <div 
+                                        key={session.id}
+                                        style={{
+                                            background: 'var(--surface)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 8,
+                                            padding: '8px 12px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 5
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                                                <span style={{ fontSize: 12, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>
+                                                    {session.program || 'Workout'} #{session.workoutDay}
+                                                </span>
+                                                {session.repRange && (
+                                                    <span style={{
+                                                        fontSize: 10,
+                                                        padding: '1px 6px',
+                                                        borderRadius: 4,
+                                                        background: 'rgba(249, 115, 22, 0.15)',
+                                                        color: 'var(--accent)',
+                                                        fontWeight: 600,
+                                                        fontFamily: 'var(--mono)',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {session.repRange.toLowerCase().includes('rep') ? session.repRange : `${session.repRange} Reps`}
+                                                    </span>
+                                                )}
+                                                {session.workoutType && (
+                                                    <span style={{
+                                                        fontSize: 10,
+                                                        padding: '1px 6px',
+                                                        borderRadius: 4,
+                                                        background: 'rgba(255,255,255,0.08)',
+                                                        color: 'var(--muted)',
+                                                        fontFamily: 'var(--mono)',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {session.workoutType}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                                                 <span style={{
-                                                    fontSize: 10,
-                                                    padding: '1px 6px',
-                                                    borderRadius: 4,
-                                                    background: 'rgba(249, 115, 22, 0.15)',
+                                                    fontSize: 11,
+                                                    fontWeight: 700,
                                                     color: 'var(--accent)',
-                                                    fontWeight: 600,
                                                     fontFamily: 'var(--mono)',
-                                                    whiteSpace: 'nowrap'
+                                                    whiteSpace: 'nowrap',
+                                                    background: 'rgba(249, 115, 22, 0.1)',
+                                                    border: '1px solid rgba(249, 115, 22, 0.25)',
+                                                    padding: '2px 6px',
+                                                    borderRadius: 5
                                                 }}>
-                                                    {session.repRange.toLowerCase().includes('rep') ? session.repRange : `${session.repRange} Reps`}
+                                                    ⏱️ {session.durationMinutes}m
                                                 </span>
-                                            )}
-                                            {session.workoutType && (
-                                                <span style={{
-                                                    fontSize: 10,
-                                                    padding: '1px 6px',
-                                                    borderRadius: 4,
-                                                    background: 'rgba(255,255,255,0.08)',
-                                                    color: 'var(--muted)',
-                                                    fontFamily: 'var(--mono)',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {session.workoutType}
-                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const label = `${session.program || 'Workout'} #${session.workoutDay || ''} (${formatDateClean(session.date, session.startTimestamp)})`;
+                                                        if (window.confirm(`Delete historical session for ${label}?`)) {
+                                                            if (deleteSession) deleteSession(session.id);
+                                                        }
+                                                    }}
+                                                    title="Delete session record"
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: 'var(--muted)',
+                                                        cursor: 'pointer',
+                                                        fontSize: 12,
+                                                        padding: '2px 4px',
+                                                        borderRadius: 4,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        opacity: 0.7,
+                                                        transition: 'opacity 0.2s, color 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.opacity = '1';
+                                                        e.currentTarget.style.color = '#ef4444';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.opacity = '0.7';
+                                                        e.currentTarget.style.color = 'var(--muted)';
+                                                    }}
+                                                    aria-label="Delete session"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                                            {formatSessionDateTime(session)}
+                                            {session.people && session.people !== 'Solo' && (
+                                                <span> • 👥 {session.people}</span>
                                             )}
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                            <span style={{
-                                                fontSize: 11,
-                                                fontWeight: 700,
-                                                color: 'var(--accent)',
-                                                fontFamily: 'var(--mono)',
-                                                whiteSpace: 'nowrap',
-                                                background: 'rgba(249, 115, 22, 0.1)',
-                                                border: '1px solid rgba(249, 115, 22, 0.25)',
-                                                padding: '2px 6px',
-                                                borderRadius: 5
-                                            }}>
-                                                ⏱️ {session.durationMinutes}m
-                                            </span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const label = `${session.program || 'Workout'} #${session.workoutDay || ''} (${formatDateClean(session.date, session.startTimestamp)})`;
-                                                    if (window.confirm(`Delete historical session for ${label}?`)) {
-                                                        if (deleteSession) deleteSession(session.id);
-                                                    }
-                                                }}
-                                                title="Delete session record"
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--muted)',
-                                                    cursor: 'pointer',
-                                                    fontSize: 12,
-                                                    padding: '2px 4px',
-                                                    borderRadius: 4,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    opacity: 0.7,
-                                                    transition: 'opacity 0.2s, color 0.2s'
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.opacity = '1';
-                                                    e.currentTarget.style.color = '#ef4444';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.opacity = '0.7';
-                                                    e.currentTarget.style.color = 'var(--muted)';
-                                                }}
-                                                aria-label="Delete session"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
                                     </div>
-                                    <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
-                                        {formatSessionDateTime(session)}
-                                        {session.people && session.people !== 'Solo' && (
-                                            <span> • 👥 {session.people}</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
+                                ))}
+
+                                {filteredSessions.length > 4 && (
+                                    <button
+                                        onClick={() => setIsSessionsExpanded(prev => !prev)}
+                                        style={{
+                                            background: 'rgba(249, 115, 22, 0.06)',
+                                            border: '1px dashed var(--border)',
+                                            borderRadius: 8,
+                                            padding: '8px 12px',
+                                            color: 'var(--accent)',
+                                            fontFamily: 'var(--mono)',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 6,
+                                            transition: 'all 0.2s ease',
+                                            marginTop: 4
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.borderColor = 'var(--accent)';
+                                            e.currentTarget.style.background = 'rgba(249, 115, 22, 0.12)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.borderColor = 'var(--border)';
+                                            e.currentTarget.style.background = 'rgba(249, 115, 22, 0.06)';
+                                        }}
+                                    >
+                                        {isSessionsExpanded ? '▲ SHOW LESS' : `▼ VIEW ALL (${filteredSessions.length} WORKOUTS)`}
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
 
                 {/* Footer Action */}
-                <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                <div style={{ flexShrink: 0, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                     <button 
                         className="btn-ghost" 
                         onClick={onClose}
