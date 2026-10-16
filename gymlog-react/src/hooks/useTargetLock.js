@@ -22,7 +22,10 @@ export function useTargetLock(ex, personKey) {
         let bestValue = "-";
         if (ex && ex.best && ex.best[personKey] && ex.best[personKey][r.key]) {
             const b = ex.best[personKey][r.key];
-            bestValue = ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
+            const repsNum = parseInt(String(b.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
+            if (repsNum > 0) {
+                bestValue = ex.timed ? `${b.reps}` : `${b.reps}x${b.weight}`;
+            }
         }
         return {
             ...r,

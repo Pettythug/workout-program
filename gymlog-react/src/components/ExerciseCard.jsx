@@ -63,7 +63,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            value={input.duration || ""} 
+                            value={input.duration !== undefined && input.duration !== null ? input.duration : ""} 
                             onChange={e => updateLogInput(key, "duration", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
@@ -83,7 +83,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            value={input.reps || ""} 
+                            value={input.reps !== undefined && input.reps !== null ? input.reps : ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, flex: 1, width: '100%', minWidth: 0, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
@@ -157,7 +157,7 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            value={input.duration || ""} 
+                            value={input.duration !== undefined && input.duration !== null ? input.duration : ""} 
                             onChange={e => updateLogInput(key, "duration", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
@@ -177,7 +177,7 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            value={input.reps || ""} 
+                            value={input.reps !== undefined && input.reps !== null ? input.reps : ""} 
                             onChange={e => updateLogInput(key, "reps", e.target.value)}
                             style={{ background: '#0c0c0c', border: '1px solid var(--accent)', borderRadius: 8, padding: 8, width: 70, color: 'white', textAlign: 'center', fontSize: 16, fontFamily: 'var(--mono)', outline: 'none' }}
                         />
@@ -504,7 +504,12 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         }
         if (!bestObj) return "No data";
         
-        const validKeys = Object.keys(bestObj).filter(k => bestObj[k] !== null);
+        const validKeys = Object.keys(bestObj).filter(k => {
+            const b = bestObj[k];
+            if (!b) return false;
+            const r = parseInt(String(b.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
+            return r > 0;
+        });
         if (validKeys.length === 0) return "No data";
         const b = bestObj[validKeys[0]];
         return ex.timed ? `${b.reps}s` : `${b.reps}x${b.weight}`;
