@@ -225,16 +225,43 @@ function normalizeRange(range) {
   return String(range).trim() === "r15_20" ? "r13_plus" : String(range).trim();
 }
 
+// Clean / sanitize session repRange values to guarantee clean strings ("1-3", "4-7", "8-12", "13+")
+function gymlog_cleanRepRange(rawVal, displayVal) {
+  const disp = displayVal !== undefined && displayVal !== null ? String(displayVal).trim() : "";
+  if (disp === "1-3" || disp === "4-7" || disp === "8-12" || disp === "13+" || disp === "13_plus") {
+    return disp === "13_plus" ? "13+" : disp;
+  }
+  if (rawVal instanceof Date) {
+    return (rawVal.getMonth() + 1) + "-" + rawVal.getDate();
+  }
+  if (typeof rawVal === "string") {
+    const s = rawVal.trim().replace(/^'+/, '');
+    if (s.includes("GMT") || (s.includes("T") && s.includes("Z"))) {
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        return (d.getMonth() + 1) + "-" + d.getDate();
+      }
+    }
+    if (s) return s;
+  }
+  return (disp || String(rawVal || "")).replace(/^'+/, '');
+}
+
 // Parse "8x135" → {reps:"8", weight:"135"} | "8 reps" → {reps:"8", weight:""}
 function parseBest(str) {
   if (!str) return null;
   const s = String(str).trim();
-  if (!s) return null;
+  if (!s || s === "-") return null;
+  let res = null;
   if (s.includes("x")) {
     const [reps, weight] = s.split("x");
-    return { reps: reps.trim(), weight: weight.trim() };
+    res = { reps: reps.trim(), weight: weight.trim() };
+  } else {
+    res = { reps: s.replace(" reps", "").trim(), weight: "" };
   }
-  return { reps: s.replace(" reps", "").trim(), weight: "" };
+  const rNum = parseInt(res.reps.replace(/[^0-9]/g, "")) || 0;
+  if (rNum <= 0) return null;
+  return res;
 }
 
 // Format {reps, weight} → "8x135" or "8 reps"
@@ -352,22 +379,30 @@ function gymlog_doGet() {
 
     // ── Sessions ──────────────────────────────────────────────────────────────
     const sessionsSheet = getOrCreateSheet(SESSIONS_TAB, SESSIONS_HEADERS);
-    const sessionsRaw = sessionsSheet.getLastRow() > 1
-      ? sessionsSheet.getRange(2, 1, sessionsSheet.getLastRow() - 1, SESSIONS_HEADERS.length).getValues()
-      : [];
-    const sessions = sessionsRaw.map(r => ({
-      id: String(r[0]),
-      date: String(r[1]),
-      program: String(r[2]),
-      workoutDay: r[3] !== "" ? Number(r[3]) : "",
-      repRange: String(r[4]),
-      startTime: String(r[5]),
-      endTime: String(r[6]),
-      durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
-      startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
-      endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
-      people: String(r[10] || "")
-    })).filter(s => s.id);
+    const sessionsLastRow = sessionsSheet.getLastRow();
+    let sessions = [];
+    if (sessionsLastRow > 1) {
+      const numRows = sessionsLastRow - 1;
+      const sessionsRaw = sessionsSheet.getRange(2, 1, numRows, SESSIONS_HEADERS.length).getValues();
+      const repRangeDisplays = sessionsSheet.getRange(2, 5, numRows, 1).getDisplayValues();
+      sessions = sessionsRaw.map((r, i) => {
+        const rawRange = r[4];
+        const dispRange = repRangeDisplays[i] ? repRangeDisplays[i][0] : "";
+        return {
+          id: String(r[0]),
+          date: String(r[1]),
+          program: String(r[2]),
+          workoutDay: r[3] !== "" ? Number(r[3]) : "",
+          repRange: gymlog_cleanRepRange(rawRange, dispRange),
+          startTime: String(r[5]),
+          endTime: String(r[6]),
+          durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+          startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+          endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
+          people: String(r[10] || "")
+        };
+      }).filter(s => s.id);
+    }
 
     const responseObj = {
       status: "ok",
@@ -470,12 +505,13 @@ function gymlog_recalculateBestForExercise(exerciseName) {
   const byPerson = {};
   entries.forEach(entry => {
     if (!REP_RANGES.includes(entry.range)) return; // skip unknown
+    const newR    = parseInt(entry.reps.replace(/[^0-9]/g, ""))        || 0;
+    if (newR <= 0) return; // Strictly exclude entries where reps <= 0 from Personal Bests
     if (!byPerson[entry.person]) {
       byPerson[entry.person] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
     }
     const current = byPerson[entry.person][entry.range];
     const newW    = parseFloat(entry.weight.replace(/[^0-9.\-]/g, "")) || 0;
-    const newR    = parseInt(entry.reps.replace(/[^0-9]/g, ""))        || 0;
     const curW    = current ? (parseFloat(current.weight.replace(/[^0-9.\-]/g, "")) || 0) : 0;
     const curR    = current ? (parseInt(current.reps.replace(/[^0-9]/g, ""))        || 0) : 0;
     if (!current || newW > curW || (newW === curW && newR > curR)) {
@@ -966,7 +1002,7 @@ function gymlog_handleBatchSyncSession(payload) {
       session.date || "",
       session.program || "",
       session.workoutDay !== undefined ? session.workoutDay : "",
-      session.repRange || "",
+      session.repRange ? ("'" + String(session.repRange).replace(/^'+/, '')) : "",
       session.startTime || "",
       session.endTime || "",
       session.durationMinutes || 0,
@@ -1115,7 +1151,7 @@ function gymlog_handleLogSession(payload) {
     payload.date || "",
     payload.program || "",
     payload.workoutDay !== undefined ? payload.workoutDay : "",
-    payload.repRange || "",
+    payload.repRange ? ("'" + String(payload.repRange).replace(/^'+/, '')) : "",
     payload.startTime || "",
     payload.endTime || "",
     payload.durationMinutes || 0,
@@ -1156,19 +1192,26 @@ function gymlog_handleGetSessions() {
   const lastRow = sheet.getLastRow();
   let sessions = [];
   if (lastRow > 1) {
-    const data = sheet.getRange(2, 1, lastRow - 1, SESSIONS_HEADERS.length).getValues();
-    sessions = data.map(r => ({
-      id: String(r[0]),
-      date: String(r[1]),
-      program: String(r[2]),
-      workoutDay: r[3] !== "" ? Number(r[3]) : "",
-      repRange: String(r[4]),
-      startTime: String(r[5]),
-      endTime: String(r[6]),
-      durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
-      startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
-      endTimestamp: r[9] !== "" ? Number(r[9]) : 0
-    })).filter(s => s.id);
+    const numRows = lastRow - 1;
+    const data = sheet.getRange(2, 1, numRows, SESSIONS_HEADERS.length).getValues();
+    const repRangeDisplays = sheet.getRange(2, 5, numRows, 1).getDisplayValues();
+    sessions = data.map((r, i) => {
+      const rawRange = r[4];
+      const dispRange = repRangeDisplays[i] ? repRangeDisplays[i][0] : "";
+      return {
+        id: String(r[0]),
+        date: String(r[1]),
+        program: String(r[2]),
+        workoutDay: r[3] !== "" ? Number(r[3]) : "",
+        repRange: gymlog_cleanRepRange(rawRange, dispRange),
+        startTime: String(r[5]),
+        endTime: String(r[6]),
+        durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+        startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+        endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
+        people: String(r[10] || "")
+      };
+    }).filter(s => s.id);
   }
   return ok({ sessions: sessions });
 }
@@ -1443,6 +1486,7 @@ function migrateBestTab() {
     const current = bests[exercise][person][range];
     const newW    = parseFloat(weight.replace(/[^0-9.\-]/g, "")) || 0;
     const newR    = parseInt(reps.replace(/[^0-9]/g, ""))        || 0;
+    if (newR <= 0) return; // Strictly exclude entries where reps <= 0 from Personal Bests
     const curW    = current ? (parseFloat(current.weight.replace(/[^0-9.\-]/g, "")) || 0) : 0;
     const curR    = current ? (parseInt(current.reps.replace(/[^0-9]/g, ""))        || 0) : 0;
 

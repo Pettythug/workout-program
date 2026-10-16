@@ -13,6 +13,44 @@ export function getDefaultRestForRepRange(repRange) {
     return '90';
 }
 
+export function getDayTargetRange(dayNum) {
+    const day = ((dayNum || 1) % 16) === 0 ? 16 : ((dayNum || 1) % 16);
+    if (day >= 1 && day <= 4) return "r8_12";
+    if (day >= 5 && day <= 8) return "r1_3";
+    if (day >= 9 && day <= 12) return "r13_plus";
+    if (day >= 13 && day <= 16) return "r4_7";
+    return "r8_12";
+}
+
+export function calculateBestForExercise(exercise) {
+    if (!exercise || !exercise.history) return {};
+    const REP_RANGES = ["r1_3", "r4_7", "r8_12", "r13_plus"];
+    const byPerson = {};
+    (exercise.history || []).forEach(entry => {
+        const reps = parseInt(String(entry.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
+        if (reps <= 0) return; // Strictly exclude entries with reps <= 0 or duration <= 0
+
+        const person = (entry.person || '').toLowerCase().trim();
+        if (!person) return;
+        const range = entry.range;
+        if (!REP_RANGES.includes(range)) return;
+
+        if (!byPerson[person]) {
+            byPerson[person] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
+        }
+
+        const current = byPerson[person][range];
+        const newW = parseFloat(String(entry.weight || '').replace(/[^0-9.-]/g, '')) || 0;
+        const curW = current ? (parseFloat(String(current.weight || '').replace(/[^0-9.-]/g, '')) || 0) : 0;
+        const curR = current ? (parseInt(String(current.reps || '').replace(/[^0-9]/g, ''), 10) || 0) : 0;
+
+        if (!current || newW > curW || (newW === curW && reps > curR)) {
+            byPerson[person][range] = { reps: entry.reps, weight: entry.weight };
+        }
+    });
+    return byPerson;
+}
+
 export function getUrlParamUser() {
     try {
         const searchParams = new URLSearchParams(window.location.search);
@@ -587,7 +625,29 @@ export function AppProvider({ children }) {
         setExercises(prev => {
             const next = prev.map(ex => {
                 if (ex.name === exName) {
-                    return { ...ex, history: [...entries, ...(ex.history || [])] };
+                    const updatedHistory = [...entries, ...(ex.history || [])];
+                    const updatedBest = { ...(ex.best || {}) };
+                    entries.forEach(entry => {
+                        const reps = parseInt(String(entry.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
+                        if (reps <= 0) return; // Strictly exclude entries with reps <= 0 or duration <= 0
+
+                        const person = (entry.person || '').toLowerCase().trim();
+                        if (!person) return;
+                        if (!updatedBest[person]) {
+                            updatedBest[person] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
+                        }
+                        const range = entry.range;
+                        if (['r1_3', 'r4_7', 'r8_12', 'r13_plus'].includes(range)) {
+                            const current = updatedBest[person][range];
+                            const newW = parseFloat(String(entry.weight || '').replace(/[^0-9.-]/g, '')) || 0;
+                            const curW = current ? (parseFloat(String(current.weight || '').replace(/[^0-9.-]/g, '')) || 0) : 0;
+                            const curR = current ? (parseInt(String(current.reps || '').replace(/[^0-9]/g, ''), 10) || 0) : 0;
+                            if (!current || newW > curW || (newW === curW && reps > curR)) {
+                                updatedBest[person][range] = { reps: entry.reps, weight: entry.weight };
+                            }
+                        }
+                    });
+                    return { ...ex, history: updatedHistory, best: updatedBest };
                 }
                 return ex;
             });
@@ -1069,36 +1129,51 @@ export function AppProvider({ children }) {
             if (!input) continue;
 
             if (ex.timed) {
-                if (input.duration) {
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: input.duration,
-                        weight: input.weight || "",
-                        range: "r13_plus",
-                        timed: true,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
+                if (input.duration !== undefined && input.duration !== null && String(input.duration).trim() !== "") {
+                    const dur = parseInt(input.duration, 10);
+                    if (!isNaN(dur)) {
+                        const isZero = dur === 0;
+                        const assignedRange = isZero
+                            ? getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay)
+                            : "r13_plus";
+                        entries.push({
+                            date: new Date().toLocaleString('en-US'),
+                            person: key,
+                            reps: dur,
+                            weight: input.weight || "",
+                            range: assignedRange,
+                            timed: true,
+                            note: input.note || "",
+                            setNum: nextSetNum
+                        });
+                    }
                 }
             } else {
-                if (input.reps) {
-                    const r = parseInt(input.reps);
-                    let range = "r13_plus";
-                    if (r <= 3) range = "r1_3";
-                    else if (r <= 7) range = "r4_7";
-                    else if (r <= 12) range = "r8_12";
+                if (input.reps !== undefined && input.reps !== null && String(input.reps).trim() !== "") {
+                    const r = parseInt(input.reps, 10);
+                    if (!isNaN(r)) {
+                        let range = "r13_plus";
+                        if (r === 0) {
+                            range = getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay);
+                        } else if (r <= 3) {
+                            range = "r1_3";
+                        } else if (r <= 7) {
+                            range = "r4_7";
+                        } else if (r <= 12) {
+                            range = "r8_12";
+                        }
 
-                    entries.push({
-                        date: new Date().toLocaleString('en-US'),
-                        person: key,
-                        reps: r,
-                        weight: input.weight || "",
-                        range: range,
-                        timed: false,
-                        note: input.note || "",
-                        setNum: nextSetNum
-                    });
+                        entries.push({
+                            date: new Date().toLocaleString('en-US'),
+                            person: key,
+                            reps: r,
+                            weight: input.weight || "",
+                            range: range,
+                            timed: false,
+                            note: input.note || "",
+                            setNum: nextSetNum
+                        });
+                    }
                 }
             }
         }
@@ -1112,6 +1187,19 @@ export function AppProvider({ children }) {
                 localStorage.setItem('gymlog_session_start_time', now.toString());
             }
 
+            // Trigger the automatic rest countdown timer when logging a 0-rep / 0-sec attempt
+            const hasZeroAttempt = entries.some(e => Number(e.reps) === 0);
+            if (hasZeroAttempt) {
+                let restSecs = 90;
+                if (timerMode && timerMode !== 'off' && !isNaN(parseInt(timerMode, 10))) {
+                    restSecs = parseInt(timerMode, 10);
+                } else {
+                    const targetRange = getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay);
+                    restSecs = parseInt(getDefaultRestForRepRange(targetRange), 10) || 90;
+                }
+                startRestTimer(restSecs);
+            }
+
             const userPins = {};
             let cancelled = false;
             const seenPinKeys = new Set();
@@ -1123,7 +1211,10 @@ export function AppProvider({ children }) {
                 const input = logs[key];
                 if (!input) continue;
 
-                if ((ex.timed && input.duration) || (!ex.timed && input.reps)) {
+                const hasTimed = ex.timed && input.duration !== undefined && input.duration !== null && String(input.duration).trim() !== "";
+                const hasReps = !ex.timed && input.reps !== undefined && input.reps !== null && String(input.reps).trim() !== "";
+
+                if (hasTimed || hasReps) {
                     if (person === 'Guest') {
                         userPins[key] = "guest";
                     } else {
@@ -1355,7 +1446,9 @@ export function AppProvider({ children }) {
         toggleTimer,
         resetTimer,
         startRestTimer,
-        getDefaultRestForRepRange
+        getDefaultRestForRepRange,
+        getDayTargetRange,
+        calculateBestForExercise
     };
 
     return (
