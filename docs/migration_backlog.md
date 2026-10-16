@@ -62,6 +62,7 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 7.2: Program & Device Owner Data Isolation (`SessionStatsModal.jsx`)**: Scoped session statistics and historical session lists to the active program and active device owner. (`TASK-R119`)
 - [x] **Story 7.3: 0-Rep / 0-Sec Attempt Logging & PB Exclusion**: Full support for logging failed attempts (0 reps / 0 secs) with active day target range tagging, rest timer triggers, and strict exclusion from Personal Bests across frontend and backend. (`TASK-R117`)
 - [x] **Story 7.4: Pure Plain-Text Rep Range Storage**: Formatted Column E in Google Sheets to Plain Text, eliminated temporary date-cleaning translation helpers, and enforced leading apostrophe on writes. (`TASK-R117`)
+- [x] **Story 7.5: Mobile Scrolling & Compact 4-Session Default with View All Toggle (SessionStatsModal.jsx)**: Enabled -webkit-overflow-scrolling: touch, eliminated nested scroll traps/squishing, and implemented compact 4-session default view with VIEW ALL / SHOW LESS toggle. (TASK-R120)
 
 ---
 
@@ -88,4 +89,5 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [ ] **Story 4.1: Lifetime Volume & Progress Visualizations**:
   - Expand `SessionStatsModal.jsx` into an interactive analytics dashboard.
   - Add weekly workout frequency charts, muscle group volume distribution, and personal best tracking badges.
+
 
