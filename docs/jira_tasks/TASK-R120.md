@@ -1,4 +1,4 @@
-﻿# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Compact 4-Session Default with View All Toggle
+# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Compact 4-Session Default with View All Toggle
 
 ## Overview
 On mobile devices (such as Samsung Galaxy Note 10 Lite, 412x915 / 360x740 viewports), opening the **WORKOUT TIME & AVERAGES** modal (`SessionStatsModal.jsx`) causes a severe layout and ergonomics collision:
@@ -56,3 +56,45 @@ This task resolves the layout collision, establishes smooth mobile momentum scro
 ## Instructions for Developer
 1. Write all notes, modified files, and build evidence directly into this ticket (`docs/jira_tasks/TASK-R120.md`).
 2. Respond in chat strictly using the 5-line `<AUDIT_SUBMISSION>` XML format.
+
+---
+
+## Developer Execution Notes
+
+### Implementation Summary
+- **Target File**: `gymlog-react/src/components/SessionStatsModal.jsx`
+- **Compact 4-Session Default & View All Toggle**:
+  - Added `isSessionsExpanded` boolean state defaulted to `false`.
+  - Added `displayedSessions` memoized slice: returns first 4 workouts when collapsed (`filteredSessions.slice(0, 4)`) or all workouts when expanded.
+  - Automatically resets `isSessionsExpanded` to `false` whenever `selectedRepRange` changes or when the modal closes, ensuring compact view on new filter selections.
+  - Added toggle button below the workout list when `filteredSessions.length > 4`:
+    - Collapsed: `▼ VIEW ALL (${filteredSessions.length} WORKOUTS)`
+    - Expanded: `▲ SHOW LESS`
+    - Styled with `fontFamily: 'var(--mono)'`, `color: 'var(--accent)'`, `border: '1px dashed var(--border)'`, and subtle hover background transition.
+- **Unified Mobile Momentum Scrolling & Clean Layout**:
+  - Retained `WebkitOverflowScrolling: 'touch'`, `maxHeight: '90vh'`, `overflowY: 'auto'`, and `overflowX: 'hidden'` on the `#111` card dialog.
+  - Removed nested scroll traps and artificial container constraints (`flex: 1`, `minHeight: 0`, `maxHeight: 380`, `overflowY: 'auto'`, `overscrollBehavior: 'contain'`).
+  - Retained clean footer action container with `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, and `borderTop: '1px solid var(--border)'`.
+  - In collapsed state, the header, summary, rep range cards, first 4 workouts, and `CLOSE` button fit within standard mobile viewports (~650px) without scrolling.
+
+### Modified Files
+- `gymlog-react/src/components/SessionStatsModal.jsx`
+
+### Build Verification Evidence
+- Command: `cmd /c npm run build` (cwd: `gymlog-react`)
+- Result: Exit code 0
+```
+> gymlog-react@0.0.0 build
+> vite build
+
+vite v8.0.14 building client environment for production...
+transforming...✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.82 kB │ gzip:   0.41 kB
+dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
+dist/assets/index-Dmq7vyd2.js   450.54 kB │ gzip: 119.10 kB
+
+✓ built in 2.21s
+```
+
