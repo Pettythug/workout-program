@@ -4,9 +4,103 @@ import { useAppContext } from '../context/AppContext';
 import { createPortal } from 'react-dom';
 import GuestUpgradeModal from './GuestUpgradeModal';
 
+function formatDateClean(rawDate, fallbackTimestamp) {
+    if (rawDate && String(rawDate).includes('1899')) {
+        if (fallbackTimestamp) {
+            const d = new Date(fallbackTimestamp);
+            if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+        }
+        return 'Recent Workout';
+    }
+
+    if (rawDate) {
+        const str = String(rawDate).trim();
+        const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (isoMatch) {
+            const y = parseInt(isoMatch[1], 10);
+            const m = parseInt(isoMatch[2], 10) - 1;
+            const d = parseInt(isoMatch[3], 10);
+            const dt = new Date(y, m, d);
+            return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1900) {
+            return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    }
+
+    if (fallbackTimestamp) {
+        const d = new Date(fallbackTimestamp);
+        if (!isNaN(d.getTime()) && d.getFullYear() > 1900) {
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+    }
+
+    return String(rawDate || 'Recent Workout');
+}
+
+function formatTimeClean(rawTime, fallbackTimestamp) {
+    if (!rawTime && !fallbackTimestamp) return null;
+
+    if (rawTime) {
+        const str = String(rawTime).trim();
+        if (str) {
+            const amPmMatch = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (amPmMatch) {
+                const hours = parseInt(amPmMatch[1], 10);
+                const mins = amPmMatch[2];
+                const ampm = amPmMatch[3].toUpperCase();
+                return `${hours}:${mins} ${ampm}`;
+            }
+
+            const match24 = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+            if (match24) {
+                let h = parseInt(match24[1], 10);
+                const m = match24[2];
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${h}:${m} ${ampm}`;
+            }
+
+            const parsed = new Date(str);
+            if (!isNaN(parsed.getTime())) {
+                return parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            }
+        }
+    }
+
+    if (fallbackTimestamp) {
+        const d = new Date(fallbackTimestamp);
+        if (!isNaN(d.getTime())) {
+            return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+    }
+
+    return null;
+}
+
+function formatSessionDateTime(session) {
+    const dateStr = formatDateClean(session.date, session.startTimestamp);
+    const startStr = formatTimeClean(session.startTime, session.startTimestamp);
+    const endStr = formatTimeClean(session.endTime, session.endTimestamp);
+
+    if (startStr && endStr && startStr !== endStr) {
+        return `${dateStr} • ${startStr} – ${endStr}`;
+    }
+    if (startStr) {
+        return `${dateStr} • ${startStr}`;
+    }
+    if (endStr) {
+        return `${dateStr} • ${endStr}`;
+    }
+    return dateStr;
+}
+
 export default function SessionStatsModal({ isOpen, onClose }) {
     const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner } = useAppContext();
-    const [activeFilter, setActiveFilter] = useState('ALL');
     const [selectedRepRange, setSelectedRepRange] = useState(null);
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
@@ -28,23 +122,8 @@ export default function SessionStatsModal({ isOpen, onClose }) {
         });
     }, [sessionHistory, selectedRepRange]);
 
-    const participantTabs = useMemo(() => {
-        const tabs = new Set(['ALL']);
-        sessionHistory.forEach(s => {
-            if (s.people) tabs.add(s.people);
-            else tabs.add('Solo');
-        });
-        return Array.from(tabs).sort();
-    }, [sessionHistory]);
-
-    useEffect(() => {
-        if (!participantTabs.includes(activeFilter)) {
-            setActiveFilter('ALL');
-        }
-    }, [participantTabs, activeFilter]);
-
     const stats = useMemo(() => {
-        return getRepRangeStats ? getRepRangeStats(sessionHistory, activeFilter) : {
+        return getRepRangeStats ? getRepRangeStats(sessionHistory, 'ALL') : {
             brackets: {
                 '1-3': { label: '1–3 Reps (Heavy)', count: 0, avgMinutes: 0 },
                 '4-7': { label: '4–7 Reps (Strength)', count: 0, avgMinutes: 0 },
@@ -54,7 +133,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
             totalSessions: 0,
             overallAvgMinutes: 0
         };
-    }, [sessionHistory, getRepRangeStats, activeFilter]);
+    }, [sessionHistory, getRepRangeStats]);
 
     const [now, setNow] = useState(Date.now());
     useEffect(() => {
@@ -211,44 +290,18 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                             <button 
                                 className="btn-ghost" 
                                 onClick={() => startSession(Date.now())}
-                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '8px 6px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid var(--accent)', color: 'var(--accent)' }}
+                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '6px 10px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid var(--accent)', color: 'var(--accent)' }}
                             >
                                 ⏱️ Reset to 0m
                             </button>
                             <button 
                                 className="btn-ghost" 
                                 onClick={() => resetSessionTime()}
-                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '8px 6px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid #ef4444', color: '#ef4444' }}
+                                style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', padding: '6px 10px', fontSize: 11, boxSizing: 'border-box', letterSpacing: 0, border: '1px solid #ef4444', color: '#ef4444' }}
                             >
                                 🗑️ Clear Clock
                             </button>
                         </div>
-                    </div>
-                )}
-                
-                {/* Participant Tabs */}
-                {participantTabs.length > 1 && (
-                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                        {participantTabs.map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveFilter(tab)}
-                                style={{
-                                    padding: '6px 12px',
-                                    borderRadius: 16,
-                                    fontSize: 11,
-                                    fontWeight: activeFilter === tab ? 700 : 500,
-                                    fontFamily: 'var(--mono)',
-                                    whiteSpace: 'nowrap',
-                                    background: activeFilter === tab ? 'var(--accent)' : 'var(--surface)',
-                                    color: activeFilter === tab ? '#000' : 'var(--muted)',
-                                    border: `1px solid ${activeFilter === tab ? 'var(--accent)' : 'var(--border)'}`,
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                {tab}
-                            </button>
-                        ))}
                     </div>
                 )}
 
@@ -418,11 +471,12 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                     <div style={{
                         flex: 1,
                         overflowY: 'auto',
+                        overscrollBehavior: 'contain',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 8,
                         paddingRight: 4,
-                        maxHeight: 200
+                        maxHeight: 380
                     }}>
                         {sessionHistory.length === 0 ? (
                             <div style={{
@@ -456,30 +510,17 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                         background: 'var(--surface)',
                                         border: '1px solid var(--border)',
                                         borderRadius: 8,
-                                        padding: '10px 12px',
+                                        padding: '8px 12px',
                                         display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        gap: 8
+                                        flexDirection: 'column',
+                                        gap: 5
                                     }}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                                            <span style={{ fontSize: 12, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>
                                                 {session.program || 'Workout'} #{session.workoutDay}
                                             </span>
-                                            {session.workoutType && (
-                                                <span style={{
-                                                    fontSize: 10,
-                                                    padding: '1px 6px',
-                                                    borderRadius: 4,
-                                                    background: 'rgba(255,255,255,0.08)',
-                                                    color: 'var(--muted)',
-                                                    fontFamily: 'var(--mono)'
-                                                }}>
-                                                    {session.workoutType}
-                                                </span>
-                                            )}
                                             {session.repRange && (
                                                 <span style={{
                                                     fontSize: 10,
@@ -488,81 +529,82 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                                     background: 'rgba(249, 115, 22, 0.15)',
                                                     color: 'var(--accent)',
                                                     fontWeight: 600,
-                                                    fontFamily: 'var(--mono)'
+                                                    fontFamily: 'var(--mono)',
+                                                    whiteSpace: 'nowrap'
                                                 }}>
-                                                    {session.repRange} reps
+                                                    {session.repRange.toLowerCase().includes('rep') ? session.repRange : `${session.repRange} Reps`}
                                                 </span>
                                             )}
-                                            {session.people && (
+                                            {session.workoutType && (
                                                 <span style={{
                                                     fontSize: 10,
                                                     padding: '1px 6px',
                                                     borderRadius: 4,
-                                                    background: 'rgba(56, 189, 248, 0.15)',
-                                                    color: '#38bdf8',
-                                                    fontWeight: 600,
-                                                    fontFamily: 'var(--mono)'
+                                                    background: 'rgba(255,255,255,0.08)',
+                                                    color: 'var(--muted)',
+                                                    fontFamily: 'var(--mono)',
+                                                    whiteSpace: 'nowrap'
                                                 }}>
-                                                    👥 {session.people}
+                                                    {session.workoutType}
                                                 </span>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>
-                                            {session.date}
-                                            {session.startTime && session.endTime && (
-                                                <span> • {session.startTime} – {session.endTime}</span>
-                                            )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                color: 'var(--accent)',
+                                                fontFamily: 'var(--mono)',
+                                                whiteSpace: 'nowrap',
+                                                background: 'rgba(249, 115, 22, 0.1)',
+                                                border: '1px solid rgba(249, 115, 22, 0.25)',
+                                                padding: '2px 6px',
+                                                borderRadius: 5
+                                            }}>
+                                                ⏱️ {session.durationMinutes}m
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const label = `${session.program || 'Workout'} #${session.workoutDay || ''} (${formatDateClean(session.date, session.startTimestamp)})`;
+                                                    if (window.confirm(`Delete historical session for ${label}?`)) {
+                                                        if (deleteSession) deleteSession(session.id);
+                                                    }
+                                                }}
+                                                title="Delete session record"
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    color: 'var(--muted)',
+                                                    cursor: 'pointer',
+                                                    fontSize: 12,
+                                                    padding: '2px 4px',
+                                                    borderRadius: 4,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    opacity: 0.7,
+                                                    transition: 'opacity 0.2s, color 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.opacity = '1';
+                                                    e.currentTarget.style.color = '#ef4444';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.opacity = '0.7';
+                                                    e.currentTarget.style.color = 'var(--muted)';
+                                                }}
+                                                aria-label="Delete session"
+                                            >
+                                                🗑️
+                                            </button>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <div style={{
-                                            fontSize: 13,
-                                            fontWeight: 700,
-                                            color: 'var(--accent)',
-                                            fontFamily: 'var(--mono)',
-                                            whiteSpace: 'nowrap',
-                                            background: 'rgba(249, 115, 22, 0.1)',
-                                            border: '1px solid rgba(249, 115, 22, 0.25)',
-                                            padding: '4px 8px',
-                                            borderRadius: 6
-                                        }}>
-                                            ⏱️ {session.durationMinutes}m
-                                        </div>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const label = `${session.program || 'Workout'} #${session.workoutDay || ''} (${session.date})`;
-                                                if (window.confirm(`Delete historical session for ${label}?`)) {
-                                                    if (deleteSession) deleteSession(session.id);
-                                                }
-                                            }}
-                                            title="Delete session record"
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--muted)',
-                                                cursor: 'pointer',
-                                                fontSize: 13,
-                                                padding: '4px 6px',
-                                                borderRadius: 4,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                opacity: 0.7,
-                                                transition: 'opacity 0.2s, color 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.opacity = '1';
-                                                e.currentTarget.style.color = '#ef4444';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.opacity = '0.7';
-                                                e.currentTarget.style.color = 'var(--muted)';
-                                            }}
-                                            aria-label="Delete session"
-                                        >
-                                            🗑️
-                                        </button>
+                                    <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                                        {formatSessionDateTime(session)}
+                                        {session.people && session.people !== 'Solo' && (
+                                            <span> • 👥 {session.people}</span>
+                                        )}
                                     </div>
                                 </div>
                             ))
