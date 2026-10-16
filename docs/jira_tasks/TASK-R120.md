@@ -1,13 +1,12 @@
-# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Close Button Overlap
+﻿# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Compact 4-Session Default with View All Toggle
 
 ## Overview
-On mobile devices (such as Samsung Galaxy Note 10 Lite, 412x915 / 360x740 viewports), opening the **WORKOUT TIME & AVERAGES** modal (`SessionStatsModal.jsx`) causes a severe layout collision:
+On mobile devices (such as Samsung Galaxy Note 10 Lite, 412x915 / 360x740 viewports), opening the **WORKOUT TIME & AVERAGES** modal (`SessionStatsModal.jsx`) causes a severe layout and ergonomics collision:
 1. The modal header, summary bar, and 4 rep range average cards take up ~420px of vertical space.
-2. The remaining height inside the `maxHeight: '90vh'` container forces the Recent Completed Workouts section to squish down to near-zero height.
-3. The `CLOSE` button is pushed directly on top of the text (`sessions)` / `Clear`), obscuring the entire completed workouts list.
-4. The inner session list container has `overflowY: 'auto'` with `overscrollBehavior: 'contain'`. This nested scroll structure traps Android touch events, preventing mobile users from scrolling down to view past sessions.
+2. Rendering the entire unconstrained history (20+ workouts) stretches the modal excessively, forcing users to scroll all the way to the bottom just to click the `CLOSE` button.
+3. The inner session list container had `overflowY: 'auto'` with `overscrollBehavior: 'contain'`, trapping touch events and squishing content behind the `CLOSE` button.
 
-This task resolves the layout collision and scroll-trapping by establishing a single, unified, smooth mobile scroll container with natural flow and clean footer placement.
+This task resolves the layout collision, establishes smooth mobile momentum scrolling, and implements a **compact default view of 4 workouts** with a **`VIEW ALL (X workouts)` / `SHOW LESS`** toggle. This guarantees that on mobile screens, the entire modal fits cleanly on one screen with the `CLOSE` button immediately visible.
 
 ---
 
@@ -19,32 +18,37 @@ This task resolves the layout collision and scroll-trapping by establishing a si
 ### Required Changes
 
 1. **Modal Container Smooth Scrolling:**
-   - On the modal card dialog container (`#111` wrapper around line 308):
-     - Retain `maxHeight: '90vh'`, `overflowY: 'auto'`, `overflowX: 'hidden'`.
-     - Add `-webkit-overflow-scrolling: 'touch'` (or `WebkitOverflowScrolling: 'touch'`) to ensure native mobile momentum scrolling.
-     - Ensure the dialog flex container permits natural vertical scrolling for all children.
+   - Retain `maxHeight: '90vh'`, `overflowY: 'auto'`, `overflowX: 'hidden'`, and `WebkitOverflowScrolling: 'touch'` on the `#111` dialog wrapper.
 
-2. **Eliminate Nested Scroll Trap & Content Squishing (Lines 528–605):**
+2. **Compact 4-Session Default with Progressive Expansion:**
+   - Add state: `const [isSessionsExpanded, setIsSessionsExpanded] = useState(false);`
+   - When rendering `filteredSessions`:
+     - If collapsed (`!isSessionsExpanded`): Render only the first **4** sessions (`filteredSessions.slice(0, 4)`).
+     - If expanded (`isSessionsExpanded`): Render all `filteredSessions`.
+   - If `filteredSessions.length > 4`:
+     - Render an expansion toggle button below the list:
+       - Collapsed label: `▼ VIEW ALL (${filteredSessions.length} WORKOUTS)`
+       - Expanded label: `▲ SHOW LESS`
+     - Styled cleanly with `fontFamily: 'var(--mono)'`, `color: 'var(--accent)'`, `border: '1px dashed var(--border)'`.
+   - When changing the active rep range filter (`selectedRepRange`), reset `setIsSessionsExpanded(false)` so filtered views default to compact.
+
+3. **Eliminate Nested Scroll Trap & Content Squishing:**
    - In the Recent Completed Workouts section:
-     - Remove `flex: 1` and `minHeight: 0` from the outer wrapper (`style={{ flex: 1, minHeight: 0, ... }}`).
-     - In the sessions list container (around lines 596–605):
-       - Remove `overflowY: 'auto'`, `overscrollBehavior: 'contain'`, `flex: 1`, and `maxHeight: 380`.
-       - Change to a natural flex column layout: `display: 'flex'`, `flexDirection: 'column'`, `gap: 8`, without an artificial height limit.
-     - This allows all session cards to flow naturally within the parent modal's single scroll container. When the user swipes with their thumb, the top cards scroll out of the way smoothly, revealing the full list of completed workouts.
+     - Remove `flex: 1` and `minHeight: 0` from outer container.
+     - Remove `maxHeight: 380`, `overflowY: 'auto'`, and `overscrollBehavior: 'contain'` from the session list.
 
-3. **Footer Action Clean Placement (Lines 740–750):**
-   - On the footer container:
-     - Add `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, `borderTop: '1px solid var(--border)'`.
-     - Ensure the `CLOSE` button sits cleanly below all session content without overlapping or obscuring any text.
+4. **Footer Action Clean Placement:**
+   - Ensure the footer container has `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, and `borderTop: '1px solid var(--border)'`.
+   - The `CLOSE` button sits cleanly below the toggle/list and is immediately reachable without scrolling when collapsed.
 
 ---
 
 ## Detailed Acceptance Criteria
 
-1. **Unified Mobile Scroll:** Swiping anywhere inside the modal on a mobile viewport smoothly scrolls the entire modal content from top to bottom.
-2. **Zero Button Collision:** The `CLOSE` button is positioned below the session list with clean spacing, never overlapping `sessions)` or any text.
-3. **Filter Usability:** Tapping any rep range card (e.g. `13+ Reps`) filters the sessions list, and scrolling down reveals all matching sessions clearly.
-4. **Desktop Compatibility:** Desktop layout retains clean modal width (`maxWidth: 420`) and scrolls naturally within `90vh`.
+1. **One-Screen Mobile Fit:** On initial open, the modal header, summary, 4 rep range cards, first 4 completed workouts, and the `CLOSE` button fit within a standard mobile screen height (~650px) without requiring scrolling.
+2. **View All Toggle:** If more than 4 workouts exist, clicking `VIEW ALL` smoothly expands all workouts. Clicking `SHOW LESS` collapses back to 4.
+3. **Rep Range Filter Integration:** When clicking any rep range card (e.g. `13+ Reps`), the filtered list displays up to 4 sessions by default, with `VIEW ALL` if more than 4 match.
+4. **Touch Scrolling:** When expanded, the entire modal scrolls smoothly with native mobile momentum.
 5. **Build Integrity:** `cmd /c npm run build` inside `gymlog-react` passes with exit code 0.
 
 ---
@@ -52,41 +56,3 @@ This task resolves the layout collision and scroll-trapping by establishing a si
 ## Instructions for Developer
 1. Write all notes, modified files, and build evidence directly into this ticket (`docs/jira_tasks/TASK-R120.md`).
 2. Respond in chat strictly using the 5-line `<AUDIT_SUBMISSION>` XML format.
-
----
-
-## Developer Execution Notes
-
-### Implementation Summary
-- **Target File**: `gymlog-react/src/components/SessionStatsModal.jsx`
-- **Modal Container Smooth Scrolling**: Added `WebkitOverflowScrolling: 'touch'` alongside `maxHeight: '90vh'`, `overflowY: 'auto'`, and `overflowX: 'hidden'` to support native mobile momentum scrolling.
-- **Eliminated Nested Scroll Trap**:
-  - Removed `flex: 1` and `minHeight: 0` from outer Recent Completed Workouts wrapper (`style={{ display: 'flex', flexDirection: 'column' }}`).
-  - Removed `overflowY: 'auto'`, `overscrollBehavior: 'contain'`, `flex: 1`, and `maxHeight: 380` from inner session list container. Replaced with clean column flex layout (`display: 'flex'`, `flexDirection: 'column'`, `gap: 8`).
-  - All session cards now flow naturally within the primary modal scroll container, allowing smooth thumb swipes without trapped gestures.
-- **Clean Footer Action Placement**:
-  - Configured footer action container with `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, and `borderTop: '1px solid var(--border)'`.
-  - The `CLOSE` button cleanly rests below all session content with proper spacing, preventing overlap with session history text or buttons.
-
-### Modified Files
-- `gymlog-react/src/components/SessionStatsModal.jsx`
-
-### Build Verification Evidence
-- Command: `cmd /c npm run build` (cwd: `gymlog-react`)
-- Result: Exit code 0
-```
-> gymlog-react@0.0.0 build
-> vite build
-
-vite v8.0.14 building client environment for production...
-transforming...✓ 46 modules transformed.
-rendering chunks...
-computing gzip size...
-dist/index.html                   0.82 kB │ gzip:   0.42 kB
-dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
-dist/assets/index-Dz4Pc7GF.js   449.69 kB │ gzip: 118.95 kB
-
-✓ built in 1.76s
-```
-- Commit: `63ab87329e82faa000384cd8862186a381d9f887`
-
