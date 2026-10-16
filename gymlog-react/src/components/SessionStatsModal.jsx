@@ -7,7 +7,26 @@ import GuestUpgradeModal from './GuestUpgradeModal';
 export default function SessionStatsModal({ isOpen, onClose }) {
     const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner } = useAppContext();
     const [activeFilter, setActiveFilter] = useState('ALL');
+    const [selectedRepRange, setSelectedRepRange] = useState(null);
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedRepRange(null);
+        }
+    }, [isOpen]);
+
+    const filteredSessions = useMemo(() => {
+        if (!selectedRepRange) return sessionHistory;
+        return sessionHistory.filter(session => {
+            const range = (session.repRange || '').trim();
+            if (selectedRepRange === '1-3') return range.includes('1-3');
+            if (selectedRepRange === '4-7') return range.includes('4-7');
+            if (selectedRepRange === '8-12') return range.includes('8-12');
+            if (selectedRepRange === '13+') return range.includes('13') || range.includes('13+');
+            return false;
+        });
+    }, [sessionHistory, selectedRepRange]);
 
     const participantTabs = useMemo(() => {
         const tabs = new Set(['ALL']);
@@ -263,34 +282,64 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         {bracketMeta.map(meta => {
                             const bracketData = stats.brackets[meta.key] || { count: 0, avgMinutes: 0 };
+                            const isSelected = selectedRepRange === meta.key;
                             return (
                                 <div 
                                     key={meta.key}
+                                    onClick={() => setSelectedRepRange(prev => prev === meta.key ? null : meta.key)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setSelectedRepRange(prev => prev === meta.key ? null : meta.key);
+                                        }
+                                    }}
+                                    title={isSelected ? `Filtering by ${meta.title} (tap to deselect)` : `Tap to filter workouts by ${meta.title}`}
                                     style={{
-                                        background: meta.bg,
-                                        border: `1px solid ${meta.borderColor}`,
+                                        background: isSelected ? meta.bg.replace('0.1', '0.22') : meta.bg,
+                                        border: isSelected ? `2px solid ${meta.color}` : `1px solid ${meta.borderColor}`,
                                         borderRadius: 10,
-                                        padding: 12,
+                                        padding: isSelected ? 11 : 12,
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        gap: 4
+                                        gap: 4,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: isSelected ? `0 0 12px ${meta.color}40` : 'none',
+                                        boxSizing: 'border-box',
+                                        userSelect: 'none'
                                     }}
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: meta.color, fontFamily: 'var(--mono)' }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: meta.color, fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                             {meta.title}
+                                            {isSelected && <span style={{ fontSize: 9 }}>●</span>}
                                         </span>
-                                        <span style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
-                                            {meta.subtitle.split(' ')[0]}
+                                        <span style={{
+                                            fontSize: 9,
+                                            color: isSelected ? meta.color : 'var(--muted)',
+                                            fontFamily: 'var(--mono)',
+                                            textTransform: 'uppercase',
+                                            fontWeight: isSelected ? 700 : 400
+                                        }}>
+                                            {isSelected ? 'ACTIVE' : meta.subtitle.split(' ')[0]}
                                         </span>
                                     </div>
                                     <div style={{ fontSize: 20, fontWeight: 800, color: 'white', fontFamily: 'var(--mono)', margin: '4px 0' }}>
                                         {bracketData.count > 0 ? `${bracketData.avgMinutes}m` : '--'}
                                     </div>
-                                    <div style={{ fontSize: 10, color: 'var(--muted)' }}>
-                                        {bracketData.count > 0 
-                                            ? `${bracketData.count} session${bracketData.count === 1 ? '' : 's'}`
-                                            : 'No data yet'}
+                                    <div style={{ fontSize: 10, color: isSelected ? 'white' : 'var(--muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>
+                                            {bracketData.count > 0 
+                                                ? `${bracketData.count} session${bracketData.count === 1 ? '' : 's'}`
+                                                : 'No data yet'}
+                                        </span>
+                                        {isSelected && (
+                                            <span style={{ fontSize: 9, color: meta.color, fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                                                FILTERED
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -300,9 +349,71 @@ export default function SessionStatsModal({ isOpen, onClose }) {
 
                 {/* Recent Session History List */}
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
-                        Recent Completed Workouts
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                            Recent Completed Workouts
+                        </div>
+                        {selectedRepRange && (
+                            <button 
+                                onClick={() => setSelectedRepRange(null)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--accent)',
+                                    fontSize: 10,
+                                    fontFamily: 'var(--mono)',
+                                    cursor: 'pointer',
+                                    padding: '2px 4px',
+                                    textDecoration: 'underline'
+                                }}
+                            >
+                                Clear Filter
+                            </button>
+                        )}
                     </div>
+
+                    {selectedRepRange && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            border: `1px solid ${bracketMeta.find(m => m.key === selectedRepRange)?.borderColor || 'var(--border)'}`,
+                            borderRadius: 6,
+                            padding: '6px 10px',
+                            marginBottom: 8,
+                            fontSize: 11,
+                            fontFamily: 'var(--mono)'
+                        }}>
+                            <span style={{ color: 'white' }}>
+                                Showing <strong style={{ color: bracketMeta.find(m => m.key === selectedRepRange)?.color }}>{bracketMeta.find(m => m.key === selectedRepRange)?.title}</strong> ({filteredSessions.length} {filteredSessions.length === 1 ? 'session' : 'sessions'})
+                            </span>
+                            <button
+                                onClick={() => setSelectedRepRange(null)}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 4,
+                                    color: 'var(--muted)',
+                                    cursor: 'pointer',
+                                    fontSize: 10,
+                                    fontFamily: 'var(--mono)',
+                                    padding: '2px 8px'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = 'white';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = 'var(--muted)';
+                                    e.currentTarget.style.borderColor = 'var(--border)';
+                                }}
+                                aria-label="Clear rep range filter"
+                            >
+                                ✕ Clear
+                            </button>
+                        </div>
+                    )}
                     
                     <div style={{
                         flex: 1,
@@ -325,8 +436,20 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                             }}>
                                 No completed workout sessions recorded yet. Finish a workout to track your duration and rep range stats!
                             </div>
+                        ) : filteredSessions.length === 0 ? (
+                            <div style={{
+                                padding: '24px 16px',
+                                textAlign: 'center',
+                                background: '#161616',
+                                borderRadius: 8,
+                                border: '1px dashed var(--border)',
+                                color: 'var(--muted)',
+                                fontSize: 12
+                            }}>
+                                No sessions found for this rep range.
+                            </div>
                         ) : (
-                            sessionHistory.map(session => (
+                            filteredSessions.map(session => (
                                 <div 
                                     key={session.id}
                                     style={{
