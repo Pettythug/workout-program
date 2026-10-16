@@ -1,13 +1,11 @@
-﻿# TASK-R117: 0-Rep / 0-Sec Attempt Logging, PB Exclusion & Sheet RepRange Display Fix
+﻿# TASK-R117: 0-Rep / 0-Sec Attempt Logging, PB Exclusion & Clean RepRange Plain Text
 
 ## Overview
 Currently in GymLog, when a user attempts a heavy lift or hold but fails the attempt (0 reps or 0 seconds completed):
 1. The app either prevents logging 0 reps, or improperly treats `reps <= 3` as a `1-3` heavy PR/Max, which falsely records failed attempts as Personal Bests.
 2. Tagging a 0-rep set defaults to `r1_3` instead of the active workout day's prescribed target rep range (e.g. `r8_12`, `r4_7`, `r13_plus`).
 3. Failed attempts should still trigger the rest countdown timer and record notes so the user can track what they attempted and why they failed.
-4. Additionally, Google Apps Script in `Combined_AppScript_v2.gs` reads the `Sessions` tab with `.getValues()`, causing Google Sheets to coerce `1-3`, `4-7`, and `8-12` into Date objects (`"Wed Aug 12..."`).
-
-This task implements complete support for 0-rep/0-sec attempt logging with Personal Best exclusion across frontend and backend, and resolves the Google Sheets session repRange data formatting at the root cause.
+4. With Column E in Google Sheets formatted as Plain Text, all temporary date-cleaning translation helpers (`gymlog_cleanRepRange`) are eliminated to keep the codebase lean and minimal.
 
 ---
 
@@ -25,13 +23,16 @@ This task implements complete support for 0-rep/0-sec attempt logging with Perso
 
 ### 2. Backend Personal Best Exclusion (`Combined_AppScript_v2.gs`)
 - In `gymlog_recalculateBestForExercise()` and `migrateBestTab()`:
-  - Add strict checks: `if (!reps || Number(reps) <= 0) continue;`
+  - Add strict checks: `if (!reps || Number(reps) <= 0) continue;` (or `if (newR <= 0) return;`).
   - Ensure failed attempts logged in the `History` tab are never aggregated into the `Best` tab.
 
-### 3. Backend Sessions RepRange Display Fix (`Combined_AppScript_v2.gs`)
-- In `doGet` / `doPost` session read handlers (around lines 355–370 and lines 1160–1175):
-  - Instead of extracting `repRange` from raw `getValues()` (which turns `8-12` into Date object `Wed Aug 12...`), read `sessionsSheet.getRange(...).getDisplayValues()` for the `repRange` column (or sanitize Date objects into clean `M-D` strings).
-  - This guarantees Google Apps Script outputs clean strings (`"1-3"`, `"4-7"`, `"8-12"`, `"13+"`) directly to the client JSON payload.
+### 3. Backend Clean RepRange & Pure Text Support (`Combined_AppScript_v2.gs`)
+- Delete `gymlog_cleanRepRange(rawVal, displayVal)` completely (lines 229–248).
+- In session read handlers (`doGet` and `gymlog_handleGetSessions`):
+  - Read `repRange` directly as clean text from `r[4]`: `String(r[4] || "").replace(/^'+/, '').trim()`.
+  - Do NOT query extra ranges or perform date conversions.
+- In session write handlers (`gymlog_handleBatchSyncSession` and `gymlog_handleLogSession`):
+  - Retain the leading apostrophe formatting (`session.repRange ? ("'" + String(session.repRange).replace(/^'+/, '')) : ""`) to enforce plain text in Google Sheets.
 
 ---
 
@@ -43,13 +44,15 @@ This task implements complete support for 0-rep/0-sec attempt logging with Perso
    - The rest timer immediately triggers and starts counting down.
 2. **Personal Best Integrity:**
    - A 0-rep set is NEVER recorded or displayed as a Personal Best / PR on either frontend or Google Sheets backend.
-3. **Session RepRange Root Cause:**
-   - In `Combined_AppScript_v2.gs`, session `repRange` values are retrieved as clean display strings (`1-3`, `4-7`, `8-12`, `13+`).
+3. **Clean Codebase:**
+   - `gymlog_cleanRepRange` is deleted from `Combined_AppScript_v2.gs`. `repRange` is read directly as clean text.
 4. **Build Verification:**
-   - `npm run build` passes with zero errors or warnings.
+   - `npm run build` passes with zero errors or warnings (exit code 0).
 
 ---
 
 ## Target Files
 - `gymlog-react/src/context/AppContext.jsx`
+- `gymlog-react/src/components/ExerciseCard.jsx`
+- `gymlog-react/src/hooks/useTargetLock.js`
 - `Combined_AppScript_v2.gs`
