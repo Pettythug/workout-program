@@ -225,27 +225,6 @@ function normalizeRange(range) {
   return String(range).trim() === "r15_20" ? "r13_plus" : String(range).trim();
 }
 
-// Clean / sanitize session repRange values to guarantee clean strings ("1-3", "4-7", "8-12", "13+")
-function gymlog_cleanRepRange(rawVal, displayVal) {
-  const disp = displayVal !== undefined && displayVal !== null ? String(displayVal).trim() : "";
-  if (disp === "1-3" || disp === "4-7" || disp === "8-12" || disp === "13+" || disp === "13_plus") {
-    return disp === "13_plus" ? "13+" : disp;
-  }
-  if (rawVal instanceof Date) {
-    return (rawVal.getMonth() + 1) + "-" + rawVal.getDate();
-  }
-  if (typeof rawVal === "string") {
-    const s = rawVal.trim().replace(/^'+/, '');
-    if (s.includes("GMT") || (s.includes("T") && s.includes("Z"))) {
-      const d = new Date(s);
-      if (!isNaN(d.getTime())) {
-        return (d.getMonth() + 1) + "-" + d.getDate();
-      }
-    }
-    if (s) return s;
-  }
-  return (disp || String(rawVal || "")).replace(/^'+/, '');
-}
 
 // Parse "8x135" → {reps:"8", weight:"135"} | "8 reps" → {reps:"8", weight:""}
 function parseBest(str) {
@@ -384,24 +363,19 @@ function gymlog_doGet() {
     if (sessionsLastRow > 1) {
       const numRows = sessionsLastRow - 1;
       const sessionsRaw = sessionsSheet.getRange(2, 1, numRows, SESSIONS_HEADERS.length).getValues();
-      const repRangeDisplays = sessionsSheet.getRange(2, 5, numRows, 1).getDisplayValues();
-      sessions = sessionsRaw.map((r, i) => {
-        const rawRange = r[4];
-        const dispRange = repRangeDisplays[i] ? repRangeDisplays[i][0] : "";
-        return {
-          id: String(r[0]),
-          date: String(r[1]),
-          program: String(r[2]),
-          workoutDay: r[3] !== "" ? Number(r[3]) : "",
-          repRange: gymlog_cleanRepRange(rawRange, dispRange),
-          startTime: String(r[5]),
-          endTime: String(r[6]),
-          durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
-          startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
-          endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
-          people: String(r[10] || "")
-        };
-      }).filter(s => s.id);
+      sessions = sessionsRaw.map(r => ({
+        id: String(r[0]),
+        date: String(r[1]),
+        program: String(r[2]),
+        workoutDay: r[3] !== "" ? Number(r[3]) : "",
+        repRange: String(r[4] || "").replace(/^'+/, '').trim(),
+        startTime: String(r[5]),
+        endTime: String(r[6]),
+        durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+        startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+        endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
+        people: String(r[10] || "")
+      })).filter(s => s.id);
     }
 
     const responseObj = {
@@ -1194,24 +1168,19 @@ function gymlog_handleGetSessions() {
   if (lastRow > 1) {
     const numRows = lastRow - 1;
     const data = sheet.getRange(2, 1, numRows, SESSIONS_HEADERS.length).getValues();
-    const repRangeDisplays = sheet.getRange(2, 5, numRows, 1).getDisplayValues();
-    sessions = data.map((r, i) => {
-      const rawRange = r[4];
-      const dispRange = repRangeDisplays[i] ? repRangeDisplays[i][0] : "";
-      return {
-        id: String(r[0]),
-        date: String(r[1]),
-        program: String(r[2]),
-        workoutDay: r[3] !== "" ? Number(r[3]) : "",
-        repRange: gymlog_cleanRepRange(rawRange, dispRange),
-        startTime: String(r[5]),
-        endTime: String(r[6]),
-        durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
-        startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
-        endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
-        people: String(r[10] || "")
-      };
-    }).filter(s => s.id);
+    sessions = data.map(r => ({
+      id: String(r[0]),
+      date: String(r[1]),
+      program: String(r[2]),
+      workoutDay: r[3] !== "" ? Number(r[3]) : "",
+      repRange: String(r[4] || "").replace(/^'+/, '').trim(),
+      startTime: String(r[5]),
+      endTime: String(r[6]),
+      durationMinutes: r[7] !== "" ? Number(r[7]) : 0,
+      startTimestamp: r[8] !== "" ? Number(r[8]) : 0,
+      endTimestamp: r[9] !== "" ? Number(r[9]) : 0,
+      people: String(r[10] || "")
+    })).filter(s => s.id);
   }
   return ok({ sessions: sessions });
 }
