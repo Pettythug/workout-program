@@ -1,4 +1,4 @@
-﻿# TASK-R118: Expandable Exercise History with 9-Set Default, Rep Range Filter Pills & View All Toggle
+# TASK-R118: Expandable Exercise History with 9-Set Default, Rep Range Filter Pills & View All Toggle
 
 ## Overview
 Currently, in both `ExerciseCard.jsx` and `CircuitCard.jsx`, the **RECENT HISTORY** section hardcodes `.slice(0, 5)`, displaying only the last 5 sets ever logged for an exercise.
@@ -69,3 +69,45 @@ In both components:
 ## Instructions for Developer
 1. Write all notes, modified files, and build evidence directly into this ticket (`docs/jira_tasks/TASK-R118.md`).
 2. Respond in chat strictly using the 5-line `<AUDIT_SUBMISSION>` XML format.
+
+---
+
+## Developer Execution Notes
+
+### Implementation Summary
+- **Target Files**:
+  - `gymlog-react/src/components/ExerciseCard.jsx`
+  - `gymlog-react/src/components/CircuitCard.jsx`
+- **State & Filtering Architecture**:
+  - Added `matchesRepRange(h, filter)` matcher function supporting `ALL`, `1-3` (matching `r1_3`, `1-3`, reps 1..3), `4-7` (matching `r4_7`, `4-7`, reps 4..7), `8-12` (matching `r8_12`, `8-12`, reps 8..12), and `13+` (matching `r13_plus`, `13+`, `13_plus`, `r15_20`, reps >= 13).
+  - Added local state in both components: `const [historyFilter, setHistoryFilter] = useState('ALL')` and `const [isHistoryExpanded, setIsHistoryExpanded] = useState(false)`.
+  - Automatically reset `isHistoryExpanded(false)` upon selecting any filter pill.
+  - Retained set deletion safety by mapping original index before filtering: `ex.history.map((h, i) => ({ h, i })).filter(...)` so `handleDeleteHistory(h, i)` receives the exact original index in `ex.history`.
+- **UI & Layout**:
+  - Rendered horizontal filter pills (`ALL | 1-3 | 4-7 | 8-12 | 13+`) styled with CSS variables (`var(--accent)`, `var(--border)`, `var(--muted)`), with active pill highlighting.
+  - Implemented default 9-set display via `.slice(0, 9)` when collapsed.
+  - Implemented `▼ VIEW ALL (${filteredHistory.length} sets)` / `▲ SHOW LESS` toggle when filtered sets > 9, wrapping expanded view in `maxHeight: '360px'`, `overflowY: 'auto'`, and `WebkitOverflowScrolling: 'touch'`.
+  - Added empty state messaging: `"No entries for this rep range"` when filter matches no sets, or `"No entries yet"` if no sets exist overall on `'ALL'`.
+- **Component Parity**:
+  - Identical logic, styling, and behavior implemented across `ExerciseCard.jsx` (Plan & Full Body views) and `CircuitCard.jsx` (Circuit view).
+
+### Modified Files
+- `gymlog-react/src/components/ExerciseCard.jsx`
+- `gymlog-react/src/components/CircuitCard.jsx`
+
+### Build Verification Evidence
+- Command: `cmd /c npm run build` (cwd: `gymlog-react`)
+- Result: Exit code 0
+```
+> gymlog-react@0.0.0 build
+> vite build
+
+vite v8.1.0 building client environment for production...
+transforming...✓ 42 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.82 kB │ gzip:   0.41 kB
+dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
+dist/assets/index-DhEmxLgl.js   454.54 kB │ gzip: 120.41 kB
+✓ built in 3.80s
+```

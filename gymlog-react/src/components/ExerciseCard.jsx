@@ -26,6 +26,27 @@ const formatLogDate = (dateStr) => {
     }
 };
 
+const matchesRepRange = (h, filter) => {
+    if (!filter || filter === 'ALL') return true;
+    const rStr = String(h?.range || '').trim().toLowerCase();
+    const reps = parseInt(String(h?.reps ?? '').replace(/[^0-9]/g, ''), 10);
+    const hasValidReps = !isNaN(reps) && String(h?.reps ?? '').trim() !== '';
+
+    if (filter === '1-3') {
+        return rStr === 'r1_3' || rStr === '1-3' || (hasValidReps && reps >= 1 && reps <= 3);
+    }
+    if (filter === '4-7') {
+        return rStr === 'r4_7' || rStr === '4-7' || (hasValidReps && reps >= 4 && reps <= 7);
+    }
+    if (filter === '8-12') {
+        return rStr === 'r8_12' || rStr === '8-12' || (hasValidReps && reps >= 8 && reps <= 12);
+    }
+    if (filter === '13+') {
+        return rStr === 'r13_plus' || rStr === '13+' || rStr === '13_plus' || rStr === 'r15_20' || (hasValidReps && reps >= 13);
+    }
+    return false;
+};
+
 const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet, isSaving, getNextSetNumber, toast, setToast }) => {
     const key = person.toLowerCase();
     const { targetRanges } = useTargetLock(ex, key);
@@ -226,6 +247,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
     const [editValue, setEditValue] = useState("");
     const [showImage, setShowImage] = useState(false);
     const [showEditPanel, setShowEditPanel] = useState(false);
+    const [historyFilter, setHistoryFilter] = useState('ALL');
+    const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -292,6 +315,24 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
             .sort((a, b) => parseInt(a) - parseInt(b))
             .map(key => groups[key]);
     }, [todaysSets]);
+
+    const filteredHistory = useMemo(() => {
+        if (!ex?.history) return [];
+        return ex.history
+            .map((h, i) => ({ h, i }))
+            .filter(({ h }) => {
+                const matchesPerson = activePeople.some(p => p.toLowerCase() === (h?.person || '').toLowerCase());
+                if (!matchesPerson) return false;
+                return matchesRepRange(h, historyFilter);
+            });
+    }, [ex?.history, activePeople, historyFilter]);
+
+    const totalPersonHistoryCount = useMemo(() => {
+        if (!ex?.history) return 0;
+        return ex.history.filter(h => activePeople.some(p => p.toLowerCase() === (h?.person || '').toLowerCase())).length;
+    }, [ex?.history, activePeople]);
+
+    const displayedHistory = isHistoryExpanded ? filteredHistory : filteredHistory.slice(0, 9);
 
     const isDone = exerciseStatus[ex.name] === 'done';
     const isSkipped = exerciseStatus[ex.name] === 'skipped';
@@ -760,40 +801,100 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                                     </div>
 
                                     <div style={{ background: '#0c0c0c', borderRadius: 8, padding: 12, border: '1px solid var(--border)' }}>
-                                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase' }}>RECENT HISTORY</div>
-                                        {(!ex.history || ex.history.filter(h => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase())).length === 0) ? (
-                                            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11 }}>No entries yet</div>
+                                        <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>RECENT HISTORY</div>
+                                        
+                                        {/* Rep Range Filter Pills */}
+                                        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                                            {['ALL', '1-3', '4-7', '8-12', '13+'].map(range => {
+                                                const isActive = historyFilter === range;
+                                                return (
+                                                    <button
+                                                        key={range}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setHistoryFilter(range);
+                                                            setIsHistoryExpanded(false);
+                                                        }}
+                                                        style={{
+                                                            flex: 1,
+                                                            minWidth: 44,
+                                                            padding: '4px 6px',
+                                                            fontSize: 10,
+                                                            fontWeight: 700,
+                                                            borderRadius: 6,
+                                                            border: `1px solid ${isActive ? 'var(--accent)' : 'var(--border)'}`,
+                                                            background: isActive ? 'var(--accent)' : 'transparent',
+                                                            color: isActive ? '#000' : 'var(--muted)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        {range}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {filteredHistory.length === 0 ? (
+                                            <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 11, padding: '12px 0' }}>
+                                                {totalPersonHistoryCount === 0 && historyFilter === 'ALL' ? "No entries yet" : "No entries for this rep range"}
+                                            </div>
                                         ) : (
-                                            ex.history.map((h, i) => ({ h, i }))
-                                                .filter(({ h }) => activePeople.some(p => p.toLowerCase() === h.person.toLowerCase()))
-                                                .slice(0, 5)
-                                                .map(({ h, i }) => (
-                                                <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <div>
-                                                            <div style={{ fontSize: 9, color: 'var(--muted)' }}>{formatLogDate(h.date)}</div>
-                                                            <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{h.person.toUpperCase()}</div>
-                                                        </div>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
-                                                                {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                            <>
+                                                <div style={isHistoryExpanded ? { maxHeight: '360px', overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingRight: 4 } : {}}>
+                                                    {displayedHistory.map(({ h, i }) => (
+                                                        <div key={i} style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: 9, color: 'var(--muted)' }}>{formatLogDate(h.date)}</div>
+                                                                    <div style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>{(h.person || '').toUpperCase()}</div>
+                                                                </div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                    <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
+                                                                        {ex.timed ? `${h.reps}s ${h.weight ? `@ ${h.weight}lbs` : ''}` : `${h.reps}x${h.weight || 0}`}
+                                                                    </div>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteHistory(h, i)}
+                                                                        style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
+                                                                        title="Delete History Entry"
+                                                                    >
+                                                                        🗑
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                            <button 
-                                                                onClick={() => handleDeleteHistory(h, i)}
-                                                                style={{ background: 'none', border: 'none', color: '#ff4d4d', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}
-                                                                title="Delete History Entry"
-                                                            >
-                                                                🗑
-                                                            </button>
+                                                            {h.note && (
+                                                                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
+                                                                    "{h.note}"
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    </div>
-                                                    {h.note && (
-                                                        <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontStyle: 'italic' }}>
-                                                            "{h.note}"
-                                                        </div>
-                                                    )}
+                                                    ))}
                                                 </div>
-                                            ))
+
+                                                {filteredHistory.length > 9 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsHistoryExpanded(prev => !prev)}
+                                                        className="btn-ghost"
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '8px',
+                                                            fontSize: 11,
+                                                            fontWeight: 700,
+                                                            color: 'var(--accent)',
+                                                            borderColor: 'var(--border)',
+                                                            marginTop: 8,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: 6
+                                                        }}
+                                                    >
+                                                        {isHistoryExpanded ? '▲ SHOW LESS' : `▼ VIEW ALL (${filteredHistory.length} sets)`}
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
