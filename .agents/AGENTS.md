@@ -34,10 +34,11 @@
 - `ORCHESTRATION`: `DENY_ALL`
 - `VERIFICATION`: `REQUIRE(cmd /c npm run build) ON(gymlog-react)`
 
-## 4. Approved Model Tiers (3.8 & 3.5 Generation):
-- `HIGH_TIER`: `["Gemini 3.8 Pro", "Gemini 3.1 Pro (High)", "Claude Opus 4.6 (Thinking)"]`
-- `MEDIUM_TIER`: `["Gemini 3.8 Flash", "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Claude Sonnet 4.6 (Thinking)", "Gemini 3.1 Pro (Low)", "Gemini 3.5 Flash (High)", "GPT-OSS 120B (Medium)"]`
-- `LOW_TIER`: `["Gemini 3.8 Flash (Low)", "Gemini 3.5 Flash (Medium)", "Gemini 3.5 Flash (Low)"]`
+## 4. APPROVED MODEL TIERS (Gemini 4 & 3.8 Generation)
+- `HIGH_TIER`: `["Gemini 4 Argon (High)", "Gemini 3.8 Pro", "Claude Opus 4.6 (Thinking)"]`
+- `MEDIUM_TIER`: `["Gemini 4 Argon (Medium)", "Gemini 3.8 Flash", "Gemini 3.8 Flash (High)", "Gemini 3.8 Flash (Medium)", "Claude Sonnet 4.6 (Thinking)", "GPT-OSS 120B (Medium)", "Gemini 3.5 Flash (High)"]`
+- `LOW_TIER`: `["Gemini 4 Argon (Low)", "Gemini 3.8 Flash (Low)", "Gemini 3.5 Flash (Medium)", "Gemini 3.5 Flash (Low)"]`
 
 ## 5. Error Formatting Overrides:
 - `OVERRIDE_OUTPUT(Model_Alignment_Error)`: `OUTPUT("Model Alignment Error: Request Switch -> Expected [Required_Tier] but running [Active_Model]. Please switch to: (For HIGH: Gemini 3.8 Pro, Gemini 3.1 Pro (High) or Claude Opus; For MEDIUM: Gemini 3.8 Flash, Gemini 3.5 Flash (High) or Gemini 3.1 Pro (Low)).")`
+
