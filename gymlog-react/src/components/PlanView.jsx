@@ -273,6 +273,13 @@ export default function PlanView() {
             localStorage.setItem('gymlog_plan_last_summary', JSON.stringify(saved || summary));
         });
 
+        // Advance local workout day state cleanly
+        updateWorkoutDay(nextDay, true);
+
+        // Reset active timer and clear session clock
+        resetTimer();
+        resetSessionTime();
+
         setIsWorkoutComplete(true);
         localStorage.setItem('gymlog_plan_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
@@ -284,10 +291,7 @@ export default function PlanView() {
         // 1. Clear global checkmarks
         clearAllExerciseStatus();
 
-        // 2. Progress day (split & exercises automatically derive from workoutDay)
-        updateWorkoutDay(workoutDay + 1, true);
-
-        // 4. Reset completion state & session time
+        // 2. Reset completion state & session time (day already advanced during completion)
         setIsWorkoutComplete(false);
         localStorage.setItem('gymlog_plan_complete', 'false');
         localStorage.removeItem('gymlog_plan_last_summary');
@@ -297,7 +301,7 @@ export default function PlanView() {
         setViewingWarmUp(false);
         setView('tracker');
 
-        // 5. Clean up accessories
+        // 3. Clean up accessories
         localStorage.removeItem('gymlog_session_accessories');
         setAccessoriesList([]);
     };
