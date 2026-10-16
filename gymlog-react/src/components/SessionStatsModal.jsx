@@ -1,5 +1,6 @@
 /* eslint-disable */
 import React, { useMemo, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { createPortal } from 'react-dom';
 import GuestUpgradeModal from './GuestUpgradeModal';
@@ -99,8 +100,9 @@ function formatSessionDateTime(session) {
     return dateStr;
 }
 
-export default function SessionStatsModal({ isOpen, onClose }) {
-    const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner } = useAppContext();
+export default function SessionStatsModal({ isOpen, onClose, program }) {
+    const { sessionHistory, getRepRangeStats, deleteSession, sessionStartTime, startSession, resetSessionTime, deviceOwner, activePeople } = useAppContext();
+    const location = useLocation();
     const [selectedRepRange, setSelectedRepRange] = useState(null);
     const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
 
@@ -110,9 +112,82 @@ export default function SessionStatsModal({ isOpen, onClose }) {
         }
     }, [isOpen]);
 
+    // 1. Program Scope Detection
+    const activeProgram = useMemo(() => {
+        if (program) return program;
+        const pathname = (location?.pathname || '').toLowerCase();
+        if (pathname.includes('/circuit')) return 'Circuit';
+        if (pathname.includes('/full-body')) return 'Full Body';
+        return 'Plan';
+    }, [program, location?.pathname]);
+
+    // 2. Participant Scope Detection
+    const currentOwner = (deviceOwner && deviceOwner.trim()) ? deviceOwner.trim() : 'Brian';
+
+    const activeList = useMemo(() => {
+        if (Array.isArray(activePeople) && activePeople.length > 0) {
+            const cleaned = activePeople.map(p => (p || '').trim()).filter(Boolean);
+            if (cleaned.length > 0) return cleaned;
+        }
+        return [currentOwner];
+    }, [activePeople, currentOwner]);
+
+    // Active partners beyond the device owner
+    const activePartners = useMemo(() => {
+        return activeList.filter(p => {
+            const lower = p.toLowerCase();
+            return lower !== currentOwner.toLowerCase() && lower !== 'solo';
+        });
+    }, [activeList, currentOwner]);
+
+    const isSolo = activePartners.length === 0;
+
+    const scopeParticipant = useMemo(() => {
+        if (isSolo) {
+            return `${currentOwner} (Solo)`;
+        }
+        if (activeList.length === 2) {
+            return `${activeList[0]} & ${activeList[1]}`;
+        }
+        return activeList.join(' & ');
+    }, [isSolo, currentOwner, activeList]);
+
+    // 3. Scoped Sessions Filtering
+    const scopedSessions = useMemo(() => {
+        const normProgram = (prog) => (prog || 'Plan').toString().trim().toLowerCase().replace(/\s+/g, '');
+        const targetProgNorm = normProgram(activeProgram);
+
+        return (sessionHistory || []).filter(session => {
+            if (!session) return false;
+
+            // Program Match
+            const sessionProg = (session.program || 'Plan').toString().trim().toLowerCase();
+            const progMatches = sessionProg === activeProgram.toLowerCase() || normProgram(sessionProg) === targetProgNorm;
+            if (!progMatches) return false;
+
+            // Participant Match
+            const rawPeople = (session.people || '').trim();
+            const pLower = rawPeople.toLowerCase();
+
+            if (isSolo) {
+                // Solo match: deviceOwner, 'Solo', empty, or null. Exclude other users' workouts.
+                if (!rawPeople) return true;
+                if (pLower === 'solo') return true;
+                if (pLower === currentOwner.toLowerCase()) return true;
+                if (pLower === `${currentOwner.toLowerCase()} (solo)`) return true;
+                return false;
+            } else {
+                // Partner group match: session.people must contain all active participants
+                if (!rawPeople) return false;
+                return activeList.every(person => pLower.includes(person.toLowerCase()));
+            }
+        });
+    }, [sessionHistory, activeProgram, isSolo, currentOwner, activeList]);
+
+    // 4. Rep Range drill-down applied strictly on top of scopedSessions
     const filteredSessions = useMemo(() => {
-        if (!selectedRepRange) return sessionHistory;
-        return sessionHistory.filter(session => {
+        if (!selectedRepRange) return scopedSessions;
+        return scopedSessions.filter(session => {
             const range = (session.repRange || '').trim();
             if (selectedRepRange === '1-3') return range.includes('1-3');
             if (selectedRepRange === '4-7') return range.includes('4-7');
@@ -120,20 +195,53 @@ export default function SessionStatsModal({ isOpen, onClose }) {
             if (selectedRepRange === '13+') return range.includes('13') || range.includes('13+');
             return false;
         });
-    }, [sessionHistory, selectedRepRange]);
+    }, [scopedSessions, selectedRepRange]);
 
+    // 5. Scoped Stats calculation strictly from scopedSessions
     const stats = useMemo(() => {
-        return getRepRangeStats ? getRepRangeStats(sessionHistory, 'ALL') : {
-            brackets: {
-                '1-3': { label: '1–3 Reps (Heavy)', count: 0, avgMinutes: 0 },
-                '4-7': { label: '4–7 Reps (Strength)', count: 0, avgMinutes: 0 },
-                '8-12': { label: '8–12 Reps (Hypertrophy)', count: 0, avgMinutes: 0 },
-                '13+': { label: '13+ Reps (Endurance)', count: 0, avgMinutes: 0 }
-            },
-            totalSessions: 0,
-            overallAvgMinutes: 0
+        if (getRepRangeStats) {
+            return getRepRangeStats(scopedSessions, 'ALL');
+        }
+        const brackets = {
+            '1-3': { label: '1–3 Reps (Heavy)', count: 0, avgMinutes: 0, totalMinutes: 0 },
+            '4-7': { label: '4–7 Reps (Strength)', count: 0, avgMinutes: 0, totalMinutes: 0 },
+            '8-12': { label: '8–12 Reps (Hypertrophy)', count: 0, avgMinutes: 0, totalMinutes: 0 },
+            '13+': { label: '13+ Reps (Endurance)', count: 0, avgMinutes: 0, totalMinutes: 0 }
         };
-    }, [sessionHistory, getRepRangeStats]);
+
+        scopedSessions.forEach(session => {
+            const range = (session.repRange || '').trim();
+            const duration = parseInt(session.durationMinutes, 10) || 0;
+            if (duration <= 0) return;
+
+            let targetKey = null;
+            if (range === '1-3' || range.includes('1-3')) targetKey = '1-3';
+            else if (range === '4-7' || range.includes('4-7')) targetKey = '4-7';
+            else if (range === '8-12' || range.includes('8-12')) targetKey = '8-12';
+            else if (range === '13+' || range.includes('13')) targetKey = '13+';
+
+            if (targetKey && brackets[targetKey]) {
+                brackets[targetKey].count += 1;
+                brackets[targetKey].totalMinutes += duration;
+            }
+        });
+
+        Object.keys(brackets).forEach(k => {
+            if (brackets[k].count > 0) {
+                brackets[k].avgMinutes = Math.round(brackets[k].totalMinutes / brackets[k].count);
+            }
+        });
+
+        const totalCount = scopedSessions.filter(s => (parseInt(s.durationMinutes, 10) || 0) > 0).length;
+        const totalMinutes = scopedSessions.reduce((sum, s) => sum + (parseInt(s.durationMinutes, 10) || 0), 0);
+        const overallAvgMinutes = totalCount > 0 ? Math.round(totalMinutes / totalCount) : 0;
+
+        return {
+            brackets,
+            totalSessions: totalCount,
+            overallAvgMinutes
+        };
+    }, [scopedSessions, getRepRangeStats]);
 
     const [now, setNow] = useState(Date.now());
     useEffect(() => {
@@ -214,7 +322,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                 boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
             }}>
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
                         <h3 style={{ margin: 0, fontSize: 16, letterSpacing: 1, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
                             📊 WORKOUT TIME & AVERAGES
@@ -222,6 +330,23 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                         <p style={{ margin: '4px 0 0 0', fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
                             Average completion time partitioned by rep range
                         </p>
+                        <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center' }}>
+                            <span style={{
+                                fontSize: 10,
+                                fontFamily: 'var(--mono)',
+                                fontWeight: 700,
+                                color: 'var(--accent)',
+                                background: 'rgba(249, 115, 22, 0.12)',
+                                border: '1px solid rgba(249, 115, 22, 0.3)',
+                                padding: '2px 8px',
+                                borderRadius: 12,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}>
+                                🎯 {activeProgram} • {scopeParticipant}
+                            </span>
+                        </div>
                     </div>
                     <button 
                         onClick={onClose} 
@@ -478,7 +603,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                         paddingRight: 4,
                         maxHeight: 380
                     }}>
-                        {sessionHistory.length === 0 ? (
+                        {scopedSessions.length === 0 ? (
                             <div style={{
                                 padding: '24px 16px',
                                 textAlign: 'center',
@@ -488,7 +613,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                 color: 'var(--muted)',
                                 fontSize: 12
                             }}>
-                                No completed workout sessions recorded yet. Finish a workout to track your duration and rep range stats!
+                                No completed {activeProgram} workouts recorded yet for {scopeParticipant}.
                             </div>
                         ) : filteredSessions.length === 0 ? (
                             <div style={{
@@ -500,7 +625,7 @@ export default function SessionStatsModal({ isOpen, onClose }) {
                                 color: 'var(--muted)',
                                 fontSize: 12
                             }}>
-                                No sessions found for this rep range.
+                                No {activeProgram} sessions found for this rep range.
                             </div>
                         ) : (
                             filteredSessions.map(session => (
