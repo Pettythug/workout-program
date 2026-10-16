@@ -1,4 +1,4 @@
-﻿# TASK-QA-R117: Pre-Merge Validation for 0-Rep Logging, PB Exclusion & Sheet RepRange Fix
+﻿# TASK-QA-R117: Pre-Merge Validation for 0-Rep Logging, PB Exclusion & Clean RepRange
 
 ## Task Overview
 - **Task ID:** TASK-QA-R117
@@ -38,14 +38,14 @@
   - Verify `migrateBestTab()` includes `if (newR <= 0) return;`.
   - Confirm failed attempts in the `History` sheet are excluded from the `Best` tab.
 
-### 6. Google Sheets Session RepRange Display Cleanup (TC-6)
+### 6. Clean Backend RepRange Handling (TC-6)
 - In `Combined_AppScript_v2.gs`:
-  - Verify `gymlog_cleanRepRange(rawVal, displayVal)` normalizes date-coerced strings back to clean `"1-3"`, `"4-7"`, `"8-12"`, or `"13+"`.
-  - Verify `doGet` and `gymlog_handleGetSessions` read the `Sessions` tab with `.getDisplayValues()` alongside `.getValues()`, returning clean rep range strings to the client.
+  - Verify `gymlog_cleanRepRange` is completely removed.
+  - Verify `doGet` and `gymlog_handleGetSessions` read `repRange` directly from `r[4]` as clean text (`String(r[4] || "").replace(/^'+/, '').trim()`).
 
 ### 7. Google Sheets Text Write Formatting (TC-7)
 - In `Combined_AppScript_v2.gs`:
-  - Verify session writes in `batchSyncSession` and `logSession` prepend an apostrophe to `session.repRange` to prevent future date coercion.
+  - Verify session writes in `batchSyncSession` and `logSession` prepend an apostrophe to `session.repRange` to enforce plain text storage.
 
 ### 8. Production Compilation & Build Integrity (TC-8)
 - Verify `cmd /c npm run build` inside `gymlog-react` executes cleanly with exit code 0.
