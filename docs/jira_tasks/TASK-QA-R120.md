@@ -1,4 +1,4 @@
-﻿# TASK-QA-R120: Pre-Merge Validation for SessionStatsModal Mobile Scroll, Compact 4-Session View & View All Toggle
+# TASK-QA-R120: Pre-Merge Validation for SessionStatsModal Mobile Scroll, Compact 4-Session View & View All Toggle
 
 ## Task Overview
 - **Task ID:** TASK-QA-R120
@@ -62,3 +62,45 @@
   <BUILD_EXIT_CODE>0</BUILD_EXIT_CODE>
 </AUDIT_SUBMISSION>
 ```
+
+---
+
+## QA Audit Findings & Verification Evidence
+
+- **Auditor:** QA_Engineer
+- **Audit Date:** 2026-10-16
+- **Feature Branch:** `fix/TASK-R120-session-stats-mobile-scroll`
+- **Audit Result:** QA_PREMERGE_PASS
+- **Build Exit Code:** 0
+
+### Test Case Verification Summary
+
+| Test Case | Description | Result | Details |
+| :--- | :--- | :---: | :--- |
+| **TC-1** | Unified Mobile Momentum Scrolling | **PASS** | `WebkitOverflowScrolling: 'touch'` is present on `#111` card dialog. `maxHeight: '90vh'`, `overflowY: 'auto'`, and `overflowX: 'hidden'` are retained, establishing a single primary scroll container for smooth native mobile momentum scrolling. |
+| **TC-2** | Elimination of Nested Scroll Trap | **PASS** | `overflowY: 'auto'` and `overscrollBehavior: 'contain'` were completely removed from the inner session list container. Touch events bubble freely to the outer card scroll context with zero scroll trapping. |
+| **TC-3** | Elimination of Flex Squishing | **PASS** | `flex: 1` and `minHeight: 0` removed from outer Recent Completed Workouts wrapper (`style={{ display: 'flex', flexDirection: 'column' }}`). `maxHeight: 380` removed from session list; workouts flow naturally without truncation. |
+| **TC-4** | Compact 4-Session Default | **PASS** | `displayedSessions` caps rendering to `filteredSessions.slice(0, 4)` by default when `isSessionsExpanded` is false. Initial modal opening displays the 4 most recent sessions. |
+| **TC-5** | View All / Show Less Toggle | **PASS** | When `filteredSessions.length > 4`, renders toggle button with label `▼ VIEW ALL (${filteredSessions.length} WORKOUTS)`. Clicking expands to full list and updates button to `▲ SHOW LESS`. Clicking `SHOW LESS` collapses view back to 4. When `<= 4` workouts exist, toggle button is omitted. |
+| **TC-6** | Filter Change Auto-Reset | **PASS** | Dedicated `useEffect` listening to `[selectedRepRange]` resets `isSessionsExpanded(false)` so filtering by any rep range defaults to the compact 4-session view. |
+| **TC-7** | Clean Footer Positioning | **PASS** | Footer container configured with `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, and `borderTop: '1px solid var(--border)'`. The `CLOSE` button renders cleanly below all session content without overlapping text. |
+| **TC-8** | Production Compilation & Build Integrity | **PASS** | `cmd /c npm run build` inside `gymlog-react` executed cleanly with exit code 0 (`vite v8.0.14 built in 1.56s`). |
+| **TC-9** | Headless Mobile Viewport Verification | **PASS** | Viewport geometry targeting Samsung Galaxy Note 10 Lite (`412 x 750`) validated. In compact mode, modal fits cleanly on-screen; zero element overlap between session list and footer; `CLOSE` button is unobstructed and immediately reachable. |
+
+### Build Evidence
+```text
+> gymlog-react@0.0.0 build
+> vite build
+
+vite v8.0.14 building client environment for production...
+transforming...✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.82 kB │ gzip:   0.41 kB
+dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
+dist/assets/index-Dmq7vyd2.js   450.54 kB │ gzip: 119.10 kB
+
+✓ built in 1.56s
+```
+**Exit Code:** `0`
+
