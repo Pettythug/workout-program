@@ -315,6 +315,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 maxHeight: '90vh',
                 overflowY: 'auto',
                 overflowX: 'hidden',
+                WebkitOverflowScrolling: 'touch',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -526,7 +527,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 </div>
 
                 {/* Recent Session History List */}
-                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                         <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
                             Recent Completed Workouts
@@ -594,14 +595,9 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                     )}
                     
                     <div style={{
-                        flex: 1,
-                        overflowY: 'auto',
-                        overscrollBehavior: 'contain',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 8,
-                        paddingRight: 4,
-                        maxHeight: 380
+                        gap: 8
                     }}>
                         {scopedSessions.length === 0 ? (
                             <div style={{
@@ -738,7 +734,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 </div>
 
                 {/* Footer Action */}
-                <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                <div style={{ flexShrink: 0, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                     <button 
                         className="btn-ghost" 
                         onClick={onClose}
