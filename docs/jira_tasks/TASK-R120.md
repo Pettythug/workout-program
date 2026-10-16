@@ -1,4 +1,4 @@
-﻿# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Close Button Overlap
+# TASK-R120: Fix SessionStatsModal Mobile Scrolling, Layout Cutoff & Close Button Overlap
 
 ## Overview
 On mobile devices (such as Samsung Galaxy Note 10 Lite, 412x915 / 360x740 viewports), opening the **WORKOUT TIME & AVERAGES** modal (`SessionStatsModal.jsx`) causes a severe layout collision:
@@ -52,3 +52,41 @@ This task resolves the layout collision and scroll-trapping by establishing a si
 ## Instructions for Developer
 1. Write all notes, modified files, and build evidence directly into this ticket (`docs/jira_tasks/TASK-R120.md`).
 2. Respond in chat strictly using the 5-line `<AUDIT_SUBMISSION>` XML format.
+
+---
+
+## Developer Execution Notes
+
+### Implementation Summary
+- **Target File**: `gymlog-react/src/components/SessionStatsModal.jsx`
+- **Modal Container Smooth Scrolling**: Added `WebkitOverflowScrolling: 'touch'` alongside `maxHeight: '90vh'`, `overflowY: 'auto'`, and `overflowX: 'hidden'` to support native mobile momentum scrolling.
+- **Eliminated Nested Scroll Trap**:
+  - Removed `flex: 1` and `minHeight: 0` from outer Recent Completed Workouts wrapper (`style={{ display: 'flex', flexDirection: 'column' }}`).
+  - Removed `overflowY: 'auto'`, `overscrollBehavior: 'contain'`, `flex: 1`, and `maxHeight: 380` from inner session list container. Replaced with clean column flex layout (`display: 'flex'`, `flexDirection: 'column'`, `gap: 8`).
+  - All session cards now flow naturally within the primary modal scroll container, allowing smooth thumb swipes without trapped gestures.
+- **Clean Footer Action Placement**:
+  - Configured footer action container with `flexShrink: 0`, `marginTop: 12`, `paddingTop: 12`, and `borderTop: '1px solid var(--border)'`.
+  - The `CLOSE` button cleanly rests below all session content with proper spacing, preventing overlap with session history text or buttons.
+
+### Modified Files
+- `gymlog-react/src/components/SessionStatsModal.jsx`
+
+### Build Verification Evidence
+- Command: `cmd /c npm run build` (cwd: `gymlog-react`)
+- Result: Exit code 0
+```
+> gymlog-react@0.0.0 build
+> vite build
+
+vite v8.0.14 building client environment for production...
+transforming...✓ 46 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.82 kB │ gzip:   0.42 kB
+dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
+dist/assets/index-Dz4Pc7GF.js   449.69 kB │ gzip: 118.95 kB
+
+✓ built in 1.76s
+```
+- Commit: `63ab87329e82faa000384cd8862186a381d9f887`
+
