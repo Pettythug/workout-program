@@ -34,7 +34,8 @@ export default function CircuitView() {
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
-        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutBatch, deviceOwner
+        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutBatch, deviceOwner,
+        deleteSession
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -317,6 +318,43 @@ export default function CircuitView() {
         setView('planner');
     };
 
+    const handleUndoCompletion = () => {
+        const prevDay = (completedSummary && typeof completedSummary.workoutDay === 'number') 
+            ? completedSummary.workoutDay 
+            : Math.max(1, circuitWorkoutDay - 1);
+        updateCircuitWorkoutDay(prevDay, true);
+
+        const summaryId = completedSummary?.id || (() => {
+            try {
+                const cached = JSON.parse(localStorage.getItem('gymlog_circuit_last_summary') || 'null');
+                return cached?.id;
+            } catch {
+                return null;
+            }
+        })();
+
+        if (summaryId) {
+            deleteSession(summaryId);
+        }
+        localStorage.removeItem('gymlog_circuit_last_summary');
+        setCompletedSummary(null);
+
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_circuit_complete', 'false');
+
+        const owner = deviceOwner || "Brian";
+        const ownerLower = owner.toLowerCase();
+        const rollbackSettings = {
+            [`builder_circuit_num_${ownerLower}`]: prevDay,
+            'builder_circuit_num': prevDay,
+            [`${owner}_Circuit_Day`]: prevDay
+        };
+
+        if (sheetsPost && owner !== 'Guest') {
+            sheetsPost({ action: 'saveSettings', settings: rollbackSettings }).catch(console.warn);
+        }
+    };
+
     const handleSwap = async (index, targetEx, isNew) => {
         if (isNew) {
             const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
@@ -532,10 +570,7 @@ export default function CircuitView() {
                         <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                             START NEW CIRCUIT
                         </button>
-                        <button className="btn-ghost" onClick={() => {
-                            setIsWorkoutComplete(false);
-                            localStorage.setItem('gymlog_circuit_complete', 'false');
-                        }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                        <button className="btn-ghost" onClick={handleUndoCompletion} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
                             UNDO COMPLETION
                         </button>
                     </div>

@@ -15,6 +15,7 @@ export default function FullBodyView() {
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
         sessionStartTime, resetSessionTime, completeWorkoutBatch, deviceOwner,
+        deleteSession, sheetsPost,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
@@ -306,6 +307,43 @@ export default function FullBodyView() {
         setAccessoriesList([]);
     };
 
+    const handleUndoCompletion = () => {
+        const prevDay = (completedSummary && typeof completedSummary.workoutDay === 'number') 
+            ? completedSummary.workoutDay 
+            : Math.max(1, fullBodyWorkoutDay - 1);
+        updateFullBodyWorkoutDay(prevDay, true);
+
+        const summaryId = completedSummary?.id || (() => {
+            try {
+                const cached = JSON.parse(localStorage.getItem('gymlog_fullBody_last_summary') || 'null');
+                return cached?.id;
+            } catch {
+                return null;
+            }
+        })();
+
+        if (summaryId) {
+            deleteSession(summaryId);
+        }
+        localStorage.removeItem('gymlog_fullBody_last_summary');
+        setCompletedSummary(null);
+
+        setIsWorkoutComplete(false);
+        localStorage.setItem('gymlog_fullBody_complete', 'false');
+
+        const owner = deviceOwner || "Brian";
+        const ownerLower = owner.toLowerCase();
+        const rollbackSettings = {
+            [`builder_fullbody_num_${ownerLower}`]: prevDay,
+            'builder_fullbody_num': prevDay,
+            [`${owner}_FullBody_Day`]: prevDay
+        };
+
+        if (sheetsPost && owner !== 'Guest') {
+            sheetsPost({ action: 'saveSettings', settings: rollbackSettings }).catch(console.warn);
+        }
+    };
+
 
 
     if (loading) {
@@ -409,10 +447,7 @@ export default function FullBodyView() {
                                 <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                                     START NEXT WORKOUT
                                 </button>
-                                <button className="btn-ghost" onClick={() => {
-                                    setIsWorkoutComplete(false);
-                                    localStorage.setItem('gymlog_fullBody_complete', 'false');
-                                }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                                <button className="btn-ghost" onClick={handleUndoCompletion} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
                                     UNDO COMPLETION
                                 </button>
                             </div>

@@ -716,7 +716,8 @@ export function AppProvider({ children }) {
                     if (removeIdx !== -1) {
                         const newHistory = [...hist];
                         newHistory.splice(removeIdx, 1);
-                        return { ...ex, history: newHistory };
+                        const updatedBest = calculateBestForExercise({ ...ex, history: newHistory });
+                        return { ...ex, history: newHistory, best: updatedBest };
                     }
                 }
                 return ex;
@@ -1377,6 +1378,7 @@ export function AppProvider({ children }) {
         : [...new Set(activePeople)].filter(p => p === 'Guest' || people.includes(p));
 
     const contextValue = {
+        sheetsPost,
         workoutDay,
         fullBodyWorkoutDay,
         circuitWorkoutDay,
