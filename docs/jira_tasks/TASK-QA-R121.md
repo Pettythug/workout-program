@@ -68,3 +68,43 @@
   <BUILD_EXIT_CODE>0</BUILD_EXIT_CODE>
 </AUDIT_SUBMISSION>
 ```
+
+---
+
+## QA Audit Findings & Execution Report
+
+- **Auditor:** QA_Engineer
+- **Audit Date:** 2026-10-16
+- **Result:** QA_PREMERGE_PASS
+- **Build Exit Code:** 0
+
+### Verification Evidence Matrix
+
+| Test Case | Description | Verification Details | Result |
+|:---|:---|:---|:---:|
+| **TC-1** | PlanView Undo Completion Day Rollback | Verified `handleUndoCompletion` derives `prevDay` using `completedSummary.workoutDay` (fallback `Math.max(1, workoutDay - 1)`) and calls `updateWorkoutDay(prevDay, true)`, restoring the day to pre-completion. | **PASS** |
+| **TC-2** | PlanView Session Cleanup & Flags | Verified `deleteSession(summaryId)` removes session from `sessionHistory` state and localStorage. Clears `gymlog_plan_last_summary`, sets `setCompletedSummary(null)`, and resets `isWorkoutComplete` to false. | **PASS** |
+| **TC-3** | PlanView Settings Rollback Sync | Verified `sheetsPost({ action: 'saveSettings', settings: rollbackSettings })` syncs `builder_workout_num`, `builder_workout_type`, `builder_workout_num_${ownerLower}`, `builder_workout_type_${ownerLower}`, and `${owner}_Plan_Day` when `owner !== 'Guest'`. | **PASS** |
+| **TC-4** | FullBodyView Component Parity | Verified identical undo handling in `FullBodyView.jsx`: rolls back `fullBodyWorkoutDay` via `updateFullBodyWorkoutDay(prevDay, true)`, calls `deleteSession(summaryId)`, clears `gymlog_fullBody_last_summary`, and syncs `builder_fullbody_num_${ownerLower}`, `builder_fullbody_num`, `${owner}_FullBody_Day`. | **PASS** |
+| **TC-5** | CircuitView Component Parity | Verified identical undo handling in `CircuitView.jsx`: rolls back `circuitWorkoutDay` via `updateCircuitWorkoutDay(prevDay, true)`, calls `deleteSession(summaryId)`, clears `gymlog_circuit_last_summary`, and syncs `builder_circuit_num_${ownerLower}`, `builder_circuit_num`, `${owner}_Circuit_Day`. | **PASS** |
+| **TC-6** | In-Memory PB Recalculation on Set Deletion | Verified `deleteSetFromLocalHistory` in `AppContext.jsx` executes `calculateBestForExercise({ ...ex, history: newHistory })` after removing the set and returns `{ ...ex, history: newHistory, best: updatedBest }`. If the deleted set was the only entry in that rep range, it reverts to `null` and instantly updates in-memory card displays. | **PASS** |
+| **TC-7** | Production Compilation & Build Integrity | Ran `cmd /c npm run build` inside `gymlog-react`. Vite v8.1.0 production build completed in 3.77s with exit code 0. Zero errors or build failures. | **PASS** |
+
+### Build Output Log
+```
+> gymlog-react@0.0.0 build
+> vite build
+
+vite v8.1.0 building client environment for production...
+transforming...✓ 42 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.82 kB │ gzip:   0.42 kB
+dist/assets/index-TD8YCF3i.css    4.60 kB │ gzip:   1.59 kB
+dist/assets/index-CoXKu1h_.js   456.13 kB │ gzip: 120.93 kB
+
+[PLUGIN_TIMINGS] Your build spent significant time in plugin `vite:prepare-out-dir`. See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+✓ built in 3.77s
+```
+
