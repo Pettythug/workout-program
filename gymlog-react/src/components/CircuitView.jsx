@@ -34,8 +34,7 @@ export default function CircuitView() {
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
-        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutBatch, deviceOwner,
-        deleteSession
+        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutSession, undoWorkoutSession, deviceOwner
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -258,48 +257,15 @@ export default function CircuitView() {
     };
 
     const completeWorkout = () => {
-        const endTime = Date.now();
-        const startTime = sessionStartTime || (endTime - 30 * 60 * 1000);
-        const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-
-        const summary = {
-            id: `Circuit_${formatDate(startTime)}_${formatTime(startTime)}`,
-            date: new Date().toLocaleDateString('en-US'),
-            program: 'Circuit',
-            workoutDay: circuitWorkoutDay,
-            workoutType: 'Circuit Training',
-            repRange: getRepRange(circuitWorkoutDay),
-            startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            durationMinutes: durationMinutes,
-            startTimestamp: startTime,
-            endTimestamp: endTime
-        };
-
-        const owner = deviceOwner || "Brian";
-        const ownerLower = owner.toLowerCase();
         const nextDay = (circuitWorkoutDay % 16) + 1;
-
-        const updatedSettings = {
-            [`builder_circuit_num_${ownerLower}`]: nextDay,
-            'builder_circuit_num': nextDay,
-            [`${owner}_Circuit_Day`]: nextDay
-        };
-
-        completeWorkoutBatch(summary, updatedSettings).then(saved => {
-            setCompletedSummary(saved || summary);
-            localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
+        const summary = completeWorkoutSession('circuit', {
+            currentDay: circuitWorkoutDay,
+            nextDay,
+            nextType: 'Circuit Training',
+            exercisesList: circuit.length > 0 ? circuit : machines
         });
-
-        // Advance local circuit workout day state cleanly
-        updateCircuitWorkoutDay(nextDay, true);
-
-        // Reset active timer and clear session clock
-        resetTimer();
-        resetSessionTime();
-
+        setCompletedSummary(summary);
         setIsWorkoutComplete(true);
-        localStorage.setItem('gymlog_circuit_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
             setIsUpgradeModalOpen(true);
         }
@@ -319,40 +285,9 @@ export default function CircuitView() {
     };
 
     const handleUndoCompletion = () => {
-        const prevDay = (completedSummary && typeof completedSummary.workoutDay === 'number') 
-            ? completedSummary.workoutDay 
-            : Math.max(1, circuitWorkoutDay - 1);
-        updateCircuitWorkoutDay(prevDay, true);
-
-        const summaryId = completedSummary?.id || (() => {
-            try {
-                const cached = JSON.parse(localStorage.getItem('gymlog_circuit_last_summary') || 'null');
-                return cached?.id;
-            } catch {
-                return null;
-            }
-        })();
-
-        if (summaryId) {
-            deleteSession(summaryId);
-        }
-        localStorage.removeItem('gymlog_circuit_last_summary');
+        undoWorkoutSession('circuit', { currentDay: circuitWorkoutDay });
         setCompletedSummary(null);
-
         setIsWorkoutComplete(false);
-        localStorage.setItem('gymlog_circuit_complete', 'false');
-
-        const owner = deviceOwner || "Brian";
-        const ownerLower = owner.toLowerCase();
-        const rollbackSettings = {
-            [`builder_circuit_num_${ownerLower}`]: prevDay,
-            'builder_circuit_num': prevDay,
-            [`${owner}_Circuit_Day`]: prevDay
-        };
-
-        if (sheetsPost && owner !== 'Guest') {
-            sheetsPost({ action: 'saveSettings', settings: rollbackSettings }).catch(console.warn);
-        }
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
