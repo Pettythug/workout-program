@@ -50,6 +50,7 @@ Add a `completionSyncTokenRef = useRef(0)` and expose two centralized functions 
    - **Delete Session Log:** If `summary?.id` exists, call `deleteSession(summary.id)` to remove it from `sessionHistory` and queue backend session deletion.
 3. **Clear Completion Flags & Roll Back Day:**
    - Remove `gymlog_${programKey}_last_summary` and set `gymlog_${programKey}_complete` to `'false'`.
+   - **Restore Warm-Up Status:** Call `setWarmUpStatus('completed')` and set `localStorage.setItem('gymlog_active_warmup_status', 'completed')` so the user is returned directly to their exercise list and not forced to redo or click DONE on the pre-workout warm-up stepper.
    - Compute `prevDay = Math.max(1, currentDay - 1)` and roll back the active day (`updateWorkoutDay(prevDay, true)` / `updateFullBodyWorkoutDay` / `updateCircuitWorkoutDay`).
 4. **Sync Rolled-Back Day Settings to Google Sheets:**
    - If not Guest, call `sheetsPost({ action: 'saveSettings', settings: rollbackSettings })` with the rolled-back day and Push/Pull type.

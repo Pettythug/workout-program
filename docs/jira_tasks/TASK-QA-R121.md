@@ -27,9 +27,10 @@ cmd /c npm run build
    - In `completeWorkoutSession(programKey, options)`: Verify `summaryData` is computed using `sessionStartTime` *before* clearing the active session.
    - Verify `localStorage.setItem('gymlog_' + programKey + '_last_summary', ...)` and `gymlog_${programKey}_complete` are written synchronously before the network request.
    - Verify `summaryData` is returned synchronously to the caller.
-2. **Timer Restoration on Undo:**
+2. **Timer & Warm-Up Restoration on Undo:**
    - In `undoWorkoutSession(programKey, options)`: Verify that `summary?.startTimestamp` is retrieved from `gymlog_${programKey}_last_summary`.
    - Verify `startSession(summary.startTimestamp)` is called so `sessionStartTime` and `gymlog_session_start` are restored to the original workout start time instead of resetting to 0.
+   - Verify `setWarmUpStatus('completed')` and `localStorage.setItem('gymlog_active_warmup_status', 'completed')` are executed so the user is returned directly to their exercise list and NOT forced to redo the pre-workout warm-up stepper.
    - Verify `deleteSession(summary.id)` is invoked to delete the recorded session log.
 3. **Async Race Protection:**
    - Verify `completionSyncTokenRef` increments on completion and on undo so any delayed Google Sheets `completeWorkoutBatch` response that resolves after Undo is safely discarded.

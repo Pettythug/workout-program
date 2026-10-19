@@ -1222,7 +1222,7 @@ export function AppProvider({ children }) {
             };
         }
 
-        completeWorkoutBatch(summaryData, settingsPayload).then(saved => {
+        completeWorkoutBatch(settingsPayload, summaryData).then(saved => {
             if (completionSyncTokenRef.current !== syncToken) {
                 console.log('[completeWorkoutSession] Completion sync response discarded due to newer syncToken:', syncToken, 'current:', completionSyncTokenRef.current);
                 return;
@@ -1275,13 +1275,22 @@ export function AppProvider({ children }) {
         localStorage.setItem(`gymlog_${programKey}_complete`, 'false');
         localStorage.setItem(`gymlog_${storageKey}_complete`, 'false');
 
+        // Restore Warm-Up Status
+        setWarmUpStatus('completed');
+        localStorage.setItem('gymlog_active_warmup_status', 'completed');
+
         const activeDay = (currentDay !== undefined && currentDay !== null)
             ? currentDay
             : (storageKey === 'circuit' ? circuitWorkoutDay : (storageKey === 'fullBody' ? fullBodyWorkoutDay : workoutDay));
 
-        const prevDay = (summary && typeof summary.workoutDay === 'number')
-            ? summary.workoutDay
-            : Math.max(1, (activeDay || 2) - 1);
+        let prevDay;
+        if (summary && typeof summary.workoutDay === 'number') {
+            prevDay = summary.workoutDay;
+        } else if (storageKey === 'circuit') {
+            prevDay = ((activeDay - 2 + 16) % 16) + 1;
+        } else {
+            prevDay = Math.max(1, (activeDay || 2) - 1);
+        }
 
         if (storageKey === 'plan') {
             updateWorkoutDay(prevDay, true);

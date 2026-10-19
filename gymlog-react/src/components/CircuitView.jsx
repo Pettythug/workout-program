@@ -288,6 +288,7 @@ export default function CircuitView() {
         undoWorkoutSession('circuit', { currentDay: circuitWorkoutDay });
         setCompletedSummary(null);
         setIsWorkoutComplete(false);
+        setView('tracker');
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
