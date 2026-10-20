@@ -65,15 +65,18 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 7.5: Mobile Scrolling & Compact 4-Session Default with View All Toggle (SessionStatsModal.jsx)**: Enabled -webkit-overflow-scrolling: touch, eliminated nested scroll traps/squishing, and implemented compact 4-session default view with VIEW ALL / SHOW LESS toggle. (TASK-R120)
 - [x] **Story 7.6: Expandable Exercise History, 9-Set Default & Rep Range Filter Pills (`ExerciseCard.jsx`, `CircuitCard.jsx`)**: Added interactive rep range filter pills (`ALL | 1-3 | 4-7 | 8-12 | 13+`), 9-set default display, and progressive disclosure toggle (`VIEW ALL / SHOW LESS`) inside a 360px scrollable container with safe set deletion. (`TASK-R118`)
 
+### Epic 8: Architectural Audit Remediation & Stability Roadmap
+- [x] **Story 8.1 (TASK-R121): Centralized Workout Completion, Undo Timer Restoration, Warm-Up State & Instant PB Recalculation**:
+  - Centralized `completeWorkoutSession` and `undoWorkoutSession` in `AppContext.jsx` across `PlanView`, `FullBodyView`, and `CircuitView`.
+  - Locked in `completedSummary` synchronously (0ms) and restored `sessionStartTime` and `warmUpStatus` on Undo so the user's workout clock resumes ticking and bypasses the warm-up stepper.
+  - Enforced deterministic session IDs (`${displayProgram}_${cleanPerson}_${isoDate}_day${activeDay}`) to prevent duplicate rows in Google Sheets and added in-flight deletion protection.
+  - Recalculated `ex.best` immediately in memory on set deletion with normalized rep range keys (`r1_3`, `r4_7`, `r8_12`, `r13_plus`).
+
 ---
 
 ## 🎯 Active & Upcoming Backlog
 
 ### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
-- [ ] **Story 8.1 (`TASK-R121`): Centralized Workout Completion, Undo Timer Restoration & Instant PB Recalculation**:
-  - Centralize `completeWorkoutSession` and `undoWorkoutSession` in `AppContext.jsx` across `PlanView`, `FullBodyView`, and `CircuitView`.
-  - Lock in `completedSummary` synchronously (0ms) before the Google Sheets request and restore the original `sessionStartTime` when "Undo Completion" is clicked so the user's 45-minute workout clock resumes instead of resetting.
-  - Recalculate `ex.best` immediately in memory when a historical set is deleted (`deleteSetFromLocalHistory`).
 - [ ] **Story 8.2 (`TASK-R122`): Offline "Dead-Zone" Workout Sync Queue Flush**:
   - Implement `flushPendingSyncQueue()` in `AppContext.jsx` to replay `gymlog_pending_sync_queue` when cellular/Wi-Fi signal returns (`online` event) and before `loadData()` refreshes from Google Sheets.
 - [ ] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Variation Cleanup API Action**:
