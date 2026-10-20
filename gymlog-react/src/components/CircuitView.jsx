@@ -34,7 +34,7 @@ export default function CircuitView() {
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
-        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutBatch, deviceOwner
+        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutSession, undoWorkoutSession, deviceOwner
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -128,21 +128,7 @@ export default function CircuitView() {
 
     const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    const formatDate = (ts) => {
-        const d = new Date(ts);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
 
-    const formatTime = (ts) => {
-        const d = new Date(ts);
-        const hh = String(d.getHours()).padStart(2, '0');
-        const min = String(d.getMinutes()).padStart(2, '0');
-        const ss = String(d.getSeconds()).padStart(2, '0');
-        return `${hh}:${min}:${ss}`;
-    };
 
     const startFullBodyCircuit = () => {
         clearAllExerciseStatus();
@@ -257,48 +243,15 @@ export default function CircuitView() {
     };
 
     const completeWorkout = () => {
-        const endTime = Date.now();
-        const startTime = sessionStartTime || (endTime - 30 * 60 * 1000);
-        const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-
-        const summary = {
-            id: `Circuit_${formatDate(startTime)}_${formatTime(startTime)}`,
-            date: new Date().toLocaleDateString('en-US'),
-            program: 'Circuit',
-            workoutDay: circuitWorkoutDay,
-            workoutType: 'Circuit Training',
-            repRange: getRepRange(circuitWorkoutDay),
-            startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            durationMinutes: durationMinutes,
-            startTimestamp: startTime,
-            endTimestamp: endTime
-        };
-
-        const owner = deviceOwner || "Brian";
-        const ownerLower = owner.toLowerCase();
         const nextDay = (circuitWorkoutDay % 16) + 1;
-
-        const updatedSettings = {
-            [`builder_circuit_num_${ownerLower}`]: nextDay,
-            'builder_circuit_num': nextDay,
-            [`${owner}_Circuit_Day`]: nextDay
-        };
-
-        completeWorkoutBatch(summary, updatedSettings).then(saved => {
-            setCompletedSummary(saved || summary);
-            localStorage.setItem('gymlog_circuit_last_summary', JSON.stringify(saved || summary));
+        const summary = completeWorkoutSession('circuit', {
+            currentDay: circuitWorkoutDay,
+            nextDay,
+            nextType: 'Circuit Training',
+            exercisesList: circuit.length > 0 ? circuit : machines
         });
-
-        // Advance local circuit workout day state cleanly
-        updateCircuitWorkoutDay(nextDay, true);
-
-        // Reset active timer and clear session clock
-        resetTimer();
-        resetSessionTime();
-
+        setCompletedSummary(summary);
         setIsWorkoutComplete(true);
-        localStorage.setItem('gymlog_circuit_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
             setIsUpgradeModalOpen(true);
         }
@@ -315,6 +268,13 @@ export default function CircuitView() {
         resetWarmUp();
         setViewingWarmUp(false);
         setView('planner');
+    };
+
+    const handleUndoCompletion = () => {
+        undoWorkoutSession('circuit', { currentDay: circuitWorkoutDay });
+        setCompletedSummary(null);
+        setIsWorkoutComplete(false);
+        setView('tracker');
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
@@ -532,10 +492,7 @@ export default function CircuitView() {
                         <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                             START NEW CIRCUIT
                         </button>
-                        <button className="btn-ghost" onClick={() => {
-                            setIsWorkoutComplete(false);
-                            localStorage.setItem('gymlog_circuit_complete', 'false');
-                        }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                        <button className="btn-ghost" onClick={handleUndoCompletion} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
                             UNDO COMPLETION
                         </button>
                     </div>

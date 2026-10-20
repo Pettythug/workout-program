@@ -1,4 +1,4 @@
-﻿# GymLog React Migration Backlog & Completed Epics
+# GymLog React Migration Backlog & Completed Epics
 
 This document is the official tracking backlog for the GymLog React Migration project. It records completed architectural milestones and active backlog items across the application.
 
@@ -69,26 +69,44 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ## 🎯 Active & Upcoming Backlog
 
-### Priority 1: Category Management Parity
+### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
+- [ ] **Story 8.1 (`TASK-R121`): Centralized Workout Completion, Undo Timer Restoration & Instant PB Recalculation**:
+  - Centralize `completeWorkoutSession` and `undoWorkoutSession` in `AppContext.jsx` across `PlanView`, `FullBodyView`, and `CircuitView`.
+  - Lock in `completedSummary` synchronously (0ms) before the Google Sheets request and restore the original `sessionStartTime` when "Undo Completion" is clicked so the user's 45-minute workout clock resumes instead of resetting.
+  - Recalculate `ex.best` immediately in memory when a historical set is deleted (`deleteSetFromLocalHistory`).
+- [ ] **Story 8.2 (`TASK-R122`): Offline "Dead-Zone" Workout Sync Queue Flush**:
+  - Implement `flushPendingSyncQueue()` in `AppContext.jsx` to replay `gymlog_pending_sync_queue` when cellular/Wi-Fi signal returns (`online` event) and before `loadData()` refreshes from Google Sheets.
+- [ ] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Variation Cleanup API Action**:
+  - Update `deleteExerciseFromSheet` in `useGymAPI.js` from the unsupported `{ action: "exec" }` payload to `{ action: "deleteExercise", exerciseName }` matching `Combined_AppScript_v2.gs`.
+- [ ] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
+  - Include `setNum` in `mergeExerciseLists` deduplication (`dataMerge.js`) and attach `setNum` + `targetRange` to local optimistic sets in `AppContext.jsx` so straight sets (`3×10` at the same weight) are never collapsed.
+- [ ] **Story 8.5 (`TASK-R125`): Rest Timer Battery & Typing Lag Optimization + Audio Fix**:
+  - Prevent the 500ms rest timer interval from re-rendering the entire app tree twice per second, and close/reuse `AudioContext` in `playTimerBeep()` so timer beeps never mute after 6 sets.
+- [ ] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
+  - Add a confirmation prompt before permanently deleting a historical set via the `🗑` icon in `ExerciseCard.jsx` and `CircuitCard.jsx`.
+- [ ] **Story 8.7 (`TASK-R127`): PIN Security Upgrade (Move PINs Out of URLs & Enforce Backend PIN Check)**:
+  - Send `verifyPin`, `claimProfilePin`, and `adminResetPin` via `sheetsPost` body instead of `GET` URL query strings, and include PIN verification on batch history deletions.
+- [ ] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`)**:
+  - Optimize the 131 uncompressed camera photos in `gymlog-react/public/images/` (reducing size from 470 MB to <25 MB) and add `loading="lazy"` to eliminate ~1 GB Vercel deployment bloat.
+
+### Priority 2: Category Management Parity
 - [ ] **Story 1.4: Dynamic "+ Add New Category" Form Standardize**:
   - Standardize category creation across all custom exercise and swap forms.
   - In `CircuitCard.jsx` custom swap, replace raw text input with `<select>` dropdown populated with `uniqueCategories` and `+ Add new...` prompt trigger.
   - Verify new categories persist to Google Sheets metadata via `saveExercise`.
 
-### Priority 2: Offline-First PWA (Gym Dead-Zone Resilience)
+### Priority 3: Offline-First PWA (Gym Dead-Zone Resilience)
 - [ ] **Story 2.1: Service Worker & PWA Manifest**:
   - Implement service worker caching for static HTML/JS/CSS assets.
   - Add `manifest.json` for full-screen home screen installation on iOS and Android.
   - Allow app to launch, render cached exercises, and log sets offline in dead zones without network latency.
 
-### Priority 3: Target Lock & 1RM Progression Calculator Polish
+### Priority 4: Target Lock & 1RM Progression Calculator Polish
 - [ ] **Story 3.1: 1RM Brzycki/Epley Calculator Polish**:
   - Standardize estimated 1-Rep Max calculations across `useTargetLock.js`.
   - Ensure rep bracket target suggestions reflect personal records consistently across standalone variations (`(Single)`, `(Alt)`).
 
-### Priority 4: Advanced Analytics Drawer
+### Priority 5: Advanced Analytics Drawer
 - [ ] **Story 4.1: Lifetime Volume & Progress Visualizations**:
   - Expand `SessionStatsModal.jsx` into an interactive analytics dashboard.
   - Add weekly workout frequency charts, muscle group volume distribution, and personal best tracking badges.
-
-

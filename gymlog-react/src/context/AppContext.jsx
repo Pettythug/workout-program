@@ -32,7 +32,11 @@ export function calculateBestForExercise(exercise) {
 
         const person = (entry.person || '').toLowerCase().trim();
         if (!person) return;
-        const range = entry.range;
+        let range = entry.range;
+        if (range === '1-3' || range === '1_3') range = 'r1_3';
+        else if (range === '4-7' || range === '4_7') range = 'r4_7';
+        else if (range === '8-12' || range === '8_12') range = 'r8_12';
+        else if (range === '13+' || range === '13_plus' || range === '13') range = 'r13_plus';
         if (!REP_RANGES.includes(range)) return;
 
         if (!byPerson[person]) {
@@ -144,7 +148,7 @@ export function AppProvider({ children }) {
 
     // Workout Session Duration & History State
     const [sessionStartTime, setSessionStartTime] = useState(() => {
-        const cached = localStorage.getItem('gymlog_session_start_time');
+        const cached = localStorage.getItem('gymlog_session_start_time') || localStorage.getItem('gymlog_session_start');
         return cached ? parseInt(cached, 10) : null;
     });
     const [sessionHistory, setSessionHistory] = useState(() => {
@@ -171,6 +175,8 @@ export function AppProvider({ children }) {
     // Wall-clock timestamp refs for resilient timekeeping across lock screens and backgrounding
     const targetEndTimeRef = useRef(null);
     const startTimeRef = useRef(null);
+    const completionSyncTokenRef = useRef(0);
+    const inFlightBatchPromiseRef = useRef(null);
 
     const playBeepSound = () => {
         try {
@@ -716,7 +722,8 @@ export function AppProvider({ children }) {
                     if (removeIdx !== -1) {
                         const newHistory = [...hist];
                         newHistory.splice(removeIdx, 1);
-                        return { ...ex, history: newHistory };
+                        const updatedBest = calculateBestForExercise({ ...ex, history: newHistory });
+                        return { ...ex, history: newHistory, best: updatedBest };
                     }
                 }
                 return ex;
@@ -855,6 +862,7 @@ export function AppProvider({ children }) {
         const startTime = time || Date.now();
         setSessionStartTime(startTime);
         localStorage.setItem('gymlog_session_start_time', startTime.toString());
+        localStorage.setItem('gymlog_session_start', startTime.toString());
         return startTime;
     };
 
@@ -874,6 +882,7 @@ export function AppProvider({ children }) {
             const now = Date.now();
             setSessionStartTime(now);
             localStorage.setItem('gymlog_session_start_time', now.toString());
+            localStorage.setItem('gymlog_session_start', now.toString());
         }
     };
 
@@ -885,11 +894,17 @@ export function AppProvider({ children }) {
     const endSession = () => {
         setSessionStartTime(null);
         localStorage.removeItem('gymlog_session_start_time');
+        localStorage.removeItem('gymlog_session_start');
     };
 
     const resetSessionTime = () => {
         endSession();
         resetWarmUp();
+    };
+
+    const clearSession = () => {
+        endSession();
+        resetTimer();
     };
 
     const formatDate = (ts) => {
@@ -986,7 +1001,13 @@ export function AppProvider({ children }) {
 
     const completeWorkoutBatch = async (sessionData, updatedSettings = {}) => {
         setIsSyncing(true);
-        const newSession = saveCompletedSession(sessionData, true); // skipServerSync = true
+        let normalizedSession = sessionData;
+        let normalizedSettings = updatedSettings;
+        if (sessionData && !sessionData.id && !sessionData.startTimestamp && (sessionData.builder_workout_num !== undefined || sessionData.builder_fullbody_num !== undefined || sessionData.builder_circuit_num !== undefined || updatedSettings?.id || updatedSettings?.startTimestamp)) {
+            normalizedSession = updatedSettings;
+            normalizedSettings = sessionData;
+        }
+        const newSession = saveCompletedSession(normalizedSession, true); // skipServerSync = true
 
         // Guest Sandbox Isolation: Zero writes to Google Sheets
         if (!deviceOwner || deviceOwner === 'Guest') {
@@ -1005,7 +1026,7 @@ export function AppProvider({ children }) {
         const payload = {
             action: 'batchSyncSession',
             session: newSession,
-            settings: updatedSettings,
+            settings: normalizedSettings,
             sets: pendingSets,
             deletes: pendingDeletes
         };
@@ -1050,6 +1071,288 @@ export function AppProvider({ children }) {
                 console.warn('[Sheets Sync] Background session delete sync warning:', err.message || err);
             }
         })();
+    };
+
+    const completeWorkoutSession = (programKey, { currentDay, nextDay, nextType, exercisesList } = {}) => {
+        // 1. Increment Sync Token
+        const syncToken = ++completionSyncTokenRef.current;
+
+        const normKey = (programKey || 'plan').toLowerCase();
+        let storageKey = 'plan';
+        let displayProgram = 'Plan';
+        if (normKey.includes('circuit')) {
+            storageKey = 'circuit';
+            displayProgram = 'Circuit';
+        } else if (normKey.includes('fullbody') || normKey.includes('full-body') || normKey.includes('full_body')) {
+            storageKey = 'fullBody';
+            displayProgram = 'Full Body';
+        } else {
+            storageKey = 'plan';
+            displayProgram = 'Plan';
+        }
+
+        const activeDay = (currentDay !== undefined && currentDay !== null)
+            ? currentDay
+            : (storageKey === 'circuit' ? circuitWorkoutDay : (storageKey === 'fullBody' ? fullBodyWorkoutDay : workoutDay));
+
+        // 2. Compute Session Duration & Summary Synchronously (0ms)
+        const endTime = Date.now();
+        const effectiveStartTime = sessionStartTime || (endTime - (storageKey === 'circuit' ? 30 : 45) * 60 * 1000);
+        const rawDuration = Math.round((endTime - effectiveStartTime) / 60000);
+        const durationMins = Math.min(300, Math.max(1, rawDuration));
+
+        // Active participants
+        const participants = (activePeople && activePeople.length > 0)
+            ? activePeople.join(', ')
+            : (deviceOwner || 'Solo');
+
+        // Dominant repRange
+        let dominantRange = null;
+        if (Array.isArray(exercisesList) && exercisesList.length > 0) {
+            const counts = {};
+            exercisesList.forEach(item => {
+                const r = item?.repRange || item?.range;
+                if (r) counts[r] = (counts[r] || 0) + 1;
+            });
+            let maxC = 0;
+            Object.entries(counts).forEach(([r, c]) => {
+                if (c > maxC) {
+                    maxC = c;
+                    dominantRange = r;
+                }
+            });
+        }
+        if (!dominantRange) {
+            const pos = (((activeDay || 1) - 1) % 16);
+            if (pos < 4) dominantRange = '8-12';
+            else if (pos < 8) dominantRange = '1-3';
+            else if (pos < 12) dominantRange = '13+';
+            else dominantRange = '4-7';
+        }
+
+        const cleanPerson = String(participants).replace(/\s*,\s*/g, '+').replace(/[/\\?%*:|"<>]/g, '_').trim();
+        const dateObj = new Date(effectiveStartTime);
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const isoDate = `${yyyy}-${mm}-${dd}`;
+
+        const summaryData = {
+            id: `${displayProgram.replace(/\s+/g, '')}_${cleanPerson}_${isoDate}_day${activeDay}`,
+            date: new Date().toLocaleDateString('en-US'),
+            startTimestamp: effectiveStartTime,
+            endTimestamp: endTime,
+            startTime: new Date(effectiveStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            durationMins,
+            durationMinutes: durationMins,
+            repRange: dominantRange,
+            participants,
+            people: participants,
+            workoutDay: activeDay,
+            workoutType: nextType || (storageKey === 'plan' ? (((activeDay || 1) % 2 === 1) ? 'Push' : 'Pull') : (storageKey === 'circuit' ? 'Circuit Training' : 'Full Body')),
+            program: programKey
+        };
+
+        // 3. Lock In State Synchronously Before Network Call
+        localStorage.setItem(`gymlog_${programKey}_last_summary`, JSON.stringify(summaryData));
+        if (storageKey !== programKey) {
+            localStorage.setItem(`gymlog_${storageKey}_last_summary`, JSON.stringify(summaryData));
+        }
+        localStorage.setItem(`gymlog_${programKey}_complete`, 'true');
+        if (storageKey !== programKey) {
+            localStorage.setItem(`gymlog_${storageKey}_complete`, 'true');
+        }
+
+        setSessionHistory(prev => {
+            const list = prev || [];
+            const next = [summaryData, ...list.filter(s => s.id !== summaryData.id)];
+            localStorage.setItem('gymlog_session_history', JSON.stringify(next));
+            return next;
+        });
+
+        // Advance active workout day
+        const resolvedNextDay = (nextDay !== undefined && nextDay !== null)
+            ? nextDay
+            : (storageKey === 'circuit' ? (((activeDay || 1) % 16) + 1) : ((activeDay || 1) + 1));
+
+        if (storageKey === 'plan') {
+            updateWorkoutDay(resolvedNextDay, true);
+        } else if (storageKey === 'fullBody') {
+            updateFullBodyWorkoutDay(resolvedNextDay, true);
+        } else if (storageKey === 'circuit') {
+            updateCircuitWorkoutDay(resolvedNextDay, true);
+        }
+
+        // Clear active timer and clear warm-up storage key
+        clearSession();
+        localStorage.removeItem(`gymlog_warmup_${programKey}_day_${activeDay}`);
+        if (storageKey !== programKey) {
+            localStorage.removeItem(`gymlog_warmup_${storageKey}_day_${activeDay}`);
+        }
+        resetWarmUp();
+
+        // Reset active roster to solo owner if not Guest
+        if (deviceOwner && deviceOwner !== 'Guest') {
+            const soloOwner = [deviceOwner];
+            setActivePeople(soloOwner);
+            localStorage.setItem('gymlog_activePeople', JSON.stringify(soloOwner));
+        }
+
+        // 4. Fire Background Cloud Sync with Race Guard
+        const owner = (deviceOwner && deviceOwner !== 'Guest') ? deviceOwner : 'Brian';
+        const ownerLower = owner.toLowerCase();
+        let settingsPayload = {};
+
+        if (storageKey === 'plan') {
+            const calcType = nextType || ((resolvedNextDay % 2 === 1) ? 'Push' : 'Pull');
+            settingsPayload = {
+                [`builder_workout_num_${ownerLower}`]: resolvedNextDay,
+                [`builder_workout_type_${ownerLower}`]: calcType,
+                'builder_workout_num': resolvedNextDay,
+                'builder_workout_type': calcType,
+                [`${owner}_Plan_Day`]: resolvedNextDay
+            };
+        } else if (storageKey === 'fullBody') {
+            settingsPayload = {
+                [`builder_fullbody_num_${ownerLower}`]: resolvedNextDay,
+                'builder_fullbody_num': resolvedNextDay,
+                [`${owner}_FullBody_Day`]: resolvedNextDay
+            };
+        } else if (storageKey === 'circuit') {
+            settingsPayload = {
+                [`builder_circuit_num_${ownerLower}`]: resolvedNextDay,
+                'builder_circuit_num': resolvedNextDay,
+                [`${owner}_Circuit_Day`]: resolvedNextDay
+            };
+        }
+
+        const batchPromise = completeWorkoutBatch(settingsPayload, summaryData)
+            .then(saved => {
+                if (completionSyncTokenRef.current !== syncToken) {
+                    console.log('[completeWorkoutSession] Completion sync response discarded due to newer syncToken:', syncToken, 'current:', completionSyncTokenRef.current);
+                    return;
+                }
+                if (saved) {
+                    localStorage.setItem(`gymlog_${programKey}_last_summary`, JSON.stringify(saved));
+                    if (storageKey !== programKey) {
+                        localStorage.setItem(`gymlog_${storageKey}_last_summary`, JSON.stringify(saved));
+                    }
+                }
+            })
+            .catch(err => {
+                console.warn('[completeWorkoutSession] completeWorkoutBatch error:', err);
+            })
+            .finally(() => {
+                if (inFlightBatchPromiseRef.current === batchPromise) {
+                    inFlightBatchPromiseRef.current = null;
+                }
+            });
+
+        inFlightBatchPromiseRef.current = batchPromise;
+
+        // 5. Return summaryData synchronously
+        return summaryData;
+    };
+
+    const undoWorkoutSession = (programKey, { currentDay } = {}) => {
+        // 1. Invalidate Any In-Flight Completion Sync
+        ++completionSyncTokenRef.current;
+
+        const normKey = (programKey || 'plan').toLowerCase();
+        let storageKey = 'plan';
+        if (normKey.includes('circuit')) storageKey = 'circuit';
+        else if (normKey.includes('fullbody') || normKey.includes('full-body') || normKey.includes('full_body')) storageKey = 'fullBody';
+
+        // 2. Read Saved Summary & Restore Active Workout Clock
+        let summary = null;
+        try {
+            const raw = localStorage.getItem(`gymlog_${programKey}_last_summary`) || localStorage.getItem(`gymlog_${storageKey}_last_summary`);
+            if (raw) summary = JSON.parse(raw);
+        } catch (e) {
+            console.warn('[undoWorkoutSession] Failed to parse summary:', e);
+        }
+
+        // Restore Timer: If summary?.startTimestamp exists, call startSession(summary.startTimestamp)
+        if (summary?.startTimestamp) {
+            startSession(summary.startTimestamp);
+        }
+
+        // Delete Session Log with In-Flight Guard: If summary?.id exists:
+        if (summary?.id) {
+            if (inFlightBatchPromiseRef.current) {
+                inFlightBatchPromiseRef.current.finally(() => {
+                    deleteSession(summary.id);
+                });
+            } else {
+                deleteSession(summary.id);
+            }
+        }
+
+        // 3. Clear Completion Flags & Roll Back Day
+        localStorage.removeItem(`gymlog_${programKey}_last_summary`);
+        localStorage.removeItem(`gymlog_${storageKey}_last_summary`);
+        localStorage.setItem(`gymlog_${programKey}_complete`, 'false');
+        localStorage.setItem(`gymlog_${storageKey}_complete`, 'false');
+
+        // Restore Warm-Up Status
+        setWarmUpStatus('completed');
+        localStorage.setItem('gymlog_active_warmup_status', 'completed');
+
+        const activeDay = (currentDay !== undefined && currentDay !== null)
+            ? currentDay
+            : (storageKey === 'circuit' ? circuitWorkoutDay : (storageKey === 'fullBody' ? fullBodyWorkoutDay : workoutDay));
+
+        let prevDay;
+        if (summary && typeof summary.workoutDay === 'number') {
+            prevDay = summary.workoutDay;
+        } else if (storageKey === 'circuit') {
+            prevDay = ((activeDay - 2 + 16) % 16) + 1;
+        } else {
+            prevDay = Math.max(1, (activeDay || 2) - 1);
+        }
+
+        if (storageKey === 'plan') {
+            updateWorkoutDay(prevDay, true);
+        } else if (storageKey === 'fullBody') {
+            updateFullBodyWorkoutDay(prevDay, true);
+        } else if (storageKey === 'circuit') {
+            updateCircuitWorkoutDay(prevDay, true);
+        }
+
+        // 4. Sync Rolled-Back Day Settings to Google Sheets
+        const owner = (deviceOwner && deviceOwner !== 'Guest') ? deviceOwner : 'Brian';
+        const ownerLower = owner.toLowerCase();
+        let rollbackSettings = {};
+
+        if (storageKey === 'plan') {
+            const calcType = (prevDay % 2 === 1) ? 'Push' : 'Pull';
+            rollbackSettings = {
+                [`builder_workout_num_${ownerLower}`]: prevDay,
+                [`builder_workout_type_${ownerLower}`]: calcType,
+                'builder_workout_num': prevDay,
+                'builder_workout_type': calcType,
+                [`${owner}_Plan_Day`]: prevDay
+            };
+        } else if (storageKey === 'fullBody') {
+            rollbackSettings = {
+                [`builder_fullbody_num_${ownerLower}`]: prevDay,
+                'builder_fullbody_num': prevDay,
+                [`${owner}_FullBody_Day`]: prevDay
+            };
+        } else if (storageKey === 'circuit') {
+            rollbackSettings = {
+                [`builder_circuit_num_${ownerLower}`]: prevDay,
+                'builder_circuit_num': prevDay,
+                [`${owner}_Circuit_Day`]: prevDay
+            };
+        }
+
+        if (sheetsPost && deviceOwner && deviceOwner !== 'Guest') {
+            sheetsPost({ action: 'saveSettings', settings: rollbackSettings }).catch(console.warn);
+        }
+
+        return { prevDay, summary };
     };
 
     const getRepRangeStats = (customHistory = null, filterPerson = 'ALL') => {
@@ -1377,6 +1680,7 @@ export function AppProvider({ children }) {
         : [...new Set(activePeople)].filter(p => p === 'Guest' || people.includes(p));
 
     const contextValue = {
+        sheetsPost,
         workoutDay,
         fullBodyWorkoutDay,
         circuitWorkoutDay,
@@ -1408,9 +1712,12 @@ export function AppProvider({ children }) {
         resetWarmUp,
         startSession,
         endSession,
+        clearSession,
         resetSessionTime,
         saveCompletedSession,
         completeWorkoutBatch,
+        completeWorkoutSession,
+        undoWorkoutSession,
         deleteSession,
         getRepRangeStats,
         updateWorkoutDay,

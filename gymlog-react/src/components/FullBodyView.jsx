@@ -14,7 +14,7 @@ export default function FullBodyView() {
         exercises, fullBodyWorkoutDay, updateFullBodyWorkoutDay, loading, fullBodySwaps, swapFullBodyExercise,
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
-        sessionStartTime, resetSessionTime, completeWorkoutBatch, deviceOwner,
+        sessionStartTime, resetSessionTime, completeWorkoutSession, undoWorkoutSession, deviceOwner,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
@@ -228,49 +228,15 @@ export default function FullBodyView() {
     }, [plannedExercises, exerciseStatus, resetExerciseStatus]);
 
     const completeWorkout = () => {
-        const endTime = Date.now();
-        const startTime = sessionStartTime || (endTime - 45 * 60 * 1000);
-        const durationMinutes = Math.max(1, Math.round((endTime - startTime) / 60000));
-        const repRange = getRepRange(fullBodyWorkoutDay);
-
-        const summary = {
-            id: `session_fullBody_${Date.now()}`,
-            date: new Date().toLocaleDateString('en-US'),
-            program: 'Full Body',
-            workoutDay: fullBodyWorkoutDay,
-            workoutType: 'Full Body',
-            repRange: repRange,
-            startTime: new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            endTime: new Date(endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            durationMinutes: durationMinutes,
-            startTimestamp: startTime,
-            endTimestamp: endTime
-        };
-
-        const owner = deviceOwner || "Brian";
-        const ownerLower = owner.toLowerCase();
         const nextDay = fullBodyWorkoutDay + 1;
-
-        const updatedSettings = {
-            [`builder_fullbody_num_${ownerLower}`]: nextDay,
-            'builder_fullbody_num': nextDay,
-            [`${owner}_FullBody_Day`]: nextDay
-        };
-
-        completeWorkoutBatch(summary, updatedSettings).then(saved => {
-            setCompletedSummary(saved || summary);
-            localStorage.setItem('gymlog_fullBody_last_summary', JSON.stringify(saved || summary));
+        const summary = completeWorkoutSession('fullBody', {
+            currentDay: fullBodyWorkoutDay,
+            nextDay,
+            nextType: 'Full Body',
+            exercisesList: plannedExercises
         });
-
-        // Advance local workout day state cleanly
-        updateFullBodyWorkoutDay(nextDay, true);
-
-        // Reset active timer and clear session clock
-        resetTimer();
-        resetSessionTime();
-
+        setCompletedSummary(summary);
         setIsWorkoutComplete(true);
-        localStorage.setItem('gymlog_fullBody_complete', 'true');
         if (deviceOwner === 'Guest' || !deviceOwner) {
             setIsUpgradeModalOpen(true);
         }
@@ -304,6 +270,12 @@ export default function FullBodyView() {
         // 4. Clean up accessories
         localStorage.removeItem('gymlog_fullBody_session_accessories');
         setAccessoriesList([]);
+    };
+
+    const handleUndoCompletion = () => {
+        undoWorkoutSession('fullBody', { currentDay: fullBodyWorkoutDay });
+        setCompletedSummary(null);
+        setIsWorkoutComplete(false);
     };
 
 
@@ -409,10 +381,7 @@ export default function FullBodyView() {
                                 <button className="btn-success" onClick={startNextWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, width: '100%' }}>
                                     START NEXT WORKOUT
                                 </button>
-                                <button className="btn-ghost" onClick={() => {
-                                    setIsWorkoutComplete(false);
-                                    localStorage.setItem('gymlog_fullBody_complete', 'false');
-                                }} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                                <button className="btn-ghost" onClick={handleUndoCompletion} style={{ padding: '8px 16px', fontSize: 11, fontWeight: 'bold', border: '1px solid var(--border)', color: 'var(--muted)' }}>
                                     UNDO COMPLETION
                                 </button>
                             </div>
