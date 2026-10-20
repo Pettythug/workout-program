@@ -1151,7 +1151,7 @@ export function AppProvider({ children }) {
             people: participants,
             workoutDay: activeDay,
             workoutType: nextType || (storageKey === 'plan' ? (((activeDay || 1) % 2 === 1) ? 'Push' : 'Pull') : (storageKey === 'circuit' ? 'Circuit Training' : 'Full Body')),
-            program: programKey
+            program: displayProgram
         };
 
         // 3. Lock In State Synchronously Before Network Call
