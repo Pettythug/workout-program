@@ -32,7 +32,11 @@ export function calculateBestForExercise(exercise) {
 
         const person = (entry.person || '').toLowerCase().trim();
         if (!person) return;
-        const range = entry.range;
+        let range = entry.range;
+        if (range === '1-3' || range === '1_3') range = 'r1_3';
+        else if (range === '4-7' || range === '4_7') range = 'r4_7';
+        else if (range === '8-12' || range === '8_12') range = 'r8_12';
+        else if (range === '13+' || range === '13_plus' || range === '13') range = 'r13_plus';
         if (!REP_RANGES.includes(range)) return;
 
         if (!byPerson[person]) {
@@ -172,6 +176,7 @@ export function AppProvider({ children }) {
     const targetEndTimeRef = useRef(null);
     const startTimeRef = useRef(null);
     const completionSyncTokenRef = useRef(0);
+    const inFlightBatchPromiseRef = useRef(null);
 
     const playBeepSound = () => {
         try {
@@ -1133,7 +1138,7 @@ export function AppProvider({ children }) {
         const isoDate = `${yyyy}-${mm}-${dd}`;
 
         const summaryData = {
-            id: `${displayProgram.replace(/\s+/g, '')}_${cleanPerson}_${isoDate}_day${activeDay}_${Date.now()}`,
+            id: `${displayProgram.replace(/\s+/g, '')}_${cleanPerson}_${isoDate}_day${activeDay}`,
             date: new Date().toLocaleDateString('en-US'),
             startTimestamp: effectiveStartTime,
             endTimestamp: endTime,
@@ -1222,20 +1227,29 @@ export function AppProvider({ children }) {
             };
         }
 
-        completeWorkoutBatch(settingsPayload, summaryData).then(saved => {
-            if (completionSyncTokenRef.current !== syncToken) {
-                console.log('[completeWorkoutSession] Completion sync response discarded due to newer syncToken:', syncToken, 'current:', completionSyncTokenRef.current);
-                return;
-            }
-            if (saved) {
-                localStorage.setItem(`gymlog_${programKey}_last_summary`, JSON.stringify(saved));
-                if (storageKey !== programKey) {
-                    localStorage.setItem(`gymlog_${storageKey}_last_summary`, JSON.stringify(saved));
+        const batchPromise = completeWorkoutBatch(settingsPayload, summaryData)
+            .then(saved => {
+                if (completionSyncTokenRef.current !== syncToken) {
+                    console.log('[completeWorkoutSession] Completion sync response discarded due to newer syncToken:', syncToken, 'current:', completionSyncTokenRef.current);
+                    return;
                 }
-            }
-        }).catch(err => {
-            console.warn('[completeWorkoutSession] completeWorkoutBatch error:', err);
-        });
+                if (saved) {
+                    localStorage.setItem(`gymlog_${programKey}_last_summary`, JSON.stringify(saved));
+                    if (storageKey !== programKey) {
+                        localStorage.setItem(`gymlog_${storageKey}_last_summary`, JSON.stringify(saved));
+                    }
+                }
+            })
+            .catch(err => {
+                console.warn('[completeWorkoutSession] completeWorkoutBatch error:', err);
+            })
+            .finally(() => {
+                if (inFlightBatchPromiseRef.current === batchPromise) {
+                    inFlightBatchPromiseRef.current = null;
+                }
+            });
+
+        inFlightBatchPromiseRef.current = batchPromise;
 
         // 5. Return summaryData synchronously
         return summaryData;
@@ -1264,9 +1278,15 @@ export function AppProvider({ children }) {
             startSession(summary.startTimestamp);
         }
 
-        // Delete Session Log: If summary?.id exists, call deleteSession(summary.id)
+        // Delete Session Log with In-Flight Guard: If summary?.id exists:
         if (summary?.id) {
-            deleteSession(summary.id);
+            if (inFlightBatchPromiseRef.current) {
+                inFlightBatchPromiseRef.current.finally(() => {
+                    deleteSession(summary.id);
+                });
+            } else {
+                deleteSession(summary.id);
+            }
         }
 
         // 3. Clear Completion Flags & Roll Back Day

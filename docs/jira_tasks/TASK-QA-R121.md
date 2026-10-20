@@ -31,8 +31,9 @@ cmd /c npm run build
    - In `undoWorkoutSession(programKey, options)`: Verify that `summary?.startTimestamp` is retrieved from `gymlog_${programKey}_last_summary`.
    - Verify `startSession(summary.startTimestamp)` is called so `sessionStartTime` and `gymlog_session_start` are restored to the original workout start time instead of resetting to 0.
    - Verify `setWarmUpStatus('completed')` and `localStorage.setItem('gymlog_active_warmup_status', 'completed')` are executed so the user is returned directly to their exercise list and NOT forced to redo the pre-workout warm-up stepper.
-   - Verify `deleteSession(summary.id)` is invoked to delete the recorded session log.
-3. **Async Race Protection:**
+   - Verify `deleteSession(summary.id)` is chained after `inFlightBatchPromiseRef` if a sync is active, ensuring Google Sheets deletion never races with an in-flight insert.
+3. **Deterministic Session ID & Async Race Protection:**
+   - Verify `summaryData.id` is constructed cleanly as `${displayProgram.replace(/\s+/g, '')}_${cleanPerson}_${isoDate}_day${activeDay}` without any random timestamp suffix to prevent duplicate rows in Google Sheets.
    - Verify `completionSyncTokenRef` increments on completion and on undo so any delayed Google Sheets `completeWorkoutBatch` response that resolves after Undo is safely discarded.
 4. **In-Memory PB Recalculation:**
    - In `deleteSetFromLocalHistory`: Verify that after splicing `ex.history`, `calculateBestForExercise` is called on the updated history and attached to `ex.best`.
