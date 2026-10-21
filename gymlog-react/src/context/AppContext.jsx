@@ -177,6 +177,7 @@ export function AppProvider({ children }) {
     const startTimeRef = useRef(null);
     const completionSyncTokenRef = useRef(0);
     const inFlightBatchPromiseRef = useRef(null);
+    const isFlushingQueueRef = useRef(false);
 
     const playBeepSound = () => {
         try {
@@ -310,6 +311,168 @@ export function AppProvider({ children }) {
     };
 
 
+    // Offline Sync Queue Consumer & Cloud State Synchronization (TASK-R122)
+    const flushPendingSyncQueue = async () => {
+        if (isFlushingQueueRef.current) return;
+
+        const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+        if (!Array.isArray(queue) || queue.length === 0 || deviceOwner === 'Guest') {
+            if (Array.isArray(queue) && queue.length === 0) {
+                localStorage.removeItem('gymlog_pending_sync_queue');
+            }
+            return;
+        }
+
+        if (!sheetsPost) return;
+
+        isFlushingQueueRef.current = true;
+        try {
+            while (queue.length > 0) {
+                const item = queue[0];
+                try {
+                    await sheetsPost(item);
+                    queue.shift();
+                    if (queue.length > 0) {
+                        localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
+                    } else {
+                        localStorage.removeItem('gymlog_pending_sync_queue');
+                    }
+                } catch (err) {
+                    console.warn('[flushPendingSyncQueue] Failed to send queued workout batch, preserving remaining queue:', err);
+                    break;
+                }
+            }
+        } finally {
+            isFlushingQueueRef.current = false;
+        }
+    };
+
+    // Cloud Data Fetch Implementation
+    const fetchInitData = async (signal = null) => {
+        const cachedExercises = localStorage.getItem('gymlog_exercises');
+        const cachedPeople = localStorage.getItem('gymlog_people');
+        const cachedLocations = localStorage.getItem('gymlog_locations');
+        const cachedVersion = localStorage.getItem('gymlog_library_version');
+
+        let shouldSyncAll = true;
+        if (cachedExercises && cachedPeople && sheetsGet) {
+            try {
+                const versionData = await sheetsGet({ action: 'checkVersion' });
+                if (versionData && versionData.version !== undefined) {
+                    if (cachedVersion && parseInt(cachedVersion, 10) === versionData.version) {
+                        shouldSyncAll = false;
+                    }
+                    localStorage.setItem('gymlog_library_version', versionData.version.toString());
+                }
+            } catch (e) { console.warn("checkVersion failed", e); }
+        }
+
+        if (shouldSyncAll) {
+            const data = await syncAll(false, signal);
+            
+            if (data && data.settings && data.settings.library_version) {
+                localStorage.setItem('gymlog_library_version', data.settings.library_version.toString());
+            }
+        
+            // Merge data
+            const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
+            const currentLocalPeople = cachedPeople ? JSON.parse(cachedPeople) : [];
+            let currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "24 Hour Fitness"];
+            if (currentLocalLocations.includes("Gym")) {
+                currentLocalLocations = currentLocalLocations.filter(l => l !== "Gym");
+                if (!currentLocalLocations.includes("24 Hour Fitness")) currentLocalLocations.push("24 Hour Fitness");
+            }
+            const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople, currentLocalLocations);
+            
+            setExercises(mergedData.exercises);
+            setPeople(mergedData.people);
+            setLocations(mergedData.locations);
+
+            if (data && data.sessions !== undefined) {
+                const serverSessions = data.sessions || [];
+                setSessionHistory(serverSessions);
+                localStorage.setItem('gymlog_session_history', JSON.stringify(serverSessions));
+            }
+
+            // Update cache
+            localStorage.setItem('gymlog_exercises', JSON.stringify(mergedData.exercises));
+            localStorage.setItem('gymlog_people', JSON.stringify(mergedData.people));
+            localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
+
+            if (data && data.settings) {
+                localStorage.setItem('gymlog_raw_settings', JSON.stringify(data.settings));
+                const owner = localStorage.getItem('builder_primary_user');
+                if (owner && owner !== 'Guest') {
+                    const ownerLower = owner.toLowerCase();
+                    
+                    // Plan Day mapping
+                    const planVal = data.settings[`builder_workout_num_${ownerLower}`] ?? data.settings[`${owner}_Plan_Day`] ?? data.settings['builder_workout_num'];
+                    if (planVal !== undefined) {
+                        const val = parseInt(planVal, 10) || 1;
+                        setWorkoutDay(val);
+                        localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(val));
+                    }
+
+                    // Circuit Day mapping
+                    const circVal = data.settings[`builder_circuit_num_${ownerLower}`] ?? data.settings[`${owner}_Circuit_Day`] ?? data.settings['builder_circuit_num'];
+                    if (circVal !== undefined) {
+                        const val = parseInt(circVal, 10) || 1;
+                        setCircuitWorkoutDay(val);
+                        localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(val));
+                    }
+
+                    // Full Body Day mapping
+                    const fbVal = data.settings[`builder_fullbody_num_${ownerLower}`] ?? data.settings[`${owner}_FullBody_Day`] ?? data.settings['builder_fullbody_num'];
+                    if (fbVal !== undefined) {
+                        const val = parseInt(fbVal, 10) || 1;
+                        setFullBodyWorkoutDay(val);
+                        localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
+                    }
+                }
+            }
+        }
+    };
+
+    const loadData = async (silent = false, signal = null) => {
+        await flushPendingSyncQueue();
+
+        if (!silent) {
+            setIsSyncing(true);
+        }
+        const cachedExercises = localStorage.getItem('gymlog_exercises');
+        const cachedPeople = localStorage.getItem('gymlog_people');
+        if (cachedExercises && cachedPeople) {
+            if (!silent) setLoading(false);
+        } else {
+            if (!silent) setLoading(true);
+        }
+
+        try {
+            await fetchInitData(signal);
+        } catch (error) {
+            if (error.name === 'AbortError' || (signal && signal.aborted)) return;
+            console.error("Error loading data:", error);
+        } finally {
+            if (!signal || !signal.aborted) {
+                if (!silent) setLoading(false);
+                setIsSyncing(false);
+            }
+        }
+    };
+
+    // Automatic Queue Flush on Network Reconnect
+    useEffect(() => {
+        const handleOnline = () => {
+            console.log('[AppContext] Network reconnect (online event) detected, triggering flushPendingSyncQueue()');
+            flushPendingSyncQueue();
+        };
+
+        window.addEventListener('online', handleOnline);
+        return () => {
+            window.removeEventListener('online', handleOnline);
+        };
+    }, [deviceOwner, sheetsPost]);
+
     // Initial Load
     useEffect(() => {
         // Auto-cleanup legacy custom URL overrides to ensure fallback to corrected built-in default
@@ -343,113 +506,8 @@ export function AppProvider({ children }) {
         localStorage.setItem('gymlog_lastActiveDate', today);
 
         const controller = new AbortController();
-        const loadInitialData = async () => {
-            setIsSyncing(true);
-            // Cache check
-            const cachedExercises = localStorage.getItem('gymlog_exercises');
-            const cachedPeople = localStorage.getItem('gymlog_people');
-            const cachedLocations = localStorage.getItem('gymlog_locations');
-            const cachedVersion = localStorage.getItem('gymlog_library_version');
-            
-            if (cachedExercises && cachedPeople) {
-                setLoading(false); // Instant load UI from cache
-            }
+        loadData(false, controller.signal);
 
-            try {
-                if (!cachedExercises || !cachedPeople) {
-                    setLoading(true);
-                }
-
-                let shouldSyncAll = true;
-                if (cachedExercises && cachedPeople && sheetsGet) {
-                    try {
-                        const versionData = await sheetsGet({ action: 'checkVersion' });
-                        if (versionData && versionData.version !== undefined) {
-                            if (cachedVersion && parseInt(cachedVersion, 10) === versionData.version) {
-                                shouldSyncAll = false;
-                            }
-                            localStorage.setItem('gymlog_library_version', versionData.version.toString());
-                        }
-                    } catch (e) { console.warn("checkVersion failed", e); }
-                }
-
-                if (shouldSyncAll) {
-                    const data = await syncAll(false, controller.signal);
-                    
-                    if (data && data.settings && data.settings.library_version) {
-                        localStorage.setItem('gymlog_library_version', data.settings.library_version.toString());
-                    }
-                
-                // Merge data
-                const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
-                const currentLocalPeople = cachedPeople ? JSON.parse(cachedPeople) : [];
-                let currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "24 Hour Fitness"];
-                if (currentLocalLocations.includes("Gym")) {
-                    currentLocalLocations = currentLocalLocations.filter(l => l !== "Gym");
-                    if (!currentLocalLocations.includes("24 Hour Fitness")) currentLocalLocations.push("24 Hour Fitness");
-                }
-                const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople, currentLocalLocations);
-                
-                setExercises(mergedData.exercises);
-                setPeople(mergedData.people);
-                setLocations(mergedData.locations);
-
-                if (data && data.sessions !== undefined) {
-                    const serverSessions = data.sessions || [];
-                    setSessionHistory(serverSessions);
-                    localStorage.setItem('gymlog_session_history', JSON.stringify(serverSessions));
-                }
-
-                // Update cache
-                localStorage.setItem('gymlog_exercises', JSON.stringify(mergedData.exercises));
-                localStorage.setItem('gymlog_people', JSON.stringify(mergedData.people));
-                localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
-
-                if (data && data.settings) {
-                    localStorage.setItem('gymlog_raw_settings', JSON.stringify(data.settings));
-                    const owner = localStorage.getItem('builder_primary_user');
-                    if (owner && owner !== 'Guest') {
-                        const ownerLower = owner.toLowerCase();
-                        
-                        // Plan Day mapping
-                        const planVal = data.settings[`builder_workout_num_${ownerLower}`] ?? data.settings[`${owner}_Plan_Day`] ?? data.settings['builder_workout_num'];
-                        if (planVal !== undefined) {
-                            const val = parseInt(planVal, 10) || 1;
-                            setWorkoutDay(val);
-                            localStorage.setItem(`gymlog_workout_day_${owner}`, JSON.stringify(val));
-                        }
-
-                        // Circuit Day mapping
-                        const circVal = data.settings[`builder_circuit_num_${ownerLower}`] ?? data.settings[`${owner}_Circuit_Day`] ?? data.settings['builder_circuit_num'];
-                        if (circVal !== undefined) {
-                            const val = parseInt(circVal, 10) || 1;
-                            setCircuitWorkoutDay(val);
-                            localStorage.setItem(`gymlog_circuit_workout_day_${owner}`, JSON.stringify(val));
-                        }
-
-                        // Full Body Day mapping
-                        const fbVal = data.settings[`builder_fullbody_num_${ownerLower}`] ?? data.settings[`${owner}_FullBody_Day`] ?? data.settings['builder_fullbody_num'];
-                        if (fbVal !== undefined) {
-                            const val = parseInt(fbVal, 10) || 1;
-                            setFullBodyWorkoutDay(val);
-                            localStorage.setItem(`gymlog_fullBody_workout_day_${owner}`, JSON.stringify(val));
-                        }
-                    }
-                }
-                }
-
-            } catch (error) {
-                if (error.name === 'AbortError' || controller.signal.aborted) return;
-                console.error("Error loading initial data:", error);
-            } finally {
-                if (!controller.signal.aborted) {
-                    setLoading(false);
-                    setIsSyncing(false);
-                }
-            }
-        };
-
-        loadInitialData();
         return () => controller.abort();
     }, [syncAll, sheetsGet]);
 
@@ -1755,7 +1813,11 @@ export function AppProvider({ children }) {
         startRestTimer,
         getDefaultRestForRepRange,
         getDayTargetRange,
-        calculateBestForExercise
+        calculateBestForExercise,
+        flushPendingSyncQueue,
+        loadData,
+        loadInitialData: loadData,
+        fetchInitData
     };
 
     return (
