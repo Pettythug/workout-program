@@ -1,4 +1,4 @@
-# TASK-R122: Offline "Dead-Zone" Workout Sync Queue Flush
+# TASK-R122: Offline "Dead-Zone" Workout Sync Queue Flush & Auto-Retry Lifecycle
 
 - **Target Role:** `Sandbox_Developer`
 - **Authorized Model Tier:** `MEDIUM_TIER` (`Gemini 3.8 Flash`, `Claude Sonnet 4.6 (Thinking)`, `Gemini 3.5 Flash (High)`) or `HIGH_TIER`
@@ -7,14 +7,16 @@
 ## Overview
 When a user completes a workout in a gym dead zone (poor or dropped cellular signal) and the Google Sheets `completeWorkoutBatch` request fails, `AppContext.jsx` catches the network error and saves the failed payload into `localStorage` under `gymlog_pending_sync_queue`.
 
-However, **there is currently no consumer (`flushPendingSyncQueue`) anywhere in the codebase** that reads or replays `gymlog_pending_sync_queue` when network connectivity returns or when `loadData()` runs. As a result, on the next app reload or cloud sync, the user's offline workout completion and day progression are permanently overwritten by stale cloud data.
+While initial loading (`loadData`) flushes this queue, real-world cellular/Wi-Fi reconnection requires a resilient trigger and retry lifecycle:
+1. When cell signal or Wi-Fi reconnects (`online` event), phones take 2–3 seconds to establish DNS and routing (DHCP lag). Firing at millisecond 0 fails before the connection is established.
+2. If the initial reconnect fails, there must be a gentle periodic retry loop and app-focus triggers so the workout automatically uploads when the user walks out of the gym or unlocks their phone in the parking lot.
 
 ---
 
 ## Technical Specifications & Requirements
 
 ### 1. Implement `flushPendingSyncQueue()` in `AppContext.jsx`
-1. Create an async helper `flushPendingSyncQueue` inside `AppContext.jsx` (using a `isFlushingQueueRef` lock to prevent concurrent flushes):
+1. Maintain the async helper `flushPendingSyncQueue` inside `AppContext.jsx` (using a `isFlushingQueueRef` lock to prevent concurrent flushes):
    - Read `const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]')`.
    - If the queue is empty or `deviceOwner === 'Guest'`, return immediately.
    - Iterate through each queued item sequentially:
@@ -24,11 +26,16 @@ However, **there is currently no consumer (`flushPendingSyncQueue`) anywhere in 
      - If an error occurs during sending, break out of iteration to preserve remaining queue items for the next reconnect/retry attempt.
    - If the queue becomes empty, remove the key: `localStorage.removeItem('gymlog_pending_sync_queue')`.
 
-### 2. Trigger Queue Flush Before Cloud Load & On Network Reconnect
-1. **Before `loadData()`:**
-   - At the start of `loadData(silent)` in `AppContext.jsx`, await `flushPendingSyncQueue()` *before* calling `fetchInitData()` so that any pending offline workouts are committed to Google Sheets before cloud state is pulled down.
-2. **On Browser `online` Event:**
-   - Register a `window.addEventListener('online', handleOnline)` listener inside a `useEffect` in `AppContext.jsx` that automatically triggers `flushPendingSyncQueue()` as soon as cellular/Wi-Fi connectivity returns. Clean up with `window.removeEventListener('online', handleOnline)`.
+### 2. Multi-Trigger Reconnect & Retry Lifecycle in `AppContext.jsx`
+Wire `flushPendingSyncQueue` into a resilient `useEffect` lifecycle with three complementary triggers:
+1. **3-Second Reconnection Buffer on `online`:**
+   - In `window.addEventListener('online')`: Do not fire at millisecond 0. Use `setTimeout(flushPendingSyncQueue, 3000)` so that cellular / Wi-Fi IP and DNS routing are fully established before dispatching HTTP requests. Clear timeout on unmount.
+2. **Screen Unlock / Tab Focus Trigger (`visibilitychange` & `focus`):**
+   - When the user unlocks their phone or switches back to the app (`document.addEventListener('visibilitychange')` when `document.visibilityState === 'visible'`, and `window.addEventListener('focus')`), check if `gymlog_pending_sync_queue` has items and trigger `flushPendingSyncQueue()`.
+3. **Gentle 45-Second Retry Interval:**
+   - Set an interval every 45 seconds (`45000ms`) that checks: if `localStorage.getItem('gymlog_pending_sync_queue')` has items and `navigator.onLine` is true, trigger `flushPendingSyncQueue()`. Clean up interval on unmount.
+4. **Pre-Load Flush in `loadData()`:**
+   - Continue awaiting `flushPendingSyncQueue()` at the start of `loadData()` before `fetchInitData()`.
 
 ---
 

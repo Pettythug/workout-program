@@ -315,7 +315,14 @@ export function AppProvider({ children }) {
     const flushPendingSyncQueue = async () => {
         if (isFlushingQueueRef.current) return;
 
-        const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+        let queue;
+        try {
+            const raw = localStorage.getItem('gymlog_pending_sync_queue');
+            queue = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            queue = [];
+        }
+
         if (!Array.isArray(queue) || queue.length === 0 || deviceOwner === 'Guest') {
             if (Array.isArray(queue) && queue.length === 0) {
                 localStorage.removeItem('gymlog_pending_sync_queue');
@@ -460,16 +467,65 @@ export function AppProvider({ children }) {
         }
     };
 
-    // Automatic Queue Flush on Network Reconnect
+    // Multi-Trigger Reconnect & Retry Lifecycle (TASK-R122)
     useEffect(() => {
-        const handleOnline = () => {
-            console.log('[AppContext] Network reconnect (online event) detected, triggering flushPendingSyncQueue()');
-            flushPendingSyncQueue();
+        let onlineTimeoutId = null;
+
+        const checkAndFlush = () => {
+            const queueRaw = localStorage.getItem('gymlog_pending_sync_queue');
+            if (queueRaw) {
+                try {
+                    const parsed = JSON.parse(queueRaw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        flushPendingSyncQueue();
+                    }
+                } catch (e) {
+                    // Ignore JSON parse error
+                }
+            }
         };
 
+        // 1. 3-Second Reconnection Buffer on 'online' (avoids DHCP / DNS lag)
+        const handleOnline = () => {
+            console.log('[AppContext] Network reconnect (online event) detected, buffering 3s before flushPendingSyncQueue()');
+            if (onlineTimeoutId) {
+                clearTimeout(onlineTimeoutId);
+            }
+            onlineTimeoutId = setTimeout(() => {
+                flushPendingSyncQueue();
+            }, 3000);
+        };
+
+        // 2. Screen Unlock / Tab Focus Trigger ('visibilitychange' & 'focus')
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkAndFlush();
+            }
+        };
+
+        const handleFocus = () => {
+            checkAndFlush();
+        };
+
+        // 3. Gentle 45-Second Retry Interval
+        const retryInterval = setInterval(() => {
+            if (navigator.onLine) {
+                checkAndFlush();
+            }
+        }, 45000);
+
         window.addEventListener('online', handleOnline);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        window.addEventListener('focus', handleFocus);
+
         return () => {
+            if (onlineTimeoutId) {
+                clearTimeout(onlineTimeoutId);
+            }
+            clearInterval(retryInterval);
             window.removeEventListener('online', handleOnline);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            window.removeEventListener('focus', handleFocus);
         };
     }, [deviceOwner, sheetsPost]);
 
