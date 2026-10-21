@@ -71,14 +71,16 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Locked in `completedSummary` synchronously (0ms) and restored `sessionStartTime` and `warmUpStatus` on Undo so the user's workout clock resumes ticking and bypasses the warm-up stepper.
   - Enforced deterministic session IDs (`${displayProgram}_${cleanPerson}_${isoDate}_day${activeDay}`) to prevent duplicate rows in Google Sheets and added in-flight deletion protection.
   - Recalculated `ex.best` immediately in memory on set deletion with normalized rep range keys (`r1_3`, `r4_7`, `r8_12`, `r13_plus`).
+- [x] **Story 8.2 (TASK-R122): Offline 'Dead-Zone' Workout Sync Queue Flush & Auto-Retry Lifecycle**:
+  - Implemented `flushPendingSyncQueue()` in `AppContext.jsx` to sequentially replay queued workouts and deletions.
+  - Added 3-second reconnect buffer, screen unlock / focus trigger, and 45-second retry interval with zero-network idle safety.
+  - Integrated offline undo queue purging and deletion queue buffering to eliminate phantom or duplicate rows.
 
 ---
 
 ## 🎯 Active & Upcoming Backlog
 
 ### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
-- [ ] **Story 8.2 (`TASK-R122`): Offline "Dead-Zone" Workout Sync Queue Flush**:
-  - Implement `flushPendingSyncQueue()` in `AppContext.jsx` to replay `gymlog_pending_sync_queue` when cellular/Wi-Fi signal returns (`online` event) and before `loadData()` refreshes from Google Sheets.
 - [ ] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Variation Cleanup API Action**:
   - Update `deleteExerciseFromSheet` in `useGymAPI.js` from the unsupported `{ action: "exec" }` payload to `{ action: "deleteExercise", exerciseName }` matching `Combined_AppScript_v2.gs`.
 - [ ] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
