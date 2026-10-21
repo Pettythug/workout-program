@@ -7,7 +7,7 @@
 ---
 
 ## 1. Scope & Verification Mandate
-Verify the offline sync queue consumer and multi-trigger reconnect/retry lifecycle in `gymlog-react/src/context/AppContext.jsx`.
+Verify the offline sync queue consumer, multi-trigger reconnect/retry lifecycle, and offline undo queue purging in `gymlog-react/src/context/AppContext.jsx`.
 
 ---
 
@@ -35,6 +35,9 @@ In `gymlog-react/src/context/AppContext.jsx`:
    - **Focus / Visibility:** Verify `visibilitychange` (when `visible`) and `focus` trigger `checkAndFlush()`.
    - **Zero-Network Idle State:** Verify that `checkAndFlush()` inspects `localStorage` first and executes **zero network calls** and **zero state changes** when the queue is empty.
    - **Cleanup:** Verify `onlineTimeoutId`, `retryInterval`, and event listeners are properly removed on unmount.
+4. **Offline Undo & Deletion Queue Management:**
+   - Verify `undoWorkoutSession` inspects `gymlog_pending_sync_queue` and purges matching session payloads so undone offline workouts are never uploaded when connection returns.
+   - Verify `deleteSession` catches offline errors and buffers `{ action: 'deleteSession', id: sessionId }` into `gymlog_pending_sync_queue`.
 
 ---
 

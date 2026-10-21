@@ -7,9 +7,7 @@
 ## Overview
 When a user completes a workout in a gym dead zone (poor or dropped cellular signal) and the Google Sheets `completeWorkoutBatch` request fails, `AppContext.jsx` catches the network error and saves the failed payload into `localStorage` under `gymlog_pending_sync_queue`.
 
-While initial loading (`loadData`) flushes this queue, real-world cellular/Wi-Fi reconnection requires a resilient trigger and retry lifecycle:
-1. When cell signal or Wi-Fi reconnects (`online` event), phones take 2–3 seconds to establish DNS and routing (DHCP lag). Firing at millisecond 0 fails before the connection is established.
-2. If the initial reconnect fails, there must be a gentle periodic retry loop and app-focus triggers so the workout automatically uploads when the user walks out of the gym or unlocks their phone in the parking lot.
+If a user hits **Undo Completion** while offline, the app previously left the failed completion payload inside `gymlog_pending_sync_queue`. When cellular/Wi-Fi signal returned later, `flushPendingSyncQueue` replayed that queue and uploaded the undone workout, resulting in phantom or duplicate sessions in Google Sheets (e.g. Day 2 and Day 3 both appearing with identical start times).
 
 ---
 
@@ -20,22 +18,65 @@ While initial loading (`loadData`) flushes this queue, real-world cellular/Wi-Fi
    - Read `const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]')`.
    - If the queue is empty or `deviceOwner === 'Guest'`, return immediately.
    - Iterate through each queued item sequentially:
-     - Each queued `item` is already a complete payload: `{ action: 'batchSyncSession', session, settings, sets, deletes }`.
+     - Each queued `item` can be `{ action: 'batchSyncSession', session, settings, sets, deletes }` or `{ action: 'deleteSession', id }`.
      - Call `await sheetsPost(item)`.
      - If successful (resolves without error), remove the item from the queue and persist the updated queue to `localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(remaining))`.
      - If an error occurs during sending, break out of iteration to preserve remaining queue items for the next reconnect/retry attempt.
    - If the queue becomes empty, remove the key: `localStorage.removeItem('gymlog_pending_sync_queue')`.
 
 ### 2. Multi-Trigger Reconnect & Retry Lifecycle in `AppContext.jsx`
-Wire `flushPendingSyncQueue` into a resilient `useEffect` lifecycle with three complementary triggers:
 1. **3-Second Reconnection Buffer on `online`:**
-   - In `window.addEventListener('online')`: Do not fire at millisecond 0. Use `setTimeout(flushPendingSyncQueue, 3000)` so that cellular / Wi-Fi IP and DNS routing are fully established before dispatching HTTP requests. Clear timeout on unmount.
+   - In `window.addEventListener('online')`: Wait 3 seconds (`setTimeout(flushPendingSyncQueue, 3000)`) so that cellular / Wi-Fi IP and DNS routing are fully established before dispatching HTTP requests. Clear timeout on unmount.
 2. **Screen Unlock / Tab Focus Trigger (`visibilitychange` & `focus`):**
-   - When the user unlocks their phone or switches back to the app (`document.addEventListener('visibilitychange')` when `document.visibilityState === 'visible'`, and `window.addEventListener('focus')`), check if `gymlog_pending_sync_queue` has items and trigger `flushPendingSyncQueue()`.
+   - When the user unlocks their phone or switches back to the app (`visibilitychange` when `visible` and `focus`), check if `gymlog_pending_sync_queue` has items and trigger `flushPendingSyncQueue()`.
 3. **Gentle 45-Second Retry Interval:**
    - Set an interval every 45 seconds (`45000ms`) that checks: if `localStorage.getItem('gymlog_pending_sync_queue')` has items and `navigator.onLine` is true, trigger `flushPendingSyncQueue()`. Clean up interval on unmount.
 4. **Pre-Load Flush in `loadData()`:**
-   - Continue awaiting `flushPendingSyncQueue()` at the start of `loadData()` before `fetchInitData()`.
+   - Await `flushPendingSyncQueue()` at the start of `loadData()` before `fetchInitData()`.
+
+### 3. Purge Undone Workouts from Offline Queue (`undoWorkoutSession` in `AppContext.jsx`)
+In `undoWorkoutSession`:
+1. When rolling back a workout, inspect `gymlog_pending_sync_queue` in `localStorage`:
+   ```javascript
+   try {
+       const rawQueue = localStorage.getItem('gymlog_pending_sync_queue');
+       if (rawQueue) {
+           const parsedQueue = JSON.parse(rawQueue);
+           if (Array.isArray(parsedQueue)) {
+               const filteredQueue = parsedQueue.filter(item => {
+                   const itemId = item?.session?.id;
+                   const itemDay = item?.session?.workoutDay;
+                   const itemProg = (item?.session?.program || '').toLowerCase();
+                   if (summary?.id && itemId === summary.id) return false;
+                   if (itemProg === programKey.toLowerCase() && itemDay === (summary?.workoutDay || currentDay)) return false;
+                   return true;
+               });
+               if (filteredQueue.length > 0) {
+                   localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(filteredQueue));
+               } else {
+                   localStorage.removeItem('gymlog_pending_sync_queue');
+               }
+           }
+       }
+   } catch (e) {
+       console.warn('[undoWorkoutSession] Failed to clean pending sync queue:', e);
+   }
+   ```
+2. This guarantees that if a workout was completed and undone while offline, it is instantly removed from the queue and NEVER sent to Google Sheets when internet connection returns.
+
+### 4. Queue Offline Session Deletions (`deleteSession` in `AppContext.jsx`)
+In `deleteSession(sessionId)`:
+1. If the background `sheetsPost({ action: 'deleteSession', id: sessionId })` fails due to network error:
+   ```javascript
+   catch (err) {
+       console.warn('[Sheets Sync] Background session delete sync warning:', err.message || err);
+       try {
+           const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+           queue.push({ action: 'deleteSession', id: sessionId });
+           localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
+       } catch (e) {}
+   }
+   ```
 
 ---
 

@@ -1183,6 +1183,11 @@ export function AppProvider({ children }) {
                 }
             } catch (err) {
                 console.warn('[Sheets Sync] Background session delete sync warning:', err.message || err);
+                try {
+                    const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+                    queue.push({ action: 'deleteSession', id: sessionId });
+                    localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
+                } catch (e) {}
             }
         })();
     };
@@ -1385,6 +1390,30 @@ export function AppProvider({ children }) {
             if (raw) summary = JSON.parse(raw);
         } catch (e) {
             console.warn('[undoWorkoutSession] Failed to parse summary:', e);
+        }
+
+        try {
+            const rawQueue = localStorage.getItem('gymlog_pending_sync_queue');
+            if (rawQueue) {
+                const parsedQueue = JSON.parse(rawQueue);
+                if (Array.isArray(parsedQueue)) {
+                    const filteredQueue = parsedQueue.filter(item => {
+                        const itemId = item?.session?.id;
+                        const itemDay = item?.session?.workoutDay;
+                        const itemProg = (item?.session?.program || '').toLowerCase();
+                        if (summary?.id && itemId === summary.id) return false;
+                        if (itemProg === programKey.toLowerCase() && itemDay === (summary?.workoutDay || currentDay)) return false;
+                        return true;
+                    });
+                    if (filteredQueue.length > 0) {
+                        localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(filteredQueue));
+                    } else {
+                        localStorage.removeItem('gymlog_pending_sync_queue');
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[undoWorkoutSession] Failed to clean pending sync queue:', e);
         }
 
         // Restore Timer: If summary?.startTimestamp exists, call startSession(summary.startTimestamp)
