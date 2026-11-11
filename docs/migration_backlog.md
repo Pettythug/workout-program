@@ -75,14 +75,15 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Implemented `flushPendingSyncQueue()` in `AppContext.jsx` to sequentially replay queued workouts and deletions.
   - Added 3-second reconnect buffer, screen unlock / focus trigger, and 45-second retry interval with zero-network idle safety.
   - Integrated offline undo queue purging and deletion queue buffering to eliminate phantom or duplicate rows.
+- [x] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Remaining `action: "exec"` API Calls**:
+  - Updated `deleteExercise`, `saveSettings`, and `saveExerciseNote` in `useGymAPI.js` from unsupported `{ action: "exec" }` payloads to direct backend actions matching `Combined_AppScript_v2.gs`.
+  - Verified `exercise: name` parameter alignment for `gymlog_handleDeleteExercise` and updated JSDoc comments.
 
 ---
 
 ## 🎯 Active & Upcoming Backlog
 
 ### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
-- [ ] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Remaining `action: "exec"` API Calls**:
-  - Update `deleteExercise`, `saveSettings`, and `saveExerciseNote` in `useGymAPI.js` from the unsupported `{ action: "exec" }` payload to `{ action: "deleteExercise", exercise: name, pin }`, `{ action: "saveSettings", settings: data }`, and `{ action: "saveExerciseNote", ...data }` matching `Combined_AppScript_v2.gs`.
 - [ ] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
   - Include `setNum` in `mergeExerciseLists` deduplication (`dataMerge.js`) and attach `setNum` + `targetRange` to local optimistic sets in `AppContext.jsx` so straight sets (`3×10` at the same weight) are never collapsed.
 - [ ] **Story 8.5 (`TASK-R125`): Rest Timer Battery & Typing Lag Optimization + Audio Fix**:
