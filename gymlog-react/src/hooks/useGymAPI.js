@@ -175,39 +175,40 @@ export function useGymAPI() {
     }, [sheetsPost]);
 
     /**
-     * Delete an exercise by name using the generic exec macro.
+     * Delete an exercise by name.
      * @param {string} name 
+     * @param {string} pin 
      * @returns {Promise<any>}
      */
     const deleteExercise = useCallback(async (name, pin) => {
         return sheetsPost({
-            action: "exec",
-            args: ["deleteExercise", name],
+            action: "deleteExercise",
+            exercise: name,
             pin: pin
         });
     }, [sheetsPost]);
 
     /**
-     * Save application settings using the generic exec macro.
+     * Save application settings.
      * @param {Object} data 
      * @returns {Promise<any>}
      */
     const saveSettings = useCallback(async (data) => {
         return sheetsPost({
-            action: "exec",
-            args: ["saveSettings", data]
+            action: "saveSettings",
+            settings: data
         });
     }, [sheetsPost]);
 
     /**
-     * Save an exercise note using the generic exec macro.
+     * Save an exercise note.
      * @param {Object} data 
      * @returns {Promise<any>}
      */
     const saveExerciseNote = useCallback(async (data) => {
         return sheetsPost({
-            action: "exec",
-            args: ["saveExerciseNote", data]
+            action: "saveExerciseNote",
+            ...(typeof data === 'object' && data !== null ? data : {})
         });
     }, [sheetsPost]);
 
