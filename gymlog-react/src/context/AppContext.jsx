@@ -3,6 +3,13 @@
 import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { mergeFromSheets } from './dataMerge';
+import {
+    calculateBestForExercise,
+    isBandTaggedEntry,
+    isDedicatedBandExercise
+} from '../utils/exerciseVariations';
+
+export { calculateBestForExercise };
 
 export function getDefaultRestForRepRange(repRange) {
     const r = (repRange || '').toString().toLowerCase().trim();
@@ -20,39 +27,6 @@ export function getDayTargetRange(dayNum) {
     if (day >= 9 && day <= 12) return "r13_plus";
     if (day >= 13 && day <= 16) return "r4_7";
     return "r8_12";
-}
-
-export function calculateBestForExercise(exercise) {
-    if (!exercise || !exercise.history) return {};
-    const REP_RANGES = ["r1_3", "r4_7", "r8_12", "r13_plus"];
-    const byPerson = {};
-    (exercise.history || []).forEach(entry => {
-        const reps = parseInt(String(entry.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
-        if (reps <= 0) return; // Strictly exclude entries with reps <= 0 or duration <= 0
-
-        const person = (entry.person || '').toLowerCase().trim();
-        if (!person) return;
-        let range = entry.range;
-        if (range === '1-3' || range === '1_3') range = 'r1_3';
-        else if (range === '4-7' || range === '4_7') range = 'r4_7';
-        else if (range === '8-12' || range === '8_12') range = 'r8_12';
-        else if (range === '13+' || range === '13_plus' || range === '13') range = 'r13_plus';
-        if (!REP_RANGES.includes(range)) return;
-
-        if (!byPerson[person]) {
-            byPerson[person] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
-        }
-
-        const current = byPerson[person][range];
-        const newW = parseFloat(String(entry.weight || '').replace(/[^0-9.-]/g, '')) || 0;
-        const curW = current ? (parseFloat(String(current.weight || '').replace(/[^0-9.-]/g, '')) || 0) : 0;
-        const curR = current ? (parseInt(String(current.reps || '').replace(/[^0-9]/g, ''), 10) || 0) : 0;
-
-        if (!current || newW > curW || (newW === curW && reps > curR)) {
-            byPerson[person][range] = { reps: entry.reps, weight: entry.weight };
-        }
-    });
-    return byPerson;
 }
 
 export function getUrlParamUser() {
@@ -905,20 +879,22 @@ export function AppProvider({ children }) {
     };
 
     const addSetToLocalHistory = (exName, entries) => {
+        const dedicatedBand = isDedicatedBandExercise(exName);
         setExercises(prev => {
             const next = prev.map(ex => {
                 if (ex.name === exName) {
                     const updatedHistory = [...entries, ...(ex.history || [])];
                     const updatedBest = { ...(ex.best || {}) };
                     entries.forEach(entry => {
+                        if (!dedicatedBand && isBandTaggedEntry(entry)) return;
                         const reps = parseInt(String(entry.reps || '').replace(/[^0-9]/g, ''), 10) || 0;
                         if (reps <= 0) return; // Strictly exclude entries with reps <= 0 or duration <= 0
 
                         const person = (entry.person || '').toLowerCase().trim();
                         if (!person) return;
-                        if (!updatedBest[person]) {
-                            updatedBest[person] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
-                        }
+                        updatedBest[person] = {
+                            ...(updatedBest[person] || { r1_3: null, r4_7: null, r8_12: null, r13_plus: null })
+                        };
                         const range = entry.range;
                         if (['r1_3', 'r4_7', 'r8_12', 'r13_plus'].includes(range)) {
                             const current = updatedBest[person][range];
@@ -1081,13 +1057,55 @@ export function AppProvider({ children }) {
     };
 
     const createExerciseMeta = async (exerciseData, pin) => {
-        const { baseName, createStandard, createSingle, createAlt, category, location, timed, isCircuit } = exerciseData;
-        
-        const variationsToCreate = [];
+        const {
+            baseName,
+            variationNames,
+            createStandard,
+            createSingle,
+            createAlt,
+            category,
+            location,
+            timed,
+            isCircuit,
+            manufacturer,
+            muscleGroups,
+            muscle,
+            modelSeries,
+            baseExercise,
+            note,
+            fileReference
+        } = exerciseData;
 
-        if (createStandard) variationsToCreate.push({ name: baseName, category, location, timed, isCircuit });
-        if (createSingle) variationsToCreate.push({ name: `${baseName} (Single)`, category, location, timed, isCircuit });
-        if (createAlt) variationsToCreate.push({ name: `${baseName} (Alt)`, category, location, timed, isCircuit });
+        const sharedMeta = {
+            category,
+            location,
+            timed,
+            isCircuit,
+            ...(manufacturer !== undefined ? { manufacturer } : {}),
+            ...(muscleGroups !== undefined ? { muscleGroups } : (muscle !== undefined ? { muscleGroups: muscle } : {})),
+            ...(muscle !== undefined ? { muscle } : {}),
+            ...(modelSeries !== undefined ? { modelSeries } : {}),
+            ...(baseExercise !== undefined ? { baseExercise } : {}),
+            ...(note !== undefined ? { note } : {}),
+            ...(fileReference !== undefined ? { fileReference } : {})
+        };
+
+        const variationsToCreate = [];
+        if (Array.isArray(variationNames)) {
+            const seen = new Set();
+            variationNames.forEach(rawName => {
+                const trimmed = String(rawName || '').trim();
+                if (!trimmed) return;
+                const lower = trimmed.toLowerCase();
+                if (seen.has(lower)) return;
+                seen.add(lower);
+                variationsToCreate.push({ name: trimmed, ...sharedMeta });
+            });
+        } else {
+            if (createStandard && baseName) variationsToCreate.push({ name: baseName, ...sharedMeta });
+            if (createSingle && baseName) variationsToCreate.push({ name: `${baseName} (Single)`, ...sharedMeta });
+            if (createAlt && baseName) variationsToCreate.push({ name: `${baseName} (Alt)`, ...sharedMeta });
+        }
 
         // Save each via API 
         for (const meta of variationsToCreate) {
@@ -1098,7 +1116,7 @@ export function AppProvider({ children }) {
         setExercises(prev => {
             const next = [...prev];
             for (const meta of variationsToCreate) {
-                if (!next.find(e => e.name === meta.name)) {
+                if (!next.find(e => (e.name || '').trim().toLowerCase() === meta.name.toLowerCase())) {
                     next.push({ ...meta, history: [], best: {} });
                 }
             }
@@ -1734,18 +1752,16 @@ export function AppProvider({ children }) {
 
     const logExerciseSet = async (ex, logs) => {
         console.log("logExerciseSet CALLED", { ex, logs });
-        
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-        const baseName = getBaseName(ex.name);
-        
-        const allVariations = exercises.filter(e => getBaseName(e.name) === baseName);
-        const allTodaysEntries = allVariations.flatMap(v => v.history || [])
-            .filter(h => h.date && new Date(h.date).toDateString() === new Date().toDateString());
-        
+
+        const todayStr = new Date().toDateString();
+        const targetEx = exercises.find(e => e.name === ex.name) || ex;
+        const todaysEntries = (targetEx.history || [])
+            .filter(h => h.date && new Date(h.date).toDateString() === todayStr);
+
         let nextSetNum = 1;
-        if (allTodaysEntries.length > 0) {
-            const maxSetNum = allTodaysEntries.reduce((max, h) => {
-                const num = parseInt(h.setNum) || 0;
+        if (todaysEntries.length > 0) {
+            const maxSetNum = todaysEntries.reduce((max, h) => {
+                const num = parseInt(h.setNum, 10) || 0;
                 return num > max ? num : max;
             }, 0);
             nextSetNum = maxSetNum + 1;
@@ -1760,6 +1776,11 @@ export function AppProvider({ children }) {
 
             const input = logs[key];
             if (!input) continue;
+
+            let normalizedNote = String(input.note || '').trim();
+            if (input.usedBand && !/\[band\]/i.test(normalizedNote)) {
+                normalizedNote = normalizedNote ? `[Band] ${normalizedNote}` : '[Band]';
+            }
 
             if (ex.timed) {
                 if (input.duration !== undefined && input.duration !== null && String(input.duration).trim() !== "") {
@@ -1776,7 +1797,7 @@ export function AppProvider({ children }) {
                             weight: input.weight || "",
                             range: assignedRange,
                             timed: true,
-                            note: input.note || "",
+                            note: normalizedNote,
                             setNum: nextSetNum
                         });
                     }
@@ -1803,7 +1824,7 @@ export function AppProvider({ children }) {
                             weight: input.weight || "",
                             range: range,
                             timed: false,
-                            note: input.note || "",
+                            note: normalizedNote,
                             setNum: nextSetNum
                         });
                     }

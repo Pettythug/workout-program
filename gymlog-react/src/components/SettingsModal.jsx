@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
+import { buildVariationNames } from '../utils/exerciseVariations';
 import SessionStatsModal from './SessionStatsModal';
 import { createPortal } from 'react-dom';
 
@@ -32,8 +33,15 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exCategory, setExCategory] = useState('');
     const [exLocation, setExLocation] = useState('Anywhere');
     const [exCreateStandard, setExCreateStandard] = useState(true);
+    const [exCreateBarbell, setExCreateBarbell] = useState(false);
+    const [exCreateDumbbell, setExCreateDumbbell] = useState(false);
+    const [exCreateBand, setExCreateBand] = useState(false);
+    const [exCreateCable, setExCreateCable] = useState(false);
     const [exCreateSingle, setExCreateSingle] = useState(false);
     const [exCreateAlt, setExCreateAlt] = useState(false);
+    const [exCreateOverhand, setExCreateOverhand] = useState(false);
+    const [exCreateUnderhand, setExCreateUnderhand] = useState(false);
+    const [excludedPreviewNames, setExcludedPreviewNames] = useState(() => new Set());
     const [exIsCircuit, setExIsCircuit] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -55,7 +63,62 @@ export default function SettingsModal({ isOpen, onClose }) {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
+    const existingExerciseNames = useMemo(() => {
+        return new Set((exercises || []).map(e => (e.name || '').trim().toLowerCase()));
+    }, [exercises]);
+
+    const generatedNames = useMemo(() => {
+        return buildVariationNames(exName, {
+            standard: exCreateStandard,
+            barbell: exCreateBarbell,
+            dumbbell: exCreateDumbbell,
+            band: exCreateBand,
+            cable: exCreateCable,
+            single: exCreateSingle,
+            alt: exCreateAlt,
+            overhand: exCreateOverhand,
+            underhand: exCreateUnderhand
+        });
+    }, [
+        exName,
+        exCreateStandard,
+        exCreateBarbell,
+        exCreateDumbbell,
+        exCreateBand,
+        exCreateCable,
+        exCreateSingle,
+        exCreateAlt,
+        exCreateOverhand,
+        exCreateUnderhand
+    ]);
+
+    const selectedPreviewNames = useMemo(() => {
+        return generatedNames.filter(name => !excludedPreviewNames.has(name));
+    }, [generatedNames, excludedPreviewNames]);
+
     if (!isOpen) return null;
+
+    const handleExNameChange = (value) => {
+        setExName(value);
+        setExcludedPreviewNames(new Set());
+    };
+
+    const toggleVariationOption = (setter) => (checked) => {
+        setter(checked);
+        setExcludedPreviewNames(new Set());
+    };
+
+    const togglePreviewName = (name) => {
+        setExcludedPreviewNames(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    };
 
     const handleAddPerson = () => {
         if (!newPerson.trim()) return;
@@ -89,17 +152,19 @@ export default function SettingsModal({ isOpen, onClose }) {
             alert("Please enter an exercise name.");
             return;
         }
+        if (selectedPreviewNames.length === 0) {
+            alert("Please select at least one exercise variation to create.");
+            return;
+        }
         const pin = prompt("Enter Admin PIN to create this exercise:");
         if (pin === null) return;
         try {
             await createExerciseMeta({
                 baseName: exName.trim(),
+                variationNames: selectedPreviewNames,
                 timed: exTimed,
                 category: exCategory,
                 location: exLocation,
-                createStandard: exCreateStandard,
-                createSingle: exCreateSingle,
-                createAlt: exCreateAlt,
                 isCircuit: exIsCircuit
             }, pin);
             alert("Exercise(s) created and syncing to backend.");
@@ -108,8 +173,15 @@ export default function SettingsModal({ isOpen, onClose }) {
             setExCategory('');
             setExLocation('Anywhere');
             setExCreateStandard(true);
+            setExCreateBarbell(false);
+            setExCreateDumbbell(false);
+            setExCreateBand(false);
+            setExCreateCable(false);
             setExCreateSingle(false);
             setExCreateAlt(false);
+            setExCreateOverhand(false);
+            setExCreateUnderhand(false);
+            setExcludedPreviewNames(new Set());
             setExIsCircuit(false);
         } catch (err) {
             alert("Failed to create exercise: " + err.message);
@@ -378,8 +450,8 @@ export default function SettingsModal({ isOpen, onClose }) {
                             <input 
                                 placeholder="Base Exercise Name..." 
                                 value={exName} 
-                                onChange={e => setExName(e.target.value)}
-                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                onChange={e => handleExNameChange(e.target.value)}
+                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                             />
                             
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -414,34 +486,100 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     Circuit Eligible
                                 </label>
                             </div>
-                            <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
-                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Generate Modalities</div>
-                                <div style={{ display: 'flex', gap: 16 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateStandard} 
-                                            onChange={e => setExCreateStandard(e.target.checked)}
-                                        />
-                                        Standard
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateAlt} 
-                                            onChange={e => setExCreateAlt(e.target.checked)}
-                                        />
-                                        Alternating
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateSingle} 
-                                            onChange={e => setExCreateSingle(e.target.checked)}
-                                        />
-                                        Singles
-                                    </label>
+                            <div style={{ marginTop: 4, padding: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Generate Variations
                                 </div>
+
+                                {[
+                                    {
+                                        label: 'Equipment',
+                                        items: [
+                                            { label: 'Standard', checked: exCreateStandard, setter: setExCreateStandard },
+                                            { label: 'Barbell', checked: exCreateBarbell, setter: setExCreateBarbell },
+                                            { label: 'Dumbbell', checked: exCreateDumbbell, setter: setExCreateDumbbell },
+                                            { label: 'Band', checked: exCreateBand, setter: setExCreateBand },
+                                            { label: 'Cable', checked: exCreateCable, setter: setExCreateCable }
+                                        ]
+                                    },
+                                    {
+                                        label: 'Execution',
+                                        items: [
+                                            { label: 'Singles', checked: exCreateSingle, setter: setExCreateSingle },
+                                            { label: 'Alternating', checked: exCreateAlt, setter: setExCreateAlt }
+                                        ]
+                                    },
+                                    {
+                                        label: 'Grip',
+                                        items: [
+                                            { label: 'Overhand', checked: exCreateOverhand, setter: setExCreateOverhand },
+                                            { label: 'Underhand', checked: exCreateUnderhand, setter: setExCreateUnderhand }
+                                        ]
+                                    }
+                                ].map(group => (
+                                    <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'var(--mono)', textTransform: 'uppercase' }}>
+                                            {group.label}
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
+                                            {group.items.map(opt => (
+                                                <label key={opt.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'white', fontSize: 12, cursor: 'pointer' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={opt.checked}
+                                                        onChange={e => toggleVariationOption(opt.setter)(e.target.checked)}
+                                                        style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                                                    />
+                                                    {opt.label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {generatedNames.length > 0 && (
+                                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 2 }}>
+                                        <div style={{ fontSize: 9, color: 'var(--accent)', fontFamily: 'var(--mono)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>
+                                            Live Preview ({selectedPreviewNames.length} selected)
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 160, overflowY: 'auto' }}>
+                                            {generatedNames.map(name => {
+                                                const isIncluded = !excludedPreviewNames.has(name);
+                                                const alreadyExists = existingExerciseNames.has(name.toLowerCase());
+                                                return (
+                                                    <label
+                                                        key={name}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            padding: '4px 6px',
+                                                            borderRadius: 6,
+                                                            background: isIncluded ? '#0c0c0c' : 'transparent',
+                                                            color: isIncluded ? 'white' : 'var(--muted)',
+                                                            fontSize: 11,
+                                                            fontFamily: 'var(--mono)',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isIncluded}
+                                                            onChange={() => togglePreviewName(name)}
+                                                            style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                                                        />
+                                                        <span style={{ textDecoration: isIncluded ? 'none' : 'line-through', flex: 1 }}>
+                                                            {name}
+                                                        </span>
+                                                        {alreadyExists && (
+                                                            <span style={{ fontSize: 9, color: 'var(--muted)' }}>(exists)</span>
+                                                        )}
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <button className="btn-success" onClick={handleCreateExercise} style={{ marginTop: 8, width: '100%' }}>

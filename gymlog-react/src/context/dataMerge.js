@@ -1,4 +1,9 @@
 import { MACHINE_IMAGE_MAP } from '../utils/imageMapping';
+import {
+    calculateBestForExercise,
+    isBandTaggedEntry,
+    isDedicatedBandExercise
+} from '../utils/exerciseVariations';
 
 function getImageFile(name) {
     if (!name) return null;
@@ -8,6 +13,60 @@ function getImageFile(name) {
 }
 
 const cleanName = n => (n || '').trim().toLowerCase();
+
+function mergeExerciseHistory(sheetHistory, localHistory) {
+    const mergedHistory = [...sheetHistory];
+    const todayStr = new Date().toDateString();
+
+    (localHistory || []).forEach(lh => {
+        const isToday = lh.date && new Date(lh.date).toDateString() === todayStr;
+        if (!isToday) return;
+
+        const isDuplicate = sheetHistory.some(sh =>
+            sh.person === lh.person &&
+            String(sh.reps) === String(lh.reps) &&
+            String(sh.weight) === String(lh.weight)
+        );
+        if (!isDuplicate) {
+            mergedHistory.push(lh);
+        }
+    });
+
+    return mergedHistory;
+}
+
+function resolveMergedBest(exerciseName, mergedHistory, sheetBest, makeBest) {
+    const fallbackBest = sheetBest || makeBest();
+    if (isDedicatedBandExercise(exerciseName) || !mergedHistory.some(h => isBandTaggedEntry(h))) {
+        return fallbackBest;
+    }
+
+    const computedBest = calculateBestForExercise({ name: exerciseName, history: mergedHistory });
+    const mergedBest = makeBest();
+    const personKeys = new Set([
+        ...Object.keys(mergedBest),
+        ...Object.keys(fallbackBest),
+        ...Object.keys(computedBest)
+    ]);
+
+    personKeys.forEach(personKey => {
+        const computedForPerson = computedBest[personKey];
+        const hasComputedEntries = computedForPerson && Object.values(computedForPerson).some(Boolean);
+        const personHasBandEntries = mergedHistory.some(
+            h => cleanName(h.person) === personKey && isBandTaggedEntry(h)
+        );
+
+        if (hasComputedEntries) {
+            mergedBest[personKey] = computedForPerson;
+        } else if (!personHasBandEntries && fallbackBest[personKey]) {
+            mergedBest[personKey] = fallbackBest[personKey];
+        } else {
+            mergedBest[personKey] = { r1_3: null, r4_7: null, r8_12: null, r13_plus: null };
+        }
+    });
+
+    return mergedBest;
+}
 
 export function mergeFromSheets(localExercises, sheetsData, localPeople = [], localLocations = []) {
     const { history: allHistory = [], best: allBest = {}, people: sheetPeople, exercises: sheetExercises, locations: sheetDerivedLocs } = sheetsData;
@@ -39,23 +98,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
             }
         }
 
-        const localHistory = ex.history || [];
-        const mergedHistory = [...sheetHistory];
-        
-        localHistory.forEach(lh => {
-            // Check if local history entry is from today
-            const isToday = lh.date && new Date(lh.date).toDateString() === new Date().toDateString();
-            if (!isToday) return;
-
-            const isDuplicate = sheetHistory.some(sh => 
-                sh.person === lh.person && 
-                String(sh.reps) === String(lh.reps) && 
-                String(sh.weight) === String(lh.weight)
-            );
-            if (!isDuplicate) {
-                mergedHistory.push(lh);
-            }
-        });
+        const mergedHistory = mergeExerciseHistory(sheetHistory, ex.history);
 
         return {
             ...ex,
@@ -65,7 +108,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
             location:  sheetExInfo?.location  ?? ex.location  ?? "Anywhere",
             isCircuit: sheetExInfo?.isCircuit ?? ex.isCircuit ?? false,
             history:   mergedHistory,
-            best:      sheetBest || makeBest(),
+            best:      resolveMergedBest(ex.name, mergedHistory, sheetBest, makeBest),
         };
     });
 
@@ -86,22 +129,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
                     }
                 }
 
-                const localHistory = sheetEx.history || [];
-                const mergedHistory = [...sheetHistory];
-                
-                localHistory.forEach(lh => {
-                    const isToday = lh.date && new Date(lh.date).toDateString() === new Date().toDateString();
-                    if (!isToday) return;
-
-                    const isDuplicate = sheetHistory.some(sh => 
-                        sh.person === lh.person && 
-                        String(sh.reps) === String(lh.reps) && 
-                        String(sh.weight) === String(lh.weight)
-                    );
-                    if (!isDuplicate) {
-                        mergedHistory.push(lh);
-                    }
-                });
+                const mergedHistory = mergeExerciseHistory(sheetHistory, sheetEx.history);
 
                 merged.push({
                     ...sheetEx,
@@ -110,7 +138,7 @@ export function mergeFromSheets(localExercises, sheetsData, localPeople = [], lo
                     category: sheetEx.category ?? "",
                     location: sheetEx.location ?? "Anywhere",
                     history: mergedHistory,
-                    best: sheetBest || makeBest(),
+                    best: resolveMergedBest(sheetEx.name, mergedHistory, sheetBest, makeBest),
                 });
             }
         });
