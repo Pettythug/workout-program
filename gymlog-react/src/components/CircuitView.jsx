@@ -26,10 +26,10 @@ const CATEGORY_ORDER = [
 export default function CircuitView() {
     const { logSet, deleteHistory, saveExercise, sheetsPost } = useGymAPI();
     const { 
-        exercises, people, activePeople, loading, addSetToLocalHistory, 
+        exercises, people, activePeople, activeLocation, loading, addSetToLocalHistory, 
         deleteSetFromLocalHistory, logExerciseSet, setExerciseDone, 
         setExerciseSkipped, resetExerciseStatus, clearAllExerciseStatus, 
-        updateExerciseInLocalState,
+        addExerciseToLocalState, updateExerciseInLocalState,
         timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
         sessionStartTime, startSession, resetSessionTime,
@@ -278,11 +278,18 @@ export default function CircuitView() {
     };
 
     const handleSwap = async (index, targetEx, isNew) => {
+        let finalTargetEx = targetEx;
         if (isNew) {
             const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
             if (pin === null) return;
+            const currentEx = circuit[index];
+            finalTargetEx = {
+                ...targetEx,
+                location: targetEx.location || ((activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (currentEx?.location || 'Anywhere'))
+            };
             try {
-                await saveExercise(targetEx, pin);
+                await saveExercise(finalTargetEx, pin);
+                addExerciseToLocalState(finalTargetEx);
             } catch (e) {
                 console.error("Error saving new swap exercise to backend", e);
                 alert("Failed to save swap exercise: " + e.message);
@@ -292,11 +299,11 @@ export default function CircuitView() {
 
         const oldName = circuit[index].name;
         const newCircuit = [...circuit];
-        newCircuit[index] = targetEx;
+        newCircuit[index] = finalTargetEx;
         
         const newMap = { ...completedMap };
         if (newMap[oldName]) {
-            newMap[targetEx.name] = newMap[oldName];
+            newMap[finalTargetEx.name] = newMap[oldName];
             delete newMap[oldName];
         }
         

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '../context/AppContext';
+import { useAppContext, resolveAccessoryItem } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
 import ExerciseCard from './ExerciseCard';
 import WarmUpCard from './WarmUpCard';
@@ -168,13 +168,21 @@ export default function FullBodyView() {
 
     const resolvedAccessories = useMemo(() => {
         if (!accessoriesList || !groupedExercises) return [];
-        return accessoriesList.map(item => {
-            const baseName = item && item.baseName ? item.baseName : item;
-            if (!baseName) return null;
-            const baseKey = baseName.toLowerCase();
-            return groupedExercises[baseKey] || null;
-        }).filter(Boolean);
-    }, [groupedExercises, accessoriesList]);
+        return accessoriesList
+            .map(item => resolveAccessoryItem(item, exercises, groupedExercises))
+            .filter(Boolean);
+    }, [exercises, groupedExercises, accessoriesList]);
+
+    useEffect(() => {
+        if (!exercises || exercises.length === 0 || !accessoriesList || accessoriesList.length === 0) return;
+        const valid = accessoriesList.filter(
+            item => resolveAccessoryItem(item, exercises, groupedExercises) !== null
+        );
+        if (valid.length !== accessoriesList.length) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setAccessoriesList(valid);
+        }
+    }, [exercises, groupedExercises, accessoriesList]);
 
     const handleLogSetSaved = () => {
         startRestTimer(parseInt(timerMode, 10));
