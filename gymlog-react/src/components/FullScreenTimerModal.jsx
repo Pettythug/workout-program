@@ -140,14 +140,11 @@ export default function FullScreenTimerModal() {
         startRestTimer(timerSeconds + 30);
     };
 
-    const handleSkipOrReset = (e) => {
+    const handleResetStopwatch = (e) => {
         e.stopPropagation();
         clearAutoClose();
         setIsCompleteFlash(false);
         resetTimer();
-        if (timerIsCountdown) {
-            closeExpandedTimer();
-        }
     };
 
     const clockColor = timerIsCountdown
@@ -319,23 +316,25 @@ export default function FullScreenTimerModal() {
                         +30S
                     </button>
                 )}
-                <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={handleSkipOrReset}
-                    style={{
-                        flex: '1 1 110px',
-                        minHeight: 54,
-                        fontSize: 15,
-                        fontWeight: 700,
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        background: 'var(--surface)',
-                        color: 'var(--text)'
-                    }}
-                >
-                    {timerIsCountdown ? 'SKIP' : '🔄 RESET'}
-                </button>
+                {!timerIsCountdown && (
+                    <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={handleResetStopwatch}
+                        style={{
+                            flex: '1 1 110px',
+                            minHeight: 54,
+                            fontSize: 15,
+                            fontWeight: 700,
+                            borderRadius: 12,
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            color: 'var(--text)'
+                        }}
+                    >
+                        🔄 RESET
+                    </button>
+                )}
             </div>
         </div>,
         document.body

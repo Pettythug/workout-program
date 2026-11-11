@@ -29,7 +29,7 @@ cmd /c npm run build
 2. **Full-Screen Overlay (`FullScreenTimerModal.jsx` + `App.jsx`):**
    - Verify `<FullScreenTimerModal />` is mounted once in `App.jsx` and uses `createPortal(..., document.body)`.
    - Verify `navigator.wakeLock?.request('screen')` is acquired when expanded, re-acquired on `visibilitychange`, and cleanly released on close/unmount.
-   - Verify `+30S`, `PAUSE/START`, `SKIP/RESET`, and top-right `✕` controls stop event propagation cleanly.
+   - Verify `+30S` (Countdown only), `PAUSE/START`, `RESET` (Stopwatch mode ONLY — confirm NO `SKIP` button renders in `FullScreenTimerModal.jsx`), and top-right `✕` controls stop event propagation cleanly.
    - Verify `"REST COMPLETE!"` flash and 2000ms auto-return trigger ONLY on live transition (`prevSecondsRef.current > 0 && timerSeconds === 0 && !timerIsRunning && timerIsCountdown`), and tapping `+30S` or `✕` cancels the pending auto-close timeout.
    - Verify `Header.jsx` elapsed session duration pill (`⏱️ Xm`) remains untouched and opens `SessionStatsModal`.
 3. **Shared `TimerWidget.jsx` & `StickyRestBanner.jsx`:**

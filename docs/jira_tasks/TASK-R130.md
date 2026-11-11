@@ -7,7 +7,7 @@
 ## Overview
 1. **Expandable Full-Screen Rest / Stopwatch Timer:**
    - Currently, the Rest Countdown / Stopwatch readout inside `PlanView.jsx`, `FullBodyView.jsx`, `CircuitView.jsx`, and `StickyRestBanner.jsx` is small (`13px–24px`), making it hard to read from across a gym floor or rack.
-   - Tapping either the inline Timer Widget readout or the `StickyRestBanner` timer readout should open a high-contrast, full-screen timer overlay (`FullScreenTimerModal.jsx`) with big readable digits, essential controls (`+30S`, `PAUSE/START`, `SKIP/RESET`, top-right `✕`), automatic Screen Wake Lock while open, and a ~2-second `"REST COMPLETE"` flash before automatically returning to the active exercise card when countdown reaches `0:00`.
+   - Tapping either the inline Timer Widget readout or the `StickyRestBanner` timer readout should open a high-contrast, full-screen timer overlay (`FullScreenTimerModal.jsx`) with big readable digits, essential controls (`+30S`, `PAUSE/START`, `RESET` in stopwatch mode only, top-right `✕`), automatic Screen Wake Lock while open, and a ~2-second `"REST COMPLETE"` flash before automatically returning to the active exercise card when countdown reaches `0:00`.
    - Leave the top `Header.jsx` elapsed session pill (`⏱️ 12m`) opening `SessionStatsModal` unchanged.
    - Deduplicate the identical 32-line inline Timer Widget across `PlanView.jsx`, `FullBodyView.jsx`, and `CircuitView.jsx` into a single shared `TimerWidget.jsx` component.
 
@@ -47,10 +47,11 @@ Create `gymlog-react/src/components/FullScreenTimerModal.jsx` (rendered via `cre
    - Dark backdrop (`rgba(12, 12, 12, 0.97)`, `zIndex: 3000`) matching the app's CSS tokens (`--accent`, `--mono`, `--surface`, `--border`). Tapping the empty backdrop (outside buttons) closes back to the workout.
    - Subtle top bar with mode label (`⏳ REST COUNTDOWN` or `⏱️ STOPWATCH`) and crisp top-right **`✕`** close button.
    - Huge clock display (`fontSize: 'clamp(68px, 22vw, 152px)'`, `fontFamily: 'var(--mono)'`, `fontWeight: 700`): turns `#ef4444` at `<= 10s` in countdown mode, `#38bdf8` in stopwatch mode, `var(--accent)` otherwise.
-3. **Minimal Essential Controls (stopPropagation on buttons):**
+3. **Minimal Essential Controls (stopPropagation on buttons — NO `SKIP` button in full-screen modal):**
    - **`PAUSE` / `START`** button (`toggleTimer`)
    - **`+30S`** button (shown when `timerIsCountdown` is true; calling `startRestTimer(timerSeconds + 30)`)
-   - **`SKIP`** (when `timerIsCountdown`, calls `resetTimer()` and closes full-screen) or **`RESET`** (when stopwatch mode, calls `resetTimer()`)
+   - **`RESET`** button (shown ONLY when `!timerIsCountdown` — Stopwatch mode — calling `resetTimer()`; do NOT render a `SKIP` button in Countdown mode inside `FullScreenTimerModal.jsx`)
+   - Clean up unused `handleSkipOrReset` logic into a simple `handleResetStopwatch` handler.
 4. **`0:00` Flash & Auto-Return Guard:**
    - Track `prevSecondsRef` and an `isCompleteFlash` state + `autoCloseTimeoutRef`.
    - Trigger `"🚨 REST COMPLETE!"` flash ONLY on the live transition `prevSecondsRef.current > 0 && timerSeconds === 0 && !timerIsRunning && timerIsCountdown` (never falsely triggering when opening Stopwatch at `0:00`).
