@@ -1,6 +1,6 @@
 // Handoff Verification Test OK
 /* eslint-disable react-refresh/only-export-components, react-hooks/set-state-in-effect, no-unused-vars */
-import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
+import React, { createContext, useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { mergeFromSheets } from './dataMerge';
 
@@ -191,29 +191,163 @@ export function AppProvider({ children }) {
     const [timerSeconds, setTimerSeconds] = useState(0);
     const [timerIsRunning, setTimerIsRunning] = useState(false);
     const [timerIsCountdown, setTimerIsCountdown] = useState(false);
+    const [isTimerExpanded, setIsTimerExpanded] = useState(false);
+    const [timerSound, setTimerSound] = useState(() => {
+        return localStorage.getItem('gymlog_timer_sound') || 'gym-chime';
+    });
+    const [timerVibrate, setTimerVibrate] = useState(() => {
+        return localStorage.getItem('gymlog_timer_vibrate') !== 'false';
+    });
 
     // Wall-clock timestamp refs for resilient timekeeping across lock screens and backgrounding
     const targetEndTimeRef = useRef(null);
     const startTimeRef = useRef(null);
+    const audioCtxRef = useRef(null);
+    const timerSoundRef = useRef(timerSound);
+    const timerVibrateRef = useRef(timerVibrate);
     const completionSyncTokenRef = useRef(0);
     const inFlightBatchPromiseRef = useRef(null);
     const isFlushingQueueRef = useRef(false);
 
-    const playBeepSound = () => {
+    useEffect(() => {
+        timerSoundRef.current = timerSound;
+        localStorage.setItem('gymlog_timer_sound', timerSound);
+    }, [timerSound]);
+
+    useEffect(() => {
+        timerVibrateRef.current = timerVibrate;
+        localStorage.setItem('gymlog_timer_vibrate', String(timerVibrate));
+    }, [timerVibrate]);
+
+    useEffect(() => {
+        return () => {
+            if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+                audioCtxRef.current.close().catch(() => {});
+                audioCtxRef.current = null;
+            }
+        };
+    }, []);
+
+    const getAudioContext = useCallback(() => {
+        if (typeof window === 'undefined') return null;
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+            audioCtxRef.current = new AudioCtx();
+        }
+        return audioCtxRef.current;
+    }, []);
+
+    const unlockAudio = useCallback(() => {
         try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.frequency.value = 800; // 800Hz
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.15);
+            const ctx = getAudioContext();
+            if (!ctx) return null;
+            if (ctx.state === 'suspended') {
+                ctx.resume().catch(() => {});
+            }
+            const buffer = ctx.createBuffer(1, 1, 22050);
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start(0);
+            return ctx;
+        } catch (e) {
+            return null;
+        }
+    }, [getAudioContext]);
+
+    const scheduleTone = (ctx, { freq, type = 'sine', startOffset = 0, duration = 0.2, peakGain = 0.6, decay = 'exp' }) => {
+        const startTime = ctx.currentTime + startOffset;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0.0001, startTime);
+        gain.gain.linearRampToValueAtTime(peakGain, startTime + 0.012);
+
+        if (decay === 'exp') {
+            gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+        } else {
+            gain.gain.setValueAtTime(peakGain, startTime + Math.max(0.015, duration - 0.015));
+            gain.gain.linearRampToValueAtTime(0.0001, startTime + duration);
+        }
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.onended = () => {
+            try {
+                osc.disconnect();
+                gain.disconnect();
+            } catch (e) {
+                // ignore disconnect errors
+            }
+        };
+        osc.start(startTime);
+        osc.stop(startTime + duration + 0.02);
+    };
+
+    const playAlertPreset = useCallback((ctx, mode) => {
+        if (mode === 'silent') return;
+
+        if (mode === 'boxing-bell') {
+            scheduleTone(ctx, { freq: 1046, type: 'sine', startOffset: 0, duration: 0.95, peakGain: 0.68, decay: 'exp' });
+            scheduleTone(ctx, { freq: 1568, type: 'triangle', startOffset: 0, duration: 0.75, peakGain: 0.42, decay: 'exp' });
+            return;
+        }
+
+        if (mode === 'urgent-alarm') {
+            const offsets = [0, 0.28, 0.56];
+            offsets.forEach(offset => {
+                scheduleTone(ctx, { freq: 988, type: 'square', startOffset: offset, duration: 0.1, peakGain: 0.55, decay: 'linear' });
+                scheduleTone(ctx, { freq: 784, type: 'square', startOffset: offset + 0.11, duration: 0.11, peakGain: 0.55, decay: 'linear' });
+            });
+            return;
+        }
+
+        if (mode === 'soft-beep') {
+            scheduleTone(ctx, { freq: 800, type: 'sine', startOffset: 0, duration: 0.15, peakGain: 0.55, decay: 'linear' });
+            return;
+        }
+
+        // Default: 'gym-chime' (3 ascending bright chimes: 880Hz -> 1108Hz -> 1318Hz)
+        scheduleTone(ctx, { freq: 880, type: 'triangle', startOffset: 0, duration: 0.28, peakGain: 0.6, decay: 'exp' });
+        scheduleTone(ctx, { freq: 1108, type: 'triangle', startOffset: 0.16, duration: 0.28, peakGain: 0.62, decay: 'exp' });
+        scheduleTone(ctx, { freq: 1318, type: 'triangle', startOffset: 0.32, duration: 0.45, peakGain: 0.66, decay: 'exp' });
+    }, []);
+
+    const playBeepSound = useCallback((overrideSound = null) => {
+        try {
+            const mode = overrideSound || timerSoundRef.current;
+            if (mode === 'silent') return;
+
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            if (ctx.state === 'suspended') {
+                unlockAudio();
+                ctx.resume()
+                    .then(() => {
+                        playAlertPreset(ctx, mode);
+                    })
+                    .catch(() => {});
+                return;
+            }
+
+            playAlertPreset(ctx, mode);
         } catch (e) {
             console.error("Beep error:", e);
         }
-    };
+    }, [getAudioContext, unlockAudio, playAlertPreset]);
+
+    const openExpandedTimer = useCallback(() => {
+        unlockAudio();
+        setIsTimerExpanded(true);
+    }, [unlockAudio]);
+
+    const closeExpandedTimer = useCallback(() => {
+        setIsTimerExpanded(false);
+    }, []);
 
     // Sync timer mode to localStorage and set initial time
     useEffect(() => {
@@ -239,16 +373,23 @@ export function AppProvider({ children }) {
         const updateFromTimestamp = () => {
             if (timerIsCountdown && targetEndTimeRef.current) {
                 const remaining = Math.max(0, Math.ceil((targetEndTimeRef.current - Date.now()) / 1000));
-                setTimerSeconds(remaining);
+                setTimerSeconds(prev => (prev === remaining ? prev : remaining));
                 if (remaining <= 0) {
                     setTimerIsRunning(false);
                     targetEndTimeRef.current = null;
                     localStorage.removeItem('gym_timer_target_end');
                     playBeepSound();
+                    if (timerVibrateRef.current && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                        try {
+                            navigator.vibrate([250, 100, 250]);
+                        } catch (e) {
+                            // Ignore vibrate restrictions
+                        }
+                    }
                 }
             } else if (!timerIsCountdown && startTimeRef.current) {
                 const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
-                setTimerSeconds(elapsed);
+                setTimerSeconds(prev => (prev === elapsed ? prev : elapsed));
             }
         };
 
@@ -267,7 +408,7 @@ export function AppProvider({ children }) {
             document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
             window.removeEventListener('focus', handleVisibilityOrFocus);
         };
-    }, [timerIsRunning, timerIsCountdown]);
+    }, [timerIsRunning, timerIsCountdown, playBeepSound]);
 
     const formatTimerTime = (totalSeconds) => {
         const mins = Math.floor(totalSeconds / 60);
@@ -276,6 +417,7 @@ export function AppProvider({ children }) {
     };
 
     const toggleTimer = () => {
+        unlockAudio();
         setTimerIsRunning(prev => {
             const next = !prev;
             if (next) {
@@ -318,6 +460,7 @@ export function AppProvider({ children }) {
     };
 
     const startRestTimer = (seconds) => {
+        unlockAudio();
         if (!isNaN(seconds) && seconds > 0) {
             const target = Date.now() + seconds * 1000;
             targetEndTimeRef.current = target;
@@ -1937,6 +2080,15 @@ export function AppProvider({ children }) {
         setTimerIsRunning,
         timerIsCountdown,
         setTimerIsCountdown,
+        isTimerExpanded,
+        setIsTimerExpanded,
+        openExpandedTimer,
+        closeExpandedTimer,
+        timerSound,
+        setTimerSound,
+        timerVibrate,
+        setTimerVibrate,
+        playBeepSound,
         formatTimerTime,
         toggleTimer,
         resetTimer,
