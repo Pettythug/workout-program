@@ -12,7 +12,8 @@ export default function SettingsModal({ isOpen, onClose }) {
         createExerciseMeta, removeExerciseFromLocalState, clearAllExerciseStatus,
         workoutDay, fullBodyWorkoutDay, circuitWorkoutDay,
         updateWorkoutDay, updateFullBodyWorkoutDay, updateCircuitWorkoutDay,
-        verifyUserPin, resetUserPinWithAdmin
+        verifyUserPin, resetUserPinWithAdmin,
+        timerSound, setTimerSound, timerVibrate, setTimerVibrate, playBeepSound
     } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
@@ -220,6 +221,40 @@ export default function SettingsModal({ isOpen, onClose }) {
                     >
                         📊 Workout Time & Averages
                     </button>
+                </div>
+
+                <div style={{ marginBottom: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', marginBottom: 8 }}>REST TIMER ALERT</label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                        <select
+                            value={timerSound}
+                            onChange={e => setTimerSound(e.target.value)}
+                            style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box', cursor: 'pointer' }}
+                        >
+                            <option value="gym-chime">🔔 Gym Chime (Default)</option>
+                            <option value="boxing-bell">🥊 Boxing Bell</option>
+                            <option value="urgent-alarm">🚨 Urgent Alarm</option>
+                            <option value="soft-beep">🔈 Soft Beep</option>
+                            <option value="silent">🔇 Silent</option>
+                        </select>
+                        <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => playBeepSound(timerSound)}
+                            style={{ flexShrink: 0, padding: '10px 14px' }}
+                        >
+                            🔊 TEST
+                        </button>
+                    </div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text)', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={timerVibrate}
+                            onChange={e => setTimerVibrate(e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                        />
+                        Vibrate on completion
+                    </label>
                 </div>
 
                 <div style={{ marginBottom: 24 }}>

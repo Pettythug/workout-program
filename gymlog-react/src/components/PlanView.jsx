@@ -8,6 +8,7 @@ import SettingsModal from './SettingsModal';
 import HelpDrawer from './HelpDrawer';
 import SessionStatsModal from './SessionStatsModal';
 import GuestUpgradeModal from './GuestUpgradeModal';
+import TimerWidget from './TimerWidget';
 
 export default function PlanView() {
     const { 
@@ -15,8 +16,7 @@ export default function PlanView() {
         locations, activeLocation, updateActiveLocation, exerciseStatus, 
         resetExerciseStatus, clearAllExerciseStatus,
         sessionStartTime, resetSessionTime, completeWorkoutSession, undoWorkoutSession, deviceOwner,
-        timerMode, setTimerMode, timerSeconds, timerIsRunning, timerIsCountdown,
-        formatTimerTime, toggleTimer, resetTimer, startRestTimer,
+        timerMode, setTimerMode, timerIsRunning, startRestTimer,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
     } = useAppContext();
     // Push on odd days (1, 3, 5...), Pull on even days (2, 4, 6...)
@@ -474,39 +474,7 @@ export default function PlanView() {
                         </div>
 
                         {/* Timer Widget */}
-                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', background: '#111', padding: 12, borderRadius: 12, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                            <div style={{ flex: '1 1 120px' }}>
-                                <div style={{ fontSize: 9, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                    {timerIsCountdown ? '⏳ REST COUNTDOWN' : '⏱️ STOPWATCH'}
-                                </div>
-                                <div style={{ fontSize: 24, fontWeight: 'bold', fontFamily: 'var(--mono)', color: timerIsCountdown && timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)', transition: 'color 0.3s' }}>
-                                    {formatTimerTime(timerSeconds)}
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)', background: timerIsRunning ? 'rgba(239, 68, 68, 0.1)' : 'transparent', color: timerIsRunning ? '#ef4444' : 'white' }} onClick={toggleTimer}>
-                                    {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
-                                </button>
-                                <button className="btn-ghost" style={{ padding: '6px 10px', fontSize: 11, border: '1px solid var(--border)' }} onClick={resetTimer}>
-                                    🔄 RESET
-                                </button>
-                                <select 
-                                    value={timerMode} 
-                                    onChange={e => setTimerMode(e.target.value)}
-                                    style={{ background: '#000', border: '1px solid var(--border)', color: 'white', fontSize: 11, padding: 6, borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                    <option value="stopwatch">⏱️ STOPWATCH</option>
-                                    <option value="30">⏳ 30S REST</option>
-                                    <option value="45">⏳ 45S REST</option>
-                                    <option value="60">⏳ 60S REST</option>
-                                    <option value="90">⏳ 90S REST</option>
-                                    <option value="120">⏳ 2M REST</option>
-                                    <option value="180">⏳ 3M REST</option>
-                                    <option value="240">⏳ 4M REST</option>
-                                    <option value="300">⏳ 5M REST</option>
-                                </select>
-                            </div>
-                        </div>
+                        <TimerWidget />
 
                         <div id="exerciseList">
                             {showWarmUp ? (

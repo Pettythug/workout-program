@@ -6,6 +6,7 @@ import CircuitView from './components/CircuitView';
 import Header from './components/Header';
 import StickyRestBanner from './components/StickyRestBanner';
 import WelcomeModal from './components/WelcomeModal';
+import FullScreenTimerModal from './components/FullScreenTimerModal';
 import { AppProvider } from './context/AppContext';
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
     <AppProvider>
       <HashRouter>
         <WelcomeModal />
+        <FullScreenTimerModal />
         <div className="sticky-header-container" style={{ position: 'sticky', top: 0, zIndex: 999, background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
           <Header />
           <StickyRestBanner />

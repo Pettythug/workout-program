@@ -5,7 +5,7 @@ export default function StickyRestBanner() {
     const {
         timerIsRunning, timerIsCountdown, timerSeconds,
         formatTimerTime, toggleTimer, resetTimer, startRestTimer,
-        timerMode
+        timerMode, openExpandedTimer
     } = useAppContext();
 
     const isCountdownActive = timerIsCountdown && (timerSeconds > 0 || timerIsRunning);
@@ -92,44 +92,59 @@ export default function StickyRestBanner() {
     }
 
     return (
-        <div style={{
-            width: '100%',
-            padding: '6px 12px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderTop: '1px solid var(--border)',
-            background: 'var(--surface)',
-            boxSizing: 'border-box',
-            transform: 'translateZ(0)',
-            willChange: 'transform',
-            gap: '8px'
-        }}>
-            <div style={{
-                fontSize: '13px',
-                fontWeight: '700',
-                fontFamily: 'var(--mono)',
-                color: timerIsCountdown 
-                    ? (timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)')
-                    : '#38bdf8',
-                letterSpacing: '0.02em',
+        <div
+            onClick={openExpandedTimer}
+            style={{
+                width: '100%',
+                padding: '6px 12px',
                 display: 'flex',
+                justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: '6px',
-                minWidth: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-            }}>
-                {timerIsCountdown 
-                    ? `⏳ REST ${formatTimerTime(timerSeconds)}` 
-                    : `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}`}
+                borderTop: '1px solid var(--border)',
+                background: 'var(--surface)',
+                boxSizing: 'border-box',
+                transform: 'translateZ(0)',
+                willChange: 'transform',
+                gap: '8px',
+                cursor: 'pointer'
+            }}
+        >
+            <div
+                title="Tap to expand timer full-screen"
+                style={{
+                    fontSize: '13px',
+                    fontWeight: '700',
+                    fontFamily: 'var(--mono)',
+                    color: timerIsCountdown 
+                        ? (timerSeconds <= 10 && timerSeconds > 0 ? '#ef4444' : 'var(--accent)')
+                        : '#38bdf8',
+                    letterSpacing: '0.02em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flex: 1,
+                    minWidth: 0,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    cursor: 'pointer'
+                }}
+            >
+                <span>
+                    {timerIsCountdown 
+                        ? `⏳ REST ${formatTimerTime(timerSeconds)}` 
+                        : `⏱️ STOPWATCH ${formatTimerTime(timerSeconds)}`}
+                </span>
+                <span style={{ fontSize: '12px', opacity: 0.7 }} aria-hidden="true">⛶</span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                 <button
                     className="btn-ghost"
                     style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
-                    onClick={toggleTimer}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTimer();
+                    }}
                 >
                     {timerIsRunning ? '⏸️ PAUSE' : '▶️ START'}
                 </button>
@@ -138,14 +153,20 @@ export default function StickyRestBanner() {
                         <button
                             className="btn-ghost"
                             style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
-                            onClick={() => startRestTimer(timerSeconds + 30)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                startRestTimer(timerSeconds + 30);
+                            }}
                         >
                             +30S
                         </button>
                         <button
                             className="btn-ghost"
                             style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
-                            onClick={resetTimer}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                resetTimer();
+                            }}
                         >
                             SKIP
                         </button>
@@ -154,7 +175,10 @@ export default function StickyRestBanner() {
                     <button
                         className="btn-ghost"
                         style={{ padding: '4px 8px', fontSize: '11px', border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}
-                        onClick={resetTimer}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            resetTimer();
+                        }}
                     >
                         RESET
                     </button>
