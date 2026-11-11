@@ -79,6 +79,12 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Updated `deleteExercise`, `saveSettings`, and `saveExerciseNote` in `useGymAPI.js` from unsupported `{ action: "exec" }` payloads to direct backend actions matching `Combined_AppScript_v2.gs`.
   - Verified `exercise: name` parameter alignment for `gymlog_handleDeleteExercise` and updated JSDoc comments.
 
+### Epic 9: User-Requested Upgrades (Batch 2)
+- [x] **Story 9.1 (`TASK-R129`): Fix "Got More in the Tank?" Silent Drops, Auto-Expand & Custom Swap Local Sync**:
+  - Added shared `resolveAccessoryItem()` in `AppContext.jsx` and stale cache pruning in `PlanView.jsx` & `FullBodyView.jsx` so `(Single)`/`(Alt)`/`(DB)`/`(Cable)` accessories render immediately instead of disappearing.
+  - Updated `AccessoryBlock.jsx` & `ExerciseCard.jsx` (`defaultOpen`) to deterministically filter unused candidates and auto-open newly added/rerolled Bonus cards on first click.
+  - Added `addExerciseToLocalState()` in `AppContext.jsx` so custom Swap exercises saved via `ExerciseCard.jsx` or `CircuitView.jsx` enter local `exercises` state immediately.
+
 ---
 
 ## 🎯 Active & Upcoming Backlog
@@ -96,9 +102,6 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Optimize the 131 uncompressed camera photos in `gymlog-react/public/images/` (reducing size from 470 MB to <25 MB) and add `loading="lazy"` to eliminate ~1 GB Vercel deployment bloat.
 
 ### Priority 2: User-Requested Upgrades (Batch 2 — Easiest-to-Hardest Order)
-- [ ] **Story 9.1 (`TASK-R129`): Fix "Got More in the Tank?" Silent Drops, Auto-Expand & Custom Swap Local Sync**:
-  - Fix `resolvedAccessories` in `PlanView.jsx` & `FullBodyView.jsx` so `(Single)`/`(Alt)` accessories render immediately instead of getting filtered out and left orphaned in `localStorage`.
-  - Auto-open newly added Bonus cards in `AccessoryBlock.jsx` and ensure custom exercises created via `🔄 SWAP` in `ExerciseCard.jsx` immediately enter local `exercises` state.
 - [ ] **Story 9.2 (`TASK-R130`): Expandable Full-Screen Rest/Stopwatch Timer & Gym Alert Audio**:
   - Tapping the inline Timer Widget or `StickyRestBanner.jsx` opens a full-screen readable timer with `+30s`, `Pause/Start`, `Skip/Reset`, `✕`, automatic Screen Wake Lock, and a `0:00` flash before auto-returning to the exercise card.
   - Add louder, selectable Web Audio gym chime/bell alert options + optional vibration in Settings (building cleanly on `AudioContext` leak prevention).
