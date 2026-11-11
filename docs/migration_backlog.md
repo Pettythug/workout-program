@@ -84,6 +84,9 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Added shared `resolveAccessoryItem()` in `AppContext.jsx` and stale cache pruning in `PlanView.jsx` & `FullBodyView.jsx` so `(Single)`/`(Alt)`/`(DB)`/`(Cable)` accessories render immediately instead of disappearing.
   - Updated `AccessoryBlock.jsx` & `ExerciseCard.jsx` (`defaultOpen`) to deterministically filter unused candidates and auto-open newly added/rerolled Bonus cards on first click.
   - Added `addExerciseToLocalState()` in `AppContext.jsx` so custom Swap exercises saved via `ExerciseCard.jsx` or `CircuitView.jsx` enter local `exercises` state immediately.
+- [x] **Story 9.2 (`TASK-R130`): Expandable Full-Screen Rest/Stopwatch Timer & Gym Alert Audio**:
+  - Created `FullScreenTimerModal.jsx` (Wake Lock, huge digits, `PAUSE/START`, `+30S` for Countdown, `RESET` for Stopwatch, `✕`/backdrop close, 2s `"REST COMPLETE!"` flash + auto-return) and shared `TimerWidget.jsx` across `Plan`, `Full Body`, and `Circuit`.
+  - Added singleton `audioCtxRef`, user-gesture `unlockAudio()`, whole-second interval guard, selectable Web Audio presets (`gym-chime`, `boxing-bell`, `urgent-alarm`, `soft-beep`, `silent`), `TEST` button, and vibration toggle in `SettingsModal.jsx`.
 
 ---
 
@@ -92,8 +95,8 @@ This document is the official tracking backlog for the GymLog React Migration pr
 ### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
 - [ ] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
   - Include `setNum` in `mergeExerciseLists` deduplication (`dataMerge.js`) and attach `setNum` + `targetRange` to local optimistic sets in `AppContext.jsx` so straight sets (`3×10` at the same weight) are never collapsed.
-- [ ] **Story 8.5 (`TASK-R125`): Rest Timer Battery & Typing Lag Optimization + Audio Fix**:
-  - Prevent the 500ms rest timer interval from re-rendering the entire app tree twice per second, and close/reuse `AudioContext` in `playTimerBeep()` so timer beeps never mute after 6 sets.
+- [ ] **Story 8.5 (`TASK-R125`): Rest Timer Context Isolation (Typing Lag Reduction)**:
+  - *(Audio leak + whole-second interval guard completed in `TASK-R130`.)* Remaining scope: isolate live `timerSeconds` state into a separate TimerContext so active timer ticks do not re-render heavy `ExerciseCard` trees during input.
 - [ ] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
   - Add a confirmation prompt before permanently deleting a historical set via the `🗑` icon in `ExerciseCard.jsx` and `CircuitCard.jsx`.
 - [ ] **Story 8.7 (`TASK-R127`): PIN Security Upgrade (Move PINs Out of URLs & Enforce Backend PIN Check)**:
@@ -102,9 +105,6 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Optimize the 131 uncompressed camera photos in `gymlog-react/public/images/` (reducing size from 470 MB to <25 MB) and add `loading="lazy"` to eliminate ~1 GB Vercel deployment bloat.
 
 ### Priority 2: User-Requested Upgrades (Batch 2 — Easiest-to-Hardest Order)
-- [ ] **Story 9.2 (`TASK-R130`): Expandable Full-Screen Rest/Stopwatch Timer & Gym Alert Audio**:
-  - Tapping the inline Timer Widget or `StickyRestBanner.jsx` opens a full-screen readable timer with `+30s`, `Pause/Start`, `Skip/Reset`, `✕`, automatic Screen Wake Lock, and a `0:00` flash before auto-returning to the exercise card.
-  - Add louder, selectable Web Audio gym chime/bell alert options + optional vibration in Settings (building cleanly on `AudioContext` leak prevention).
 - [ ] **Story 9.3 (`TASK-R131`): Equipment/Grip Variation Generator, Un-Collapsed Rotation & Logger Band Toggle**:
   - Un-collapse `(Single)`/`(Alt)` variations in `PlanView.jsx` and `FullBodyView.jsx` (keeping zero switcher pills on `ExerciseCard.jsx`) so every variation rotates independently with its own Personal Best.
   - Expand Create/Edit Exercise (`SettingsModal.jsx` & `ExerciseCard.jsx`) with Barbell, Dumbbell, Band, Overhand, Underhand, Single, and Alt checkboxes + live preview.
