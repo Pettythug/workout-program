@@ -70,6 +70,26 @@ export function getUrlParamUser() {
     }
 }
 
+export function resolveAccessoryItem(item, exercises, groupedExercises) {
+    const rawName = (item && item.baseName ? item.baseName : item) || '';
+    const normalized = typeof rawName === 'string' ? rawName.trim().toLowerCase() : '';
+    if (!normalized) return null;
+
+    const exactEx = (exercises || []).find(
+        e => (e.name || '').trim().toLowerCase() === normalized
+    );
+    if (exactEx) {
+        return {
+            baseName: exactEx.name,
+            category: exactEx.category || 'Accessory',
+            variations: { Standard: exactEx },
+            ex: exactEx
+        };
+    }
+
+    return (groupedExercises && groupedExercises[normalized]) || null;
+}
+
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
@@ -939,6 +959,30 @@ export function AppProvider({ children }) {
                     next.push({ ...meta, history: [], best: {} });
                 }
             }
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const addExerciseToLocalState = (newExercise) => {
+        if (!newExercise || !newExercise.name) return;
+        const trimmedName = newExercise.name.trim();
+        if (!trimmedName) return;
+
+        setExercises(prev => {
+            const exists = prev.some(
+                e => (e.name || '').trim().toLowerCase() === trimmedName.toLowerCase()
+            );
+            if (exists) return prev;
+            const next = [
+                ...prev,
+                {
+                    ...newExercise,
+                    name: trimmedName,
+                    history: Array.isArray(newExercise.history) ? newExercise.history : [],
+                    best: (newExercise.best && typeof newExercise.best === 'object') ? newExercise.best : {}
+                }
+            ];
             localStorage.setItem('gymlog_exercises', JSON.stringify(next));
             return next;
         });
@@ -1880,6 +1924,7 @@ export function AppProvider({ children }) {
         addLocationToRoster,
         removeLocationFromRoster,
         createExerciseMeta,
+        addExerciseToLocalState,
         removeExerciseFromLocalState,
         updateExerciseInLocalState,
         logExerciseSet,

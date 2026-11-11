@@ -6,16 +6,24 @@ import ExerciseCard from './ExerciseCard';
 
 export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet }) {
     const { exercises, activeLocation } = useAppContext();
- 
+    const [lastAddedIdx, setLastAddedIdx] = useState(null);
+
+    const getBaseName = (n) => (n || '').replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
+
+    const getCandidateAccessories = () => {
+        if (!exercises || exercises.length === 0) return [];
+        const allAccessories = exercises.filter(
+            ex => ex.category && ex.category.toLowerCase().includes('accessory')
+        );
+        const locFiltered = allAccessories.filter(
+            ex => matchesLocation(ex.location, activeLocation)
+        );
+        return locFiltered.length > 0 ? locFiltered : allAccessories;
+    };
+
     const getAccessoryAlternatives = () => {
-        if (!exercises) return [];
-        const accessories = exercises.filter(ex => {
-            const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
-            const locMatch = matchesLocation(ex.location, activeLocation);
-            return isAcc && locMatch;
-        });
+        const accessories = getCandidateAccessories();
         const grouped = {};
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
         accessories.forEach(ex => {
             const bn = getBaseName(ex.name);
             if (!grouped[bn]) {
@@ -26,15 +34,34 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
         return Object.values(grouped).sort((a, b) => a.baseName.localeCompare(b.baseName));
     };
 
-    const handleDirectSwap = (index, targetNameOrCustom) => {
+    const pickAccessoryCandidate = (candidates, currentName = null) => {
+        if (!candidates || candidates.length === 0) return null;
+        const excludedBases = new Set([
+            ...(excludeNames || []).map(name => getBaseName(name).toLowerCase()),
+            ...(accessoriesList || []).map(item => getBaseName(item?.baseName || item).toLowerCase())
+        ].filter(Boolean));
+
+        const unused = candidates.filter(
+            c => !excludedBases.has(getBaseName(c.name).toLowerCase())
+        );
+        let pool = unused.length > 0 ? unused : candidates;
+        if (unused.length === 0 && currentName && pool.length > 1) {
+            const others = pool.filter(c => (c.name || '').toLowerCase() !== currentName.toLowerCase());
+            if (others.length > 0) pool = others;
+        }
+        return pool[Math.floor(Math.random() * pool.length)];
+    };
+
+    const handleDirectSwap = (index, targetNameOrCustom, targetObj = null) => {
         const isCustom = typeof targetNameOrCustom === 'object';
         const targetName = isCustom ? targetNameOrCustom.name : targetNameOrCustom;
 
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-        
         let selectedEx = null;
         if (!isCustom) {
-            selectedEx = (exercises || []).find(e => e.name.toLowerCase() === targetName.toLowerCase() || getBaseName(e.name).toLowerCase() === targetName.toLowerCase());
+            const targetLower = (targetName || '').trim().toLowerCase();
+            selectedEx = (exercises || []).find(e => (e.name || '').trim().toLowerCase() === targetLower)
+                || (exercises || []).find(e => getBaseName(e.name).toLowerCase() === targetLower)
+                || targetObj;
         } else {
             selectedEx = {
                 name: targetNameOrCustom.name,
@@ -52,6 +79,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
                 category: selectedEx.category || "Accessory",
                 variations: { "Standard": selectedEx }
             };
+            setLastAddedIdx(index);
             setAccessoriesList(prev => {
                 const next = [...prev];
                 next[index] = group;
@@ -61,92 +89,40 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
     };
 
     const handleAddAccessory = () => {
-        if (!exercises) return;
-        const accessories = exercises.filter(ex => {
-            const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
-            const locMatch = matchesLocation(ex.location, activeLocation);
-            return isAcc && locMatch;
-        });
-        if (accessories.length === 0) return;
- 
-        let selected = null;
-        let retries = 0;
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-
-        while (retries < 10) {
-            const randomIdx = Math.floor(Math.random() * accessories.length);
-            const candidate = accessories[randomIdx];
-            const candidateBase = getBaseName(candidate.name).toLowerCase();
-
-            const isPlanned = excludeNames.some(name => getBaseName(name).toLowerCase() === candidateBase);
-            const isAlreadySelected = accessoriesList.some(item => getBaseName(item.baseName).toLowerCase() === candidateBase);
-
-            if (!isPlanned && !isAlreadySelected) {
-                selected = candidate;
-                break;
-            }
-            retries++;
-        }
-
-        // Fallback: If no unique exercise is found after 10 retries, pick any random candidate
-        if (!selected) {
-            selected = accessories[Math.floor(Math.random() * accessories.length)];
-        }
+        const candidates = getCandidateAccessories();
+        const selected = pickAccessoryCandidate(candidates);
+        if (!selected) return;
 
         const group = {
             baseName: selected.name,
             category: selected.category,
             variations: { "Standard": selected }
         };
+        setLastAddedIdx(accessoriesList.length);
         setAccessoriesList(prev => [...prev, group]);
     };
 
     const handleSwapAccessory = (index) => {
-        if (!exercises) return;
-        const accessories = exercises.filter(ex => {
-            const isAcc = ex.category && ex.category.toLowerCase().includes('accessory');
-            const locMatch = matchesLocation(ex.location, activeLocation);
-            return isAcc && locMatch;
-        });
-        if (accessories.length === 0) return;
-
-        let selected = null;
-        let retries = 0;
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-
-        while (retries < 10) {
-            const randomIdx = Math.floor(Math.random() * accessories.length);
-            const candidate = accessories[randomIdx];
-            const candidateBase = getBaseName(candidate.name).toLowerCase();
-
-            const isPlanned = excludeNames.some(name => getBaseName(name).toLowerCase() === candidateBase);
-            const isAlreadySelected = accessoriesList.some(item => getBaseName(item.baseName).toLowerCase() === candidateBase);
-
-            if (!isPlanned && !isAlreadySelected) {
-                selected = candidate;
-                break;
-            }
-            retries++;
-        }
-
-        // Fallback: If no unique exercise is found after 10 retries, pick any random candidate
-        if (!selected) {
-            selected = accessories[Math.floor(Math.random() * accessories.length)];
-        }
+        const candidates = getCandidateAccessories();
+        const currentName = accessoriesList[index]?.baseName || '';
+        const selected = pickAccessoryCandidate(candidates, currentName);
+        if (!selected) return;
 
         const group = {
             baseName: selected.name,
             category: selected.category,
             variations: { "Standard": selected }
         };
-
+        setLastAddedIdx(index);
         setAccessoriesList(prev => {
             const next = [...prev];
             next[index] = group;
             return next;
         });
     };
- 
+
+    const accessoryAlternatives = getAccessoryAlternatives();
+
     return (
         <div style={{ marginTop: 24, marginBottom: 16 }}>
             {accessoriesList.length === 0 ? (
@@ -170,13 +146,24 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {accessoriesList.map((acc, idx) => {
-                        acc.alternatives = getAccessoryAlternatives().filter(a => a.baseName.toLowerCase() !== acc.baseName.toLowerCase());
+                        const cardGroup = {
+                            ...acc,
+                            alternatives: accessoryAlternatives.filter(
+                                a => a.baseName.toLowerCase() !== (acc.baseName || '').toLowerCase()
+                            )
+                        };
                         return (
                         <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             <div style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.8, paddingLeft: 2 }}>
                                 Bonus Accessory #{idx + 1}
                             </div>
-                            <ExerciseCard group={acc} onLogSet={onLogSet} onSwap={(oldName, target) => handleDirectSwap(idx, target)} />
+                            <ExerciseCard
+                                key={`${acc.baseName}_${idx}`}
+                                group={cardGroup}
+                                defaultOpen={idx === lastAddedIdx}
+                                onLogSet={onLogSet}
+                                onSwap={(oldName, target, targetObj) => handleDirectSwap(idx, target, targetObj)}
+                            />
                             <button 
                                 onClick={() => handleSwapAccessory(idx)}
                                 style={{
