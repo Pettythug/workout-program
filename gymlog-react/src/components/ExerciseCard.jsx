@@ -228,11 +228,11 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
     );
 };
 
-export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSwap }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation, createExerciseMeta, removeExerciseFromLocalState } = useAppContext();
+export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defaultOpen = false, onSwap }) {
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation, createExerciseMeta, addExerciseToLocalState, removeExerciseFromLocalState } = useAppContext();
     const { logSet, deleteHistory, saveExercise, deleteExercise } = useGymAPI();
     
-    const [isOpenState, setIsOpenState] = useState(false);
+    const [isOpenState, setIsOpenState] = useState(Boolean(defaultOpen));
     const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
     const [activeTab, setActiveTab] = useState("LOG"); // "LOG", "HISTORY"
     const [logInputs, setLogInputs] = useState({});
@@ -562,11 +562,9 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         if (!stdName) return alert("Exercise name cannot be blank.");
         
         const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-        let targetEx = (exercises || []).find(e => {
-            const cleanedE = e.name.trim().toLowerCase();
-            const cleanedStd = stdName.trim().toLowerCase();
-            return cleanedE === cleanedStd || getBaseName(e.name).trim().toLowerCase() === cleanedStd;
-        });
+        const cleanedStd = stdName.trim().toLowerCase();
+        let targetEx = (exercises || []).find(e => e.name.trim().toLowerCase() === cleanedStd)
+            || (exercises || []).find(e => getBaseName(e.name).trim().toLowerCase() === cleanedStd);
         
         if (!targetEx) {
             const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
@@ -578,11 +576,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
                 muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
                 manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
                 baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+                location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
                 timed: false, history: [],
                 isCircuit: false
             };
             try {
                 await saveExercise(targetEx, pin);
+                addExerciseToLocalState(targetEx);
             } catch (e) {
                 console.error("Error saving new swap exercise to backend", e);
                 alert("Failed to save swap exercise: " + e.message);
@@ -591,7 +591,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, onSw
         }
         
         if (onSwap) {
-            onSwap(ex.name, targetEx.name);
+            onSwap(ex.name, targetEx.name, targetEx);
         } else if (group.originalBaseKey) {
             swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
         }
