@@ -21,35 +21,23 @@ export default function LiftView() {
         startRestTimer(parseInt(timerMode, 10));
     };
 
-    const getBaseName = (name) => {
-        return name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-    };
-
-    const getMode = (name) => {
-        if (name.toLowerCase().includes("(single)")) return "Single";
-        if (name.toLowerCase().includes("(alt)")) return "Alt";
-        return "Standard";
-    };
-
     const filteredAndGrouped = useMemo(() => {
         if (!exercises) return [];
 
         const filtered = exercises.filter(e => {
-            const nameMatch = e.name.toLowerCase().includes(search.toLowerCase());
+            const nameMatch = (e.name || '').toLowerCase().includes(search.toLowerCase());
             const catMatch = !categoryFilter || e.category === categoryFilter;
             const locMatch = matchesLocation(e.location, activeLocation);
             return nameMatch && catMatch && locMatch;
         });
 
-        const grouped = {};
-        filtered.forEach(ex => {
-            const base = getBaseName(ex.name);
-            const baseKey = base.toLowerCase();
-            if (!grouped[baseKey]) grouped[baseKey] = { baseName: base, variations: {} };
-            grouped[baseKey].variations[getMode(ex.name)] = ex;
-        });
-
-        return Object.values(grouped).sort((a, b) => a.baseName.localeCompare(b.baseName));
+        return filtered
+            .map(ex => ({
+                baseName: ex.name,
+                variations: { Standard: ex },
+                ex
+            }))
+            .sort((a, b) => a.baseName.localeCompare(b.baseName));
     }, [exercises, search, activeLocation, categoryFilter]);
 
     const categories = useMemo(() => {
@@ -116,7 +104,7 @@ export default function LiftView() {
                     <div style={{ textAlign: 'center', padding: 40, color: 'var(--muted)' }}>No exercises found.</div>
                 ) : (
                     filteredAndGrouped.map((group, idx) => (
-                        <ExerciseCard key={idx} group={group} onLogSet={handleLogSetSaved} />
+                        <ExerciseCard key={group.baseName || idx} group={group} onLogSet={handleLogSetSaved} />
                     ))
                 )}
             </div>

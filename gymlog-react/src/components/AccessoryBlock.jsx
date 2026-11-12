@@ -2,13 +2,12 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { matchesLocation } from '../utils/locationHelper';
+import { extractBaseName } from '../utils/exerciseVariations';
 import ExerciseCard from './ExerciseCard';
 
 export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet }) {
     const { exercises, activeLocation } = useAppContext();
     const [lastAddedIdx, setLastAddedIdx] = useState(null);
-
-    const getBaseName = (n) => (n || '').replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
 
     const getCandidateAccessories = () => {
         if (!exercises || exercises.length === 0) return [];
@@ -25,11 +24,15 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
         const accessories = getCandidateAccessories();
         const grouped = {};
         accessories.forEach(ex => {
-            const bn = getBaseName(ex.name);
-            if (!grouped[bn]) {
-                grouped[bn] = { baseName: bn, category: ex.category, variations: {} };
+            if (!ex || !ex.name) return;
+            if (!grouped[ex.name]) {
+                grouped[ex.name] = {
+                    baseName: ex.name,
+                    category: ex.category,
+                    variations: { Standard: ex },
+                    ex
+                };
             }
-            grouped[bn].variations["Standard"] = ex;
         });
         return Object.values(grouped).sort((a, b) => a.baseName.localeCompare(b.baseName));
     };
@@ -37,12 +40,12 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
     const pickAccessoryCandidate = (candidates, currentName = null) => {
         if (!candidates || candidates.length === 0) return null;
         const excludedBases = new Set([
-            ...(excludeNames || []).map(name => getBaseName(name).toLowerCase()),
-            ...(accessoriesList || []).map(item => getBaseName(item?.baseName || item).toLowerCase())
+            ...(excludeNames || []).map(name => extractBaseName(name).toLowerCase()),
+            ...(accessoriesList || []).map(item => extractBaseName(item?.baseName || item).toLowerCase())
         ].filter(Boolean));
 
         const unused = candidates.filter(
-            c => !excludedBases.has(getBaseName(c.name).toLowerCase())
+            c => !excludedBases.has(extractBaseName(c.name).toLowerCase())
         );
         let pool = unused.length > 0 ? unused : candidates;
         if (unused.length === 0 && currentName && pool.length > 1) {
@@ -60,7 +63,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
         if (!isCustom) {
             const targetLower = (targetName || '').trim().toLowerCase();
             selectedEx = (exercises || []).find(e => (e.name || '').trim().toLowerCase() === targetLower)
-                || (exercises || []).find(e => getBaseName(e.name).toLowerCase() === targetLower)
+                || (exercises || []).find(e => extractBaseName(e.name).toLowerCase() === targetLower)
                 || targetObj;
         } else {
             selectedEx = {
