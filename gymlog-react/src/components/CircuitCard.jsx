@@ -1,6 +1,7 @@
 /* eslint-disable */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTargetLock } from '../hooks/useTargetLock';
+import { extractBaseName } from '../utils/exerciseVariations';
 import ImageModal from './ImageModal';
 
 const formatLogDate = (dateStr) => {
@@ -117,13 +118,22 @@ const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
                 )}
             </div>
             <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: input.usedBand ? 'var(--accent)' : 'var(--muted)', cursor: 'pointer', fontFamily: 'var(--mono)' }}>
+                        <input
+                            type="checkbox"
+                            checked={Boolean(input.usedBand)}
+                            onChange={(e) => updateInput(key, 'usedBand', e.target.checked)}
+                            style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                        />
+                        Band (Assist / Tension)
+                    </label>
                 </div>
                 <input 
-                    placeholder="Notes..." 
+                    placeholder={input.usedBand ? "Band color / tension notes..." : "Notes..."} 
                     value={input.note || ""}
                     onChange={(e) => updateInput(key, "note", e.target.value)}
-                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
+                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12, boxSizing: 'border-box' }}
                 />
             </div>
         </div>
@@ -191,7 +201,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const [inputs, setInputs] = useState(() => {
         const initial = {};
         activePeople.forEach(p => {
-            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+            initial[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
         });
         return initial;
     });
@@ -202,7 +212,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
             activePeople.forEach(p => {
                 const key = p.toLowerCase();
                 if (!next[key]) {
-                    next[key] = { reps: "", weight: "", duration: "", note: "" };
+                    next[key] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
                 }
             });
             return next;
@@ -215,11 +225,14 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         if (toast) setToast("");
         setInputs(prev => {
             let sanitizedValue = value;
-            if (field === 'reps') {
-                sanitizedValue = value.replace(/[^0-9]/g, '');
+            if (field === 'usedBand') {
+                sanitizedValue = Boolean(value);
+            } else if (field === 'reps') {
+                sanitizedValue = String(value).replace(/[^0-9]/g, '');
             } else if (field === 'weight') {
-                const isNegative = value.startsWith('-');
-                let cleaned = value.replace(/[^0-9.]/g, '');
+                const strVal = String(value);
+                const isNegative = strVal.startsWith('-');
+                let cleaned = strVal.replace(/[^0-9.]/g, '');
                 const parts = cleaned.split('.');
                 if (parts.length > 2) {
                     cleaned = parts[0] + '.' + parts.slice(1).join('');
@@ -228,7 +241,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
             }
             return {
                 ...prev,
-                [personKey]: { ...prev[personKey], [field]: sanitizedValue }
+                [personKey]: { ...(prev[personKey] || {}), [field]: sanitizedValue }
             };
         });
     };
@@ -245,7 +258,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         if (success) {
             const cleared = {};
             activePeople.forEach(p => {
-                cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+                cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
             });
             setInputs(cleared);
             setToast("Set Saved!");
@@ -271,11 +284,10 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
         
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
         let targetEx = (allExercises || []).find(e => {
             const cleanedE = e.name.trim().toLowerCase();
             const cleanedStd = stdName.trim().toLowerCase();
-            return cleanedE === cleanedStd || getBaseName(e.name).trim().toLowerCase() === cleanedStd;
+            return cleanedE === cleanedStd || extractBaseName(e.name).trim().toLowerCase() === cleanedStd;
         });
         let isNew = false;
         if (!targetEx) {

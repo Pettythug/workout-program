@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
+import { buildVariationNames, INITIAL_VARIATION_OPTIONS } from '../utils/exerciseVariations';
+import VariationGeneratorPanel from './VariationGeneratorPanel';
 import SessionStatsModal from './SessionStatsModal';
 import { createPortal } from 'react-dom';
 
@@ -31,9 +33,8 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exTimed, setExTimed] = useState(false);
     const [exCategory, setExCategory] = useState('');
     const [exLocation, setExLocation] = useState('Anywhere');
-    const [exCreateStandard, setExCreateStandard] = useState(true);
-    const [exCreateSingle, setExCreateSingle] = useState(false);
-    const [exCreateAlt, setExCreateAlt] = useState(false);
+    const [variationOptions, setVariationOptions] = useState(INITIAL_VARIATION_OPTIONS);
+    const [excludedPreviewNames, setExcludedPreviewNames] = useState(() => new Set());
     const [exIsCircuit, setExIsCircuit] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -55,7 +56,41 @@ export default function SettingsModal({ isOpen, onClose }) {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
+    const existingExerciseNames = useMemo(() => {
+        return new Set((exercises || []).map(e => (e.name || '').trim().toLowerCase()));
+    }, [exercises]);
+
+    const generatedNames = useMemo(() => {
+        return buildVariationNames(exName, variationOptions);
+    }, [exName, variationOptions]);
+
+    const selectedPreviewNames = useMemo(() => {
+        return generatedNames.filter(name => !excludedPreviewNames.has(name));
+    }, [generatedNames, excludedPreviewNames]);
+
     if (!isOpen) return null;
+
+    const handleExNameChange = (value) => {
+        setExName(value);
+        setExcludedPreviewNames(new Set());
+    };
+
+    const handleToggleVariationOption = (key, checked) => {
+        setVariationOptions(prev => ({ ...prev, [key]: checked }));
+        setExcludedPreviewNames(new Set());
+    };
+
+    const togglePreviewName = (name) => {
+        setExcludedPreviewNames(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    };
 
     const handleAddPerson = () => {
         if (!newPerson.trim()) return;
@@ -89,17 +124,26 @@ export default function SettingsModal({ isOpen, onClose }) {
             alert("Please enter an exercise name.");
             return;
         }
+        if (selectedPreviewNames.length === 0) {
+            alert("Please select at least one exercise variation to create.");
+            return;
+        }
+        const newNames = selectedPreviewNames.filter(
+            name => !existingExerciseNames.has(name.toLowerCase())
+        );
+        if (newNames.length === 0) {
+            alert("All selected variations already exist.");
+            return;
+        }
         const pin = prompt("Enter Admin PIN to create this exercise:");
         if (pin === null) return;
         try {
             await createExerciseMeta({
                 baseName: exName.trim(),
+                variationNames: newNames,
                 timed: exTimed,
                 category: exCategory,
                 location: exLocation,
-                createStandard: exCreateStandard,
-                createSingle: exCreateSingle,
-                createAlt: exCreateAlt,
                 isCircuit: exIsCircuit
             }, pin);
             alert("Exercise(s) created and syncing to backend.");
@@ -107,9 +151,8 @@ export default function SettingsModal({ isOpen, onClose }) {
             setExTimed(false);
             setExCategory('');
             setExLocation('Anywhere');
-            setExCreateStandard(true);
-            setExCreateSingle(false);
-            setExCreateAlt(false);
+            setVariationOptions(INITIAL_VARIATION_OPTIONS);
+            setExcludedPreviewNames(new Set());
             setExIsCircuit(false);
         } catch (err) {
             alert("Failed to create exercise: " + err.message);
@@ -378,8 +421,8 @@ export default function SettingsModal({ isOpen, onClose }) {
                             <input 
                                 placeholder="Base Exercise Name..." 
                                 value={exName} 
-                                onChange={e => setExName(e.target.value)}
-                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white' }}
+                                onChange={e => handleExNameChange(e.target.value)}
+                                style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                             />
                             
                             <div style={{ display: 'flex', gap: 8 }}>
@@ -414,34 +457,16 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     Circuit Eligible
                                 </label>
                             </div>
-                            <div style={{ marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
-                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Generate Modalities</div>
-                                <div style={{ display: 'flex', gap: 16 }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateStandard} 
-                                            onChange={e => setExCreateStandard(e.target.checked)}
-                                        />
-                                        Standard
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateAlt} 
-                                            onChange={e => setExCreateAlt(e.target.checked)}
-                                        />
-                                        Alternating
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={exCreateSingle} 
-                                            onChange={e => setExCreateSingle(e.target.checked)}
-                                        />
-                                        Singles
-                                    </label>
-                                </div>
+                            <div style={{ marginTop: 4 }}>
+                                <VariationGeneratorPanel
+                                    options={variationOptions}
+                                    onToggleOption={handleToggleVariationOption}
+                                    generatedNames={generatedNames}
+                                    excludedPreviewNames={excludedPreviewNames}
+                                    onTogglePreviewName={togglePreviewName}
+                                    existingExerciseNames={existingExerciseNames}
+                                    showPreview={Boolean(exName.trim())}
+                                />
                             </div>
 
                             <button className="btn-success" onClick={handleCreateExercise} style={{ marginTop: 8, width: '100%' }}>

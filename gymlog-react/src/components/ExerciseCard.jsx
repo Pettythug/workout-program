@@ -4,7 +4,9 @@ import { useAppContext } from '../context/AppContext';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { useTargetLock } from '../hooks/useTargetLock';
 import { matchesLocation } from '../utils/locationHelper';
+import { buildVariationNames, extractBaseName, INITIAL_VARIATION_OPTIONS } from '../utils/exerciseVariations';
 import ImageModal from './ImageModal';
+import VariationGeneratorPanel from './VariationGeneratorPanel';
 
 const formatLogDate = (dateStr) => {
     if (!dateStr) return '';
@@ -46,6 +48,28 @@ const matchesRepRange = (h, filter) => {
     }
     return false;
 };
+
+const BandAndNotesInput = ({ personKey, input, updateLogInput }) => (
+    <div style={{ marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: input.usedBand ? 'var(--accent)' : 'var(--muted)', cursor: 'pointer', fontFamily: 'var(--mono)' }}>
+                <input
+                    type="checkbox"
+                    checked={Boolean(input.usedBand)}
+                    onChange={(e) => updateLogInput(personKey, 'usedBand', e.target.checked)}
+                    style={{ cursor: 'pointer', accentColor: 'var(--accent)' }}
+                />
+                Band (Assist / Tension)
+            </label>
+        </div>
+        <input 
+            placeholder={input.usedBand ? "Band color / tension notes..." : "Notes..."} 
+            value={input.note || ""}
+            onChange={(e) => updateLogInput(personKey, "note", e.target.value)}
+            style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12, boxSizing: 'border-box' }}
+        />
+    </div>
+);
 
 const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet, isSaving, getNextSetNumber, toast, setToast }) => {
     const key = person.toLowerCase();
@@ -120,16 +144,7 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
                 )}
             </div>
 
-            <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                </div>
-                <input 
-                    placeholder="Notes..." 
-                    value={input.note || ""}
-                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
-                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
-                />
-            </div>
+            <BandAndNotesInput personKey={key} input={input} updateLogInput={updateLogInput} />
 
             <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', fontSize: '14px', marginTop: 12 }} onClick={handleSaveSet} disabled={isSaving}>
                 {isSaving ? "SAVING..." : `LOG SET ${getNextSetNumber()}`}
@@ -214,16 +229,7 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
                 )}
             </div>
 
-            <div style={{ marginTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                </div>
-                <input 
-                    placeholder="Notes..." 
-                    value={input.note || ""}
-                    onChange={(e) => updateLogInput(key, "note", e.target.value)}
-                    style={{ width: '100%', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 8px', color: 'white', fontSize: 12 }}
-                />
-            </div>
+            <BandAndNotesInput personKey={key} input={input} updateLogInput={updateLogInput} />
         </div>
     );
 };
@@ -249,52 +255,45 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
     const [showEditPanel, setShowEditPanel] = useState(false);
     const [historyFilter, setHistoryFilter] = useState('ALL');
     const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+    const [variationOptions, setVariationOptions] = useState(INITIAL_VARIATION_OPTIONS);
+    const [excludedPreviewNames, setExcludedPreviewNames] = useState(() => new Set());
+    const [isMutatingVariations, setIsMutatingVariations] = useState(false);
 
     const uniqueCategories = useMemo(() => {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
-    const ex = group.ex || 
-               (group.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || 
-               (group.name ? group : { ...group, name: group.baseName });
-    if (!ex) return null;
-    const exerciseName = ex?.name || group.baseName || "Unknown Exercise";
+    const ex = group?.ex || 
+               (group?.variations && (group.variations["Standard"] || Object.values(group.variations)[0])) || 
+               (group?.name ? group : (group?.baseName ? { ...group, name: group.baseName } : null));
 
-    const baseName = ex.name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-    const hasSingle = (exercises || []).some(e => e.name === `${baseName} (Single)`);
-    const hasAlt = (exercises || []).some(e => e.name === `${baseName} (Alt)`);
+    const baseName = extractBaseName(ex?.name);
 
-    const handleToggleVariation = async (type, isChecked) => {
-        const variationName = `${baseName} (${type})`;
-        const pin = prompt(`Admin PIN required to ${isChecked ? 'generate' : 'remove'} ${variationName}:`);
-        if (pin === null) return;
-        
-        try {
-            setToast(`${isChecked ? 'Generating' : 'Removing'} ${variationName}...`);
-            if (!isChecked) {
-                await deleteExercise(variationName, pin);
-                removeExerciseFromLocalState(variationName);
-                setToast(`${variationName} removed!`);
-            } else {
-                await createExerciseMeta({
-                    baseName: baseName,
-                    category: ex.category || "General",
-                    muscleGroups: ex.muscleGroups || ex.muscle || "",
-                    timed: ex.timed,
-                    location: ex.location || "Anywhere",
-                    isCircuit: ex.isCircuit,
-                    createStandard: false,
-                    createSingle: type === 'Single',
-                    createAlt: type === 'Alt'
-                }, pin);
-                setToast(`${variationName} generated!`);
-            }
-        } catch (e) {
-            console.error(e);
-            setToast(`Error ${isChecked ? 'generating' : 'removing'} variation`);
-            setTimeout(() => setToast(""), 2000);
-        }
-    };
+    const existingExerciseNames = useMemo(() => {
+        return new Set((exercises || []).map(e => (e.name || '').trim().toLowerCase()));
+    }, [exercises]);
+
+    const familyVariations = useMemo(() => {
+        const baseLower = baseName.trim().toLowerCase();
+        if (!baseLower) return [];
+        return (exercises || [])
+            .filter(item => extractBaseName(item?.name).trim().toLowerCase() === baseLower)
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [exercises, baseName]);
+
+    const generatedNames = useMemo(() => {
+        return buildVariationNames(baseName, variationOptions);
+    }, [baseName, variationOptions]);
+
+    const hasSelectedVariationOption = Object.values(variationOptions).some(Boolean);
+
+    const selectedPreviewNames = useMemo(() => {
+        return generatedNames.filter(name => !excludedPreviewNames.has(name));
+    }, [generatedNames, excludedPreviewNames]);
+
+    const newNamesToCreate = useMemo(() => {
+        return selectedPreviewNames.filter(name => !existingExerciseNames.has(name.toLowerCase()));
+    }, [selectedPreviewNames, existingExerciseNames]);
 
     const todaysSets = useMemo(() => {
         const todayStr = new Date().toDateString();
@@ -332,6 +331,107 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         return ex.history.filter(h => activePeople.some(p => p.toLowerCase() === (h?.person || '').toLowerCase())).length;
     }, [ex?.history, activePeople]);
 
+    // Initialize log inputs if empty
+    const initLogInputs = () => {
+        setLogInputs(prev => {
+            const next = { ...prev };
+            people.forEach(p => {
+                const key = p.toLowerCase();
+                if (!next[key]) {
+                    next[key] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
+                }
+            });
+            return next;
+        });
+    };
+
+    // Auto-initialize when opened
+    React.useEffect(() => {
+        if (isOpen) {
+            initLogInputs();
+        }
+    }, [isOpen, people]);
+
+    if (!ex) return null;
+    const exerciseName = ex?.name || group?.baseName || "Unknown Exercise";
+
+    const handleToggleVariationOption = (key, checked) => {
+        setVariationOptions(prev => ({ ...prev, [key]: checked }));
+        setExcludedPreviewNames(new Set());
+    };
+
+    const handleTogglePreviewName = (name) => {
+        setExcludedPreviewNames(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    };
+
+    const handleRemoveVariation = async (targetName) => {
+        if (!targetName || isMutatingVariations) return;
+        if (!window.confirm(`Remove variation "${targetName}"?`)) return;
+
+        const pin = prompt(`Admin PIN required to remove ${targetName}:`);
+        if (pin === null) return;
+
+        setIsMutatingVariations(true);
+        try {
+            setToast(`Removing ${targetName}...`);
+            await deleteExercise(targetName, pin);
+            removeExerciseFromLocalState(targetName);
+            setToast(`${targetName} removed!`);
+            setTimeout(() => setToast(""), 2500);
+        } catch (e) {
+            console.error(e);
+            setToast(`Error removing variation: ${e.message || 'Failed'}`);
+            setTimeout(() => setToast(""), 2500);
+        } finally {
+            setIsMutatingVariations(false);
+        }
+    };
+
+    const handleAddVariations = async () => {
+        if (isMutatingVariations || !hasSelectedVariationOption || newNamesToCreate.length === 0) return;
+
+        const pin = prompt(`Admin PIN required to add ${newNamesToCreate.length} variation(s):`);
+        if (pin === null) return;
+
+        setIsMutatingVariations(true);
+        try {
+            const count = newNamesToCreate.length;
+            setToast(`Creating ${count} variation(s)...`);
+            await createExerciseMeta({
+                baseName,
+                variationNames: newNamesToCreate,
+                category: ex.category || 'General',
+                manufacturer: ex.manufacturer || '',
+                muscleGroups: ex.muscleGroups || ex.muscle || '',
+                modelSeries: ex.modelSeries,
+                baseExercise: ex.baseExercise,
+                note: ex.note,
+                fileReference: ex.fileReference,
+                timed: ex.timed,
+                location: ex.location || 'Anywhere',
+                isCircuit: ex.isCircuit
+            }, pin);
+            setVariationOptions(INITIAL_VARIATION_OPTIONS);
+            setExcludedPreviewNames(new Set());
+            setToast(`Added ${count} variation(s)!`);
+            setTimeout(() => setToast(""), 2500);
+        } catch (e) {
+            console.error(e);
+            setToast(`Error generating variations: ${e.message || 'Failed'}`);
+            setTimeout(() => setToast(""), 2500);
+        } finally {
+            setIsMutatingVariations(false);
+        }
+    };
+
     const displayedHistory = isHistoryExpanded ? filteredHistory : filteredHistory.slice(0, 9);
 
     const isDone = exerciseStatus[ex.name] === 'done';
@@ -361,34 +461,13 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         return nextSetNum;
     };
 
-    // Initialize log inputs if empty
-    const initLogInputs = () => {
-        setLogInputs(prev => {
-            const next = { ...prev };
-            people.forEach(p => {
-                const key = p.toLowerCase();
-                if (!next[key]) {
-                    next[key] = { reps: "", weight: "", duration: "", note: "" };
-                }
-            });
-            return next;
-        });
-    };
-
     const clearLogInputs = () => {
         const cleared = {};
         people.forEach(p => {
-            cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "" };
+            cleared[p.toLowerCase()] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
         });
         setLogInputs(cleared);
     };
-
-    // Auto-initialize when opened
-    React.useEffect(() => {
-        if (isOpen) {
-            initLogInputs();
-        }
-    }, [isOpen, people]);
 
     const handleOpen = () => {
         if (propIsOpen === undefined) {
@@ -401,14 +480,17 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         setLogInputs(prev => {
             const next = { ...prev };
             if (!next[personKey]) {
-                next[personKey] = { reps: "", weight: "", duration: "", note: "" };
+                next[personKey] = { reps: "", weight: "", duration: "", note: "", usedBand: false };
             }
             let sanitizedValue = value;
-            if (field === 'reps') {
-                sanitizedValue = value.replace(/[^0-9]/g, ''); // Digits only
+            if (field === 'usedBand') {
+                sanitizedValue = Boolean(value);
+            } else if (field === 'reps') {
+                sanitizedValue = String(value).replace(/[^0-9]/g, ''); // Digits only
             } else if (field === 'weight') {
-                const isNegative = value.startsWith('-');
-                let cleaned = value.replace(/[^0-9.]/g, '');
+                const strVal = String(value);
+                const isNegative = strVal.startsWith('-');
+                let cleaned = strVal.replace(/[^0-9.]/g, '');
                 const parts = cleaned.split('.');
                 if (parts.length > 2) {
                     cleaned = parts[0] + '.' + parts.slice(1).join('');
@@ -561,10 +643,9 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
         
-        const getBaseName = (n) => n.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
         const cleanedStd = stdName.trim().toLowerCase();
         let targetEx = (exercises || []).find(e => e.name.trim().toLowerCase() === cleanedStd)
-            || (exercises || []).find(e => getBaseName(e.name).trim().toLowerCase() === cleanedStd);
+            || (exercises || []).find(e => extractBaseName(e.name).trim().toLowerCase() === cleanedStd);
         
         if (!targetEx) {
             const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
@@ -1025,26 +1106,96 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                         </>
                                     )}
                                     {!editMode && (
-                                        <div style={{ width: '100%', marginTop: 8, padding: 8, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
-                                            <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Generate Modalities</div>
-                                            <div style={{ display: 'flex', gap: 16 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={hasAlt} 
-                                                        onChange={e => handleToggleVariation('Alt', e.target.checked)}
-                                                    />
-                                                    Alternating
-                                                </label>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'white', fontSize: 12, cursor: 'pointer' }}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={hasSingle} 
-                                                        onChange={e => handleToggleVariation('Single', e.target.checked)}
-                                                    />
-                                                    Singles
-                                                </label>
+                                        <div style={{ width: '100%', marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                            <div style={{ padding: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 700, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                                    Existing Family Variations <span style={{ fontWeight: 400, textTransform: 'none' }}>({baseName})</span>
+                                                </div>
+                                                {familyVariations.length === 0 ? (
+                                                    <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                                                        No saved variations
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                        {familyVariations.map(item => {
+                                                            const isCurrent = (item.name || '').trim().toLowerCase() === (ex.name || '').trim().toLowerCase();
+                                                            return (
+                                                                <div
+                                                                    key={item.name}
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'space-between',
+                                                                        gap: 8,
+                                                                        padding: '5px 8px',
+                                                                        borderRadius: 6,
+                                                                        background: 'var(--bg)',
+                                                                        border: `1px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'}`
+                                                                    }}
+                                                                >
+                                                                    <span style={{ fontSize: 11, color: 'white', fontFamily: 'var(--mono)', flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+                                                                        {item.name}
+                                                                        {isCurrent && (
+                                                                            <span style={{ fontSize: 9, color: 'var(--accent)', marginLeft: 6 }}>(current)</span>
+                                                                        )}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={isMutatingVariations}
+                                                                        onClick={() => handleRemoveVariation(item.name)}
+                                                                        title={`Remove ${item.name}`}
+                                                                        aria-label={`Remove ${item.name}`}
+                                                                        style={{
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            color: 'var(--skip)',
+                                                                            cursor: isMutatingVariations ? 'not-allowed' : 'pointer',
+                                                                            fontSize: 14,
+                                                                            fontWeight: 700,
+                                                                            lineHeight: 1,
+                                                                            padding: '2px 6px',
+                                                                            flexShrink: 0
+                                                                        }}
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
+
+                                            <VariationGeneratorPanel
+                                                title="Add Combined Variations"
+                                                subtitle={baseName}
+                                                options={variationOptions}
+                                                onToggleOption={handleToggleVariationOption}
+                                                generatedNames={generatedNames}
+                                                excludedPreviewNames={excludedPreviewNames}
+                                                onTogglePreviewName={handleTogglePreviewName}
+                                                existingExerciseNames={existingExerciseNames}
+                                                showPreview={false}
+                                                disabled={isMutatingVariations}
+                                            >
+                                                {hasSelectedVariationOption && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn-success"
+                                                        disabled={isMutatingVariations || newNamesToCreate.length === 0}
+                                                        onClick={handleAddVariations}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '9px 12px',
+                                                            fontSize: 12,
+                                                            opacity: (isMutatingVariations || newNamesToCreate.length === 0) ? 0.45 : 1,
+                                                            cursor: (isMutatingVariations || newNamesToCreate.length === 0) ? 'not-allowed' : 'pointer'
+                                                        }}
+                                                    >
+                                                        {isMutatingVariations ? 'SAVING...' : `ADD VARIATIONS (${newNamesToCreate.length})`}
+                                                    </button>
+                                                )}
+                                            </VariationGeneratorPanel>
                                         </div>
                                     )}
                                 </div>

@@ -74,19 +74,15 @@ export default function PlanView() {
     const groupedExercises = useMemo(() => {
         if (!exercises || exercises.length === 0) return {};
 
-        const getBaseName = (name) => name.replace(/\s*\((Single|Alt|DB|Cable)\)/i, "").trim();
-        const getMode = (name) => {
-            if (name.toLowerCase().includes("(single)")) return "Single";
-            if (name.toLowerCase().includes("(alt)")) return "Alt";
-            return "Standard";
-        };
-
         const grouped = {};
         exercises.forEach(ex => {
-            const base = getBaseName(ex.name);
-            const baseKey = base.toLowerCase();
-            if (!grouped[baseKey]) grouped[baseKey] = { baseName: base, category: ex.category, variations: {} };
-            grouped[baseKey].variations[getMode(ex.name)] = ex;
+            if (!ex || !ex.name) return;
+            grouped[ex.name.toLowerCase()] = {
+                baseName: ex.name,
+                category: ex.category,
+                variations: { Standard: ex },
+                ex
+            };
         });
 
         return grouped;
