@@ -83,10 +83,52 @@ Create `gymlog-react/src/utils/exerciseVariations.js` (zero React/Context import
 3. **`CircuitCard.jsx`:**
    - Add matching **`[ ] Band (Assist / Tension)`** checkbox inside `PersonRow` (resetting `usedBand: false` on save / init alongside `note`).
 
+## Phase 2 Refinement (Clean Combinator Without `Standard` + Unified Edit Panel)
+
+Apply these refinements directly on top of the current `feat/TASK-R131-equipment-grip-variations-and-band-toggle` branch without disturbing the already-verified Phase 1 features (`PlanView`, `FullBodyView`, `LiftView`, `AccessoryBlock`, `CircuitCard`, `[ ] Band` toggle, or `dataMerge` / `calculateBestForExercise` PB guard):
+
+### 1. Refined `buildVariationNames` Rules (`gymlog-react/src/utils/exerciseVariations.js`)
+- Keep `standard = false` default in `options` destructuring for safe fallback, and remove the assumption that `Standard` stays active alongside equipment boxes.
+- Compute `hasAnyEquipment = Boolean(barbell || dumbbell || band || cable)` and `hasGrips = grips.length > 0`:
+  1. **When NO equipment is checked (`!hasAnyEquipment || standard`):**
+     - If `!hasGrips`: emit `cleanBase` plus `${cleanBase} (${exec})` for each checked execution (`Single`, `Alt`).
+     - If `hasGrips`: emit **only** grip-tagged combinations `${cleanBase} (${grip})` (bilateral) and `${cleanBase} (${exec}, ${grip})` — do **NOT** emit plain `cleanBase` or `${cleanBase} (${exec})` without grip.
+  2. **When `barbell` is checked:**
+     - Never auto-combine `Barbell` with `Single` or `Alt`.
+     - If `hasGrips`: emit **only** `${cleanBase} (Barbell, ${grip})` (do **NOT** emit plain `${cleanBase} (Barbell)` alongside them).
+     - If `!hasGrips`: emit `${cleanBase} (Barbell)`.
+  3. **When `dumbbell` (`DB`), `band`, and/or `cable` are checked (`eq`):**
+     - If `hasGrips`: emit **only** `${cleanBase} (${eq}, ${grip})` (bilateral) and `${cleanBase} (${eq}, ${exec}, ${grip})` — do **NOT** emit grip-less `${cleanBase} (${eq})` or `${cleanBase} (${eq}, ${exec})` alongside them.
+     - If `!hasGrips`: emit `${cleanBase} (${eq})` plus `${cleanBase} (${eq}, ${exec})`.
+- Verification check: `buildVariationNames('Bent Over Row', { barbell: true, dumbbell: true, single: true, alt: true, overhand: true, underhand: true })` must return **8 exact cards**:
+  `Bent Over Row (Barbell, Overhand)`, `Bent Over Row (Barbell, Underhand)`, `Bent Over Row (DB, Overhand)`, `Bent Over Row (DB, Underhand)`, `Bent Over Row (DB, Single, Overhand)`, `Bent Over Row (DB, Single, Underhand)`, `Bent Over Row (DB, Alt, Overhand)`, `Bent Over Row (DB, Alt, Underhand)`.
+
+### 2. Extract Shared Generator UI (`gymlog-react/src/components/VariationGeneratorPanel.jsx`) *(New)*
+- Extract the grouped checkboxes + Live Preview checklist into a reusable `VariationGeneratorPanel` component shared by both `SettingsModal.jsx` and `ExerciseCard.jsx` (avoiding duplicated JSX/checkbox logic):
+  - **Equipment:** `Barbell`, `Dumbbell`, `Band`, `Cable` (**NO `Standard` checkbox**)
+  - **Execution:** `Singles`, `Alternating`
+  - **Grip:** `Overhand`, `Underhand`
+- Show Live Preview checkboxes when `generatedNames.length > 0 && (showPreview || hasSelectedOption)`, labeling already-existing variations `(exists)` cleanly.
+
+### 3. `SettingsModal.jsx` (`CREATE EXERCISE`)
+- Remove `exCreateStandard` state and the `Standard` checkbox; all 8 variation options initialize to `false` (and reset to `false` after creating).
+- Render `<VariationGeneratorPanel />` (`showPreview` true whenever `exName.trim()` is non-empty so typing e.g. `Plank` with 0 boxes checked still previews `Plank`).
+- Filter out already-existing names (`existingExerciseNames.has(name.toLowerCase())`) before sending `newNames` to `createExerciseMeta(..., pin)`; if `selectedPreviewNames.length > 0` but zero are new, alert cleanly without redundant API writes.
+
+### 4. `ExerciseCard.jsx` (`⚙️ EDIT` → `Generate Variations`)
+- Replace the old immediate-fire `variationToggles` checkboxes (and remove unused `variationToggles`, `equipmentTag`, `nonBarbellEquipment`) with two clean sections inside `⚙️ EDIT`:
+  1. **Existing Family Variations:** list all cards sharing `extractBaseName(ex.name)` cleanly with an explicit `×` remove action per item (using `window.confirm` + Admin PIN + `deleteExercise` + `removeExerciseFromLocalState`).
+  2. **Add Combined Variations (`VariationGeneratorPanel`):** anchored on `baseName = extractBaseName(ex.name)`, starting with all 8 checkboxes `false` (`showPreview` only when at least 1 checkbox is checked). Clicking **`ADD VARIATIONS (N)`** prompts **once** for Admin PIN, calls `createExerciseMeta({ baseName, variationNames: newNamesToCreate, category: ex.category || 'General', manufacturer: ex.manufacturer || '', muscleGroups: ex.muscleGroups || ex.muscle || '', modelSeries: ex.modelSeries, baseExercise: ex.baseExercise, note: ex.note, fileReference: ex.fileReference, timed: ex.timed, location: ex.location || 'Anywhere', isCircuit: ex.isCircuit }, pin)`, shows confirmation toast, and resets the generator checkboxes.
+
+### 5. Phase 2 QA Defect Fix — React Hooks Order in `ExerciseCard.jsx`
+- `QA_PREMERGE_FAIL` caught React hooks (`todaysSets`, `groupedSets`, `filteredHistory`, `totalPersonHistoryCount` `useMemo` calls and `React.useEffect` at lines ~378–470) running **after** `if (!ex) return null;` (line 298) in `gymlog-react/src/components/ExerciseCard.jsx`.
+- Move `todaysSets`, `groupedSets`, `filteredHistory`, `totalPersonHistoryCount`, `initLogInputs`, and `React.useEffect` **above** the `if (!ex) return null;` guard (and safely optional-chain `group?.ex` / `group?.variations` / `group?.name` / `group?.baseName` when resolving `ex`), ensuring **zero** React hooks appear after any conditional early return.
+
 ---
 
 ## Target Files
-- `gymlog-react/src/utils/exerciseVariations.js` *(New)*
+- `gymlog-react/src/utils/exerciseVariations.js`
+- `gymlog-react/src/components/VariationGeneratorPanel.jsx` *(New)*
 - `gymlog-react/src/context/AppContext.jsx`
 - `gymlog-react/src/context/dataMerge.js`
 - `gymlog-react/src/components/PlanView.jsx`

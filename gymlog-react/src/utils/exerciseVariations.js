@@ -12,6 +12,17 @@ const KNOWN_MODIFIER_TOKENS = new Set([
 
 const REP_RANGES = ['r1_3', 'r4_7', 'r8_12', 'r13_plus'];
 
+export const INITIAL_VARIATION_OPTIONS = {
+    barbell: false,
+    dumbbell: false,
+    band: false,
+    cable: false,
+    single: false,
+    alt: false,
+    overhand: false,
+    underhand: false
+};
+
 function parseVariationName(name) {
     let base = String(name || '').trim();
     const tokens = [];
@@ -92,39 +103,46 @@ export function buildVariationNames(baseName, options = {}) {
     if (underhand) grips.push('Underhand');
 
     const hasAnyEquipment = Boolean(barbell || dumbbell || band || cable);
+    const hasGrips = grips.length > 0;
 
-    if (standard) {
-        addName([]);
+    // 1. No equipment checked (or explicit standard fallback)
+    if (!hasAnyEquipment || standard) {
+        if (hasGrips) {
+            grips.forEach(grip => addName([grip]));
+            executions.forEach(exec => {
+                grips.forEach(grip => addName([exec, grip]));
+            });
+        } else {
+            addName([]);
+            executions.forEach(exec => addName([exec]));
+        }
     }
 
-    // Apply standalone execution / grip when Standard is selected (or no equipment is selected)
-    if (standard || !hasAnyEquipment) {
-        const standardExecs = dumbbell ? [] : executions;
-        standardExecs.forEach(exec => addName([exec]));
-        grips.forEach(grip => addName([grip]));
-        standardExecs.forEach(exec => {
-            grips.forEach(grip => addName([exec, grip]));
-        });
-    }
-
-    // Barbell never auto-combines with Single or Alt
+    // 2. Barbell never auto-combines with Single or Alt
     if (barbell) {
-        addName(['Barbell']);
-        grips.forEach(grip => addName(['Barbell', grip]));
+        if (hasGrips) {
+            grips.forEach(grip => addName(['Barbell', grip]));
+        } else {
+            addName(['Barbell']);
+        }
     }
 
+    // 3. Dumbbell (DB), Band, and/or Cable
     const equipmentList = [];
     if (dumbbell) equipmentList.push('DB');
     if (band) equipmentList.push('Band');
     if (cable) equipmentList.push('Cable');
 
     equipmentList.forEach(eq => {
-        addName([eq]);
-        executions.forEach(exec => addName([eq, exec]));
-        grips.forEach(grip => addName([eq, grip]));
-        executions.forEach(exec => {
-            grips.forEach(grip => addName([eq, exec, grip]));
-        });
+        if (hasGrips) {
+            grips.forEach(grip => addName([eq, grip]));
+            executions.forEach(exec => {
+                grips.forEach(grip => addName([eq, exec, grip]));
+            });
+        } else {
+            addName([eq]);
+            executions.forEach(exec => addName([eq, exec]));
+        }
     });
 
     return results;
