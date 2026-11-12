@@ -87,6 +87,10 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 9.2 (`TASK-R130`): Expandable Full-Screen Rest/Stopwatch Timer & Gym Alert Audio**:
   - Created `FullScreenTimerModal.jsx` (Wake Lock, huge digits, `PAUSE/START`, `+30S` for Countdown, `RESET` for Stopwatch, `✕`/backdrop close, 2s `"REST COMPLETE!"` flash + auto-return) and shared `TimerWidget.jsx` across `Plan`, `Full Body`, and `Circuit`.
   - Added singleton `audioCtxRef`, user-gesture `unlockAudio()`, whole-second interval guard, selectable Web Audio presets (`gym-chime`, `boxing-bell`, `urgent-alarm`, `soft-beep`, `silent`), `TEST` button, and vibration toggle in `SettingsModal.jsx`.
+- [x] **Story 9.3 (`TASK-R131`): Equipment/Grip Variation Generator, Un-Collapsed Rotation & Logger Band Toggle**:
+  - Un-collapsed variations in `PlanView.jsx`, `FullBodyView.jsx`, `LiftView.jsx`, and `AccessoryBlock.jsx` (keeping zero switcher pills on `ExerciseCard.jsx`) so every variation rotates independently with its own Personal Best.
+  - Added `exerciseVariations.js` and shared `VariationGeneratorPanel.jsx` powering `SettingsModal.jsx` and `ExerciseCard.jsx` (`⚙️ EDIT`) with Equipment (`Barbell`, `Dumbbell`, `Band`, `Cable`), Execution (`Singles`, `Alternating`), and Grip (`Overhand`, `Underhand`) combinations + interactive Live Preview, explicit `×` family removal, and hook ordering fixes.
+  - Added `[ ] Band (Assist / Tension)` logging toggle (`ExerciseCard.jsx`, `CircuitCard.jsx`), `[Band]` note tagging (`AppContext.jsx`), and unassisted PB protection across live logs and sheet reloads (`dataMerge.js`).
 
 ---
 
@@ -104,11 +108,7 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [ ] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`)**:
   - Optimize the 131 uncompressed camera photos in `gymlog-react/public/images/` (reducing size from 470 MB to <25 MB) and add `loading="lazy"` to eliminate ~1 GB Vercel deployment bloat.
 
-### Priority 2: User-Requested Upgrades (Batch 2 — Easiest-to-Hardest Order)
-- [ ] **Story 9.3 (`TASK-R131`): Equipment/Grip Variation Generator, Un-Collapsed Rotation & Logger Band Toggle**:
-  - Un-collapse `(Single)`/`(Alt)` variations in `PlanView.jsx` and `FullBodyView.jsx` (keeping zero switcher pills on `ExerciseCard.jsx`) so every variation rotates independently with its own Personal Best.
-  - Expand Create/Edit Exercise (`SettingsModal.jsx` & `ExerciseCard.jsx`) with Barbell, Dumbbell, Band, Overhand, Underhand, Single, and Alt checkboxes + live preview.
-  - Add a lightweight `[ ] Band` checkbox on the set logger (tagging `[Band]` in notes and protecting strict unassisted PBs).
+### Priority 2: User-Requested Upgrades (Batch 2 — Deferred / Follow-Ups)
 - *(Deferred / Discussion Only: Deterministic Cycle Shuffle for `Plan` & `Full Body` rotation — held on user request until requested later.)*
 
 ### Priority 3: Category Management Parity
