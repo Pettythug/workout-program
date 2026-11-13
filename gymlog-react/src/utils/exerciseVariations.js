@@ -7,7 +7,8 @@ const KNOWN_MODIFIER_TOKENS = new Set([
     'single',
     'alt',
     'overhand',
-    'underhand'
+    'underhand',
+    'neutral'
 ]);
 
 const REP_RANGES = ['r1_3', 'r4_7', 'r8_12', 'r13_plus'];
@@ -20,7 +21,8 @@ export const INITIAL_VARIATION_OPTIONS = {
     single: false,
     alt: false,
     overhand: false,
-    underhand: false
+    underhand: false,
+    neutral: false
 };
 
 function parseVariationName(name) {
@@ -79,7 +81,8 @@ export function buildVariationNames(baseName, options = {}) {
         single = false,
         alt = false,
         overhand = false,
-        underhand = false
+        underhand = false,
+        neutral = false
     } = options;
 
     const results = [];
@@ -101,6 +104,7 @@ export function buildVariationNames(baseName, options = {}) {
     const grips = [];
     if (overhand) grips.push('Overhand');
     if (underhand) grips.push('Underhand');
+    if (neutral) grips.push('Neutral');
 
     const hasAnyEquipment = Boolean(barbell || dumbbell || band || cable);
     const hasGrips = grips.length > 0;
