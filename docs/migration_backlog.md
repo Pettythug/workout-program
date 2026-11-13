@@ -91,6 +91,9 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Un-collapsed variations in `PlanView.jsx`, `FullBodyView.jsx`, `LiftView.jsx`, and `AccessoryBlock.jsx` (keeping zero switcher pills on `ExerciseCard.jsx`) so every variation rotates independently with its own Personal Best.
   - Added `exerciseVariations.js` and shared `VariationGeneratorPanel.jsx` powering `SettingsModal.jsx` and `ExerciseCard.jsx` (`⚙️ EDIT`) with Equipment (`Barbell`, `Dumbbell`, `Band`, `Cable`), Execution (`Singles`, `Alternating`), and Grip (`Overhand`, `Underhand`) combinations + interactive Live Preview, explicit `×` family removal, and hook ordering fixes.
   - Added `[ ] Band (Assist / Tension)` logging toggle (`ExerciseCard.jsx`, `CircuitCard.jsx`), `[Band]` note tagging (`AppContext.jsx`), and unassisted PB protection across live logs and sheet reloads (`dataMerge.js`).
+- [x] **Story 9.4 (`TASK-R132`): Add Neutral Grip to Variation Generator & Name Parser**:
+  - Added `'neutral'` token, initial option, and combinator registration in `exerciseVariations.js`.
+  - Added `{ key: 'neutral', label: 'Neutral' }` to `VariationGeneratorPanel.jsx` under the Grip option group, enabling Neutral grip in both `Settings -> CREATE EXERCISE` and `ExerciseCard -> ⚙️ EDIT`.
 
 ---
 
