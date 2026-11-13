@@ -1,8 +1,15 @@
 # TASK-R132: Add Neutral Grip to Variations
 
 - **Target Role:** `Sandbox_Developer`
-- **Authorized Model Tier:** `MEDIUM_TIER` ONLY (`Gemini 3.8 Flash (High)`, `Gemini 3.8 Flash`, `Claude Sonnet 4.6 (Thinking)`)
-- **STRICT QUOTA GOVERNANCE:** `DENY(HIGH_TIER: [Gemini 4 Argon, Gemini 3.8 Pro, Claude Opus])`. If your active model is in HIGH_TIER, immediately halt on Turn 1 and request the user switch to `Gemini 3.8 Flash (High)`.
+- **Required Model:** `Gemini 3.8 Flash (High)` (`MEDIUM_TIER`)
+- **STRICT MODEL GATEKEEPER CHECK (MANDATORY ON TURN 1):**
+  1. Check your active model against `MEDIUM_TIER`: `["Gemini 3.8 Flash (High)", "Gemini 3.8 Flash", "Claude Sonnet 4.6 (Thinking)"]`.
+  2. If running on a **HIGHER model** (e.g. `Gemini 4 Argon`, `Gemini 3.8 Pro`, `Claude Opus`):
+     - **HALT IMMEDIATELY.** Do NOT read files or run tools.
+     - Output: `Model Alignment Error: Request Switch -> Model is too high. Please switch to Gemini 3.8 Flash (High) before proceeding.`
+  3. If running on a **LOWER model** (e.g. `Gemini 3.8 Flash (Low)`, `Gemini 3.5 Flash (Medium/Low)`):
+     - **HALT IMMEDIATELY.** Do NOT read files or run tools.
+     - Output: `Model Alignment Error: Request Switch -> Model is too low. Please switch to Gemini 3.8 Flash (High) before proceeding.`
 
 ---
 
