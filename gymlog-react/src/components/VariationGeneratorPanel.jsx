@@ -19,7 +19,8 @@ const VARIATION_OPTION_GROUPS = [
         label: 'Grip',
         items: [
             { key: 'overhand', label: 'Overhand' },
-            { key: 'underhand', label: 'Underhand' }
+            { key: 'underhand', label: 'Underhand' },
+            { key: 'neutral', label: 'Neutral' }
         ]
     }
 ];
