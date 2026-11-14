@@ -22,11 +22,17 @@ function mergeExerciseHistory(sheetHistory, localHistory) {
         const isToday = lh.date && new Date(lh.date).toDateString() === todayStr;
         if (!isToday) return;
 
-        const isDuplicate = sheetHistory.some(sh =>
-            sh.person === lh.person &&
-            String(sh.reps) === String(lh.reps) &&
-            String(sh.weight) === String(lh.weight)
-        );
+        const isDuplicate = sheetHistory.some(sh => {
+            const samePerson = cleanName(sh.person) === cleanName(lh.person);
+            const sameReps = String(sh.reps) === String(lh.reps);
+            const sameWeight = String(sh.weight) === String(lh.weight);
+            const sameSetNum = (sh.setNum !== undefined && lh.setNum !== undefined)
+                ? Number(sh.setNum || 1) === Number(lh.setNum || 1)
+                : true;
+            const sameExactTime = Boolean(sh.date && lh.date && sh.date === lh.date);
+
+            return samePerson && sameReps && sameWeight && (sameExactTime || sameSetNum);
+        });
         if (!isDuplicate) {
             mergedHistory.push(lh);
         }
