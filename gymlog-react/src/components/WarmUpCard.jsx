@@ -18,7 +18,10 @@ export default function WarmUpCard({ onAdvance }) {
         setSelectedWarmUp, 
         completeWarmUp, 
         skipWarmUp, 
-        resetWarmUp 
+        resetWarmUp,
+        sessionStartTime,
+        startSession,
+        endSession
     } = useAppContext();
 
     const [customList, setCustomList] = useState(() => {
@@ -96,6 +99,9 @@ export default function WarmUpCard({ onAdvance }) {
     };
 
     const handleSkip = () => {
+        if (!sessionStartTime && startSession) {
+            startSession();
+        }
         skipWarmUp();
         if (onAdvance) {
             onAdvance();
@@ -344,30 +350,92 @@ export default function WarmUpCard({ onAdvance }) {
                 </div>
             )}
 
-            {/* Action Buttons: Left: Orange DONE, Right: Red SKIP */}
+            {/* Active Warm-Up Status Banner */}
+            {sessionStartTime && warmUpStatus === 'pending' && (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'rgba(249, 115, 22, 0.09)',
+                    border: '1px solid rgba(249, 115, 22, 0.35)',
+                    borderRadius: 8,
+                    marginBottom: 14,
+                    fontSize: 12
+                }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>⏱ Workout Started • Active Warm-Up</span>
+                    </span>
+                    <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => {
+                            if (endSession) endSession();
+                        }}
+                        style={{ 
+                            padding: '4px 8px', 
+                            fontSize: 10, 
+                            border: '1px solid var(--border)', 
+                            color: 'var(--muted)',
+                            cursor: 'pointer' 
+                        }}
+                    >
+                        Reset
+                    </button>
+                </div>
+            )}
+
+            {/* Action Buttons: Left: Orange START/DONE, Right: Red SKIP */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <button
-                    type="button"
-                    className="btn-accent"
-                    onClick={handleDone}
-                    style={{
-                        background: 'var(--accent)',
-                        color: '#000',
-                        fontWeight: 'bold',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: 13,
-                        letterSpacing: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6
-                    }}
-                >
-                    DONE
-                </button>
+                {!sessionStartTime ? (
+                    <button
+                        type="button"
+                        className="btn-accent"
+                        onClick={() => {
+                            if (startSession) startSession();
+                        }}
+                        style={{
+                            background: 'var(--accent)',
+                            color: '#000',
+                            fontWeight: 'bold',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            letterSpacing: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6
+                        }}
+                    >
+                        ▶ START WORKOUT
+                    </button>
+                ) : (
+                    <button
+                        type="button"
+                        className="btn-accent"
+                        onClick={handleDone}
+                        style={{
+                            background: 'var(--accent)',
+                            color: '#000',
+                            fontWeight: 'bold',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            letterSpacing: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6
+                        }}
+                    >
+                        ✓ WARM-UP DONE
+                    </button>
+                )}
                 <button
                     type="button"
                     className="btn-danger"
