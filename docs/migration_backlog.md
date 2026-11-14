@@ -94,6 +94,10 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 9.4 (`TASK-R132`): Add Neutral Grip to Variation Generator & Name Parser**:
   - Added `'neutral'` token, initial option, and combinator registration in `exerciseVariations.js`.
   - Added `{ key: 'neutral', label: 'Neutral' }` to `VariationGeneratorPanel.jsx` under the Grip option group, enabling Neutral grip in both `Settings -> CREATE EXERCISE` and `ExerciseCard -> ⚙️ EDIT`.
+- [x] **Story 9.5 (`TASK-R133`): Pre-Workout Warm-Up "▶ START WORKOUT" Button & Active Timer Alignment**:
+  - Added `▶ START WORKOUT` button to `WarmUpCard.jsx` when session has not yet started, initializing `startSession()` immediately upon entering gym.
+  - Added live `⏱ Workout Started • Active Warm-Up` banner with accidental `Reset` option while warming up, transitioning primary button to `✓ WARM-UP DONE` and preserving warm-up minutes in final workout duration.
+  - Aligned `handleSkip()` to ensure `startSession()` is initialized if warm-up is skipped.
 
 ---
 
