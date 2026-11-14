@@ -146,6 +146,11 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
 
     const handleDeleteHistory = (h, i) => {
+        const datePart = h.date ? h.date.split(',')[0] : 'historical';
+        const unit = ex.timed ? 'secs' : 'reps';
+        const confirmMsg = `Are you sure you want to delete this set (${h.reps} ${unit} @ ${h.weight || 0} lbs on ${datePart})?`;
+        if (!window.confirm(confirmMsg)) return;
+
         if (onDeleteHistoryEntry) {
             onDeleteHistoryEntry({ ...h, exercise: ex.name }, i);
         }
