@@ -116,8 +116,9 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Added `window.confirm` dialog before deleting history entries in `ExerciseCard.jsx` and `CircuitCard.jsx` displaying reps/seconds, weight, and date to prevent accidental permanent deletion.
 - [ ] **Story 8.7 (`TASK-R127`): PIN Security Upgrade (Move PINs Out of URLs & Enforce Backend PIN Check)**:
   - Send `verifyPin`, `claimProfilePin`, and `adminResetPin` via `sheetsPost` body instead of `GET` URL query strings, and include PIN verification on batch history deletions.
-- [ ] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`)**:
-  - Optimize the 131 uncompressed camera photos in `gymlog-react/public/images/` (reducing size from 470 MB to <25 MB) and add `loading="lazy"` to eliminate ~1 GB Vercel deployment bloat.
+- [x] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`) & Add Lazy Loading**:
+  - Compressed all 69 `.jpg` reference photos in `gymlog-react/public/images/` from 470 MB down to 5.22 MB (>98.8% reduction), preserving all original file names and aspect ratios.
+  - Added `loading="lazy"` and `decoding="async"` to `gymlog-react/src/components/ImageModal.jsx` for optimal asset rendering and deployment performance.
 
 ### Priority 2: User-Requested Upgrades (Batch 2 — Deferred / Follow-Ups)
 - *(Deferred / Discussion Only: Deterministic Cycle Shuffle for `Plan` & `Full Body` rotation — held on user request until requested later.)*
