@@ -112,8 +112,8 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Include `setNum` in `mergeExerciseLists` deduplication (`dataMerge.js`) and attach `setNum` + `targetRange` to local optimistic sets in `AppContext.jsx` so straight sets (`3×10` at the same weight) are never collapsed.
 - [ ] **Story 8.5 (`TASK-R125`): Rest Timer Context Isolation (Typing Lag Reduction)**:
   - *(Audio leak + whole-second interval guard completed in `TASK-R130`.)* Remaining scope: isolate live `timerSeconds` state into a separate TimerContext so active timer ticks do not re-render heavy `ExerciseCard` trees during input.
-- [ ] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
-  - Add a confirmation prompt before permanently deleting a historical set via the `🗑` icon in `ExerciseCard.jsx` and `CircuitCard.jsx`.
+- [x] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
+  - Added `window.confirm` dialog before deleting history entries in `ExerciseCard.jsx` and `CircuitCard.jsx` displaying reps/seconds, weight, and date to prevent accidental permanent deletion.
 - [ ] **Story 8.7 (`TASK-R127`): PIN Security Upgrade (Move PINs Out of URLs & Enforce Backend PIN Check)**:
   - Send `verifyPin`, `claimProfilePin`, and `adminResetPin` via `sheetsPost` body instead of `GET` URL query strings, and include PIN verification on batch history deletions.
 - [ ] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`)**:
