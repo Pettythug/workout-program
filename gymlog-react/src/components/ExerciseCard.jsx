@@ -635,6 +635,11 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
     };
 
     const handleDeleteHistory = (entry, targetIndex) => {
+        const datePart = entry.date ? entry.date.split(',')[0] : 'historical';
+        const unit = ex.timed ? 'secs' : 'reps';
+        const confirmMsg = `Are you sure you want to delete this set (${entry.reps} ${unit} @ ${entry.weight || 0} lbs on ${datePart})?`;
+        if (!window.confirm(confirmMsg)) return;
+
         deleteSetFromLocalHistory(ex.name, entry, targetIndex);
         setToast("Entry removed");
         setTimeout(() => setToast(""), 2000);
