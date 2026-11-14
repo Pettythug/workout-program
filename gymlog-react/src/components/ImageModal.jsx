@@ -141,6 +141,8 @@ export default function ImageModal({ ex, baseName, isOpen, onClose, setToast }) 
                         <img
                             src={imgSrc}
                             alt={baseName}
+                            loading="lazy"
+                            decoding="async"
                             style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: 8 }}
                             onError={(e) => {
                                 e.target.style.display = 'none';
