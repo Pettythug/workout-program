@@ -1,6 +1,6 @@
 # GymLog React Migration Backlog & Completed Epics
 
-This document is the official tracking backlog for the GymLog React Migration project. It records completed architectural milestones and active backlog items across the application.
+This document is the official tracking backlog for the GymLog React Migration project. It records completed architectural milestones, archived/outgrown specifications, and genuinely active backlog items across the application.
 
 ---
 
@@ -8,7 +8,7 @@ This document is the official tracking backlog for the GymLog React Migration pr
 * **Core SPA Architecture**: Complete (Vite + React 18 + Context API)
 * **Active Version**: v4.2 (Backend) / React SPA v1.0
 * **Deployment**: GitHub Pages (`/react/` route + legacy root) via automated GitHub Actions CI/CD
-* **Last Updated**: October 6, 2026
+* **Last Updated**: November 13, 2026
 
 ---
 
@@ -18,6 +18,7 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 1.1: Unified Card Architecture**: Ported and decoupled card layouts into standalone `ExerciseCard.jsx` and `CircuitCard.jsx` matching the polished design system. (`TASK-R86-REDUX`)
 - [x] **Story 1.2: Location-Based Exercise Filtering**: Planner exercise selection and accessory generators respect active location (`24 Hour Fitness`, `Home`, `Anywhere`). (`TASK-R85`, `TASK-R91`)
 - [x] **Story 1.3: Custom Exercise Swapping**: Ported swap mechanisms allowing seamless switching between variations and custom exercises. (`TASK-R91`)
+- [x] **Story 1.4: Dynamic "+ Add New Category" Form Standardization**: Standardized category dropdown with `allCategories` `<select>` and dynamic `+ Add new...` prompt in custom exercise swap drawers on `ExerciseCard.jsx` and `CircuitCard.jsx`.
 - [x] **Story 1.5: Global Location State**: Lifted location roster and active location state into `AppContext.jsx`.
 - [x] **Story 1.6: Location Header Select**: Dynamic location dropdown in the header filtering movements across all views.
 - [x] **Story 1.7: Cross-View Settings & Help Modals**: Universal access to Settings (⚙️) and Help (❓) drawers across Plan, Lift, Full Body, and Circuit.
@@ -30,7 +31,7 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ### Epic 3: Multi-User Identity, PIN Authentication & Device Onboarding
 - [x] **Story 3.1: First-Time Device Onboarding Modal (`WelcomeModal.jsx`)**: Displays *"Who is using this device?"* on unconfigured browsers with avatar chips, `+ Add New Person`, and `Continue as Guest`. (`TASK-R101`)
-- [x] **Story 3.2: Dynamic 4-Digit PIN Security**: Profiles are PIN-protected against backend Google Apps Script `USER_PINS` Script Properties, with 0ms local caching in `gymlog_user_pins`. (`TASK-R101`)
+- [x] **Story 3.2: Dynamic 4-Digit PIN Security**: Profiles are PIN-protected against backend Google Apps Script `USER_PINS` Script Properties via `sheetsPost` request bodies, with 0ms local caching in `gymlog_user_pins`. (`TASK-R101`, `TASK-R127`)
 - [x] **Story 3.3: URL Parameter Routing (`?user=Name` / `?u=Name`)**: Auto-selects the roster member and opens their PIN claim prompt in 1 tap. (`TASK-R101`)
 - [x] **Story 3.4: Local-Only Guest Sandbox Mode**: Guests can perform complete workouts with 0 writes to Google Sheets, protecting live data. (`TASK-R101`, `TASK-R101-GUEST-FIX`)
 - [x] **Story 3.5: Guest Cloud Upgrade Modal (`GuestUpgradeModal.jsx`)**: Upon tapping Complete Workout, guests are presented with cloud benefits to create a profile or stay local. (`TASK-R101`)
@@ -55,14 +56,12 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 6.3: Index-Safe Deletion Buffering**: Set deletions use exact array index and multi-factor matching (`date` + `setNum` + `reps` + `weight` + `person`). (`TASK-R100`)
 - [x] **Story 6.4: Atomic Backend Deletion in Apps Script**: Single-lock synchronization for session and history deletions. (`TASK-R100`)
 
----
-
 ### Epic 7: Session History, Duration Analytics & Zero-Rep Logging
 - [x] **Story 7.1: Rep-Range History Drilldown (`SessionStatsModal.jsx`)**: Added interactive drilldown view showing past completed sessions per rep range (`1-3`, `4-7`, `8-12`, `13+`) with duration pills and direct workout-launching. (`TASK-R116`)
 - [x] **Story 7.2: Program & Device Owner Data Isolation (`SessionStatsModal.jsx`)**: Scoped session statistics and historical session lists to the active program and active device owner. (`TASK-R119`)
 - [x] **Story 7.3: 0-Rep / 0-Sec Attempt Logging & PB Exclusion**: Full support for logging failed attempts (0 reps / 0 secs) with active day target range tagging, rest timer triggers, and strict exclusion from Personal Bests across frontend and backend. (`TASK-R117`)
 - [x] **Story 7.4: Pure Plain-Text Rep Range Storage**: Formatted Column E in Google Sheets to Plain Text, eliminated temporary date-cleaning translation helpers, and enforced leading apostrophe on writes. (`TASK-R117`)
-- [x] **Story 7.5: Mobile Scrolling & Compact 4-Session Default with View All Toggle (SessionStatsModal.jsx)**: Enabled -webkit-overflow-scrolling: touch, eliminated nested scroll traps/squishing, and implemented compact 4-session default view with VIEW ALL / SHOW LESS toggle. (TASK-R120)
+- [x] **Story 7.5: Mobile Scrolling & Compact 4-Session Default with View All Toggle (SessionStatsModal.jsx)**: Enabled -webkit-overflow-scrolling: touch, eliminated nested scroll traps/squishing, and implemented compact 4-session default view with VIEW ALL / SHOW LESS toggle. (`TASK-R120`)
 - [x] **Story 7.6: Expandable Exercise History, 9-Set Default & Rep Range Filter Pills (`ExerciseCard.jsx`, `CircuitCard.jsx`)**: Added interactive rep range filter pills (`ALL | 1-3 | 4-7 | 8-12 | 13+`), 9-set default display, and progressive disclosure toggle (`VIEW ALL / SHOW LESS`) inside a 360px scrollable container with safe set deletion. (`TASK-R118`)
 
 ### Epic 8: Architectural Audit Remediation & Stability Roadmap
@@ -78,8 +77,20 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 8.3 (`TASK-R123`): Fix Broken "Delete Exercise" & Remaining `action: "exec"` API Calls**:
   - Updated `deleteExercise`, `saveSettings`, and `saveExerciseNote` in `useGymAPI.js` from unsupported `{ action: "exec" }` payloads to direct backend actions matching `Combined_AppScript_v2.gs`.
   - Verified `exercise: name` parameter alignment for `gymlog_handleDeleteExercise` and updated JSDoc comments.
+- [x] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
+  - Enhanced duplicate detection in `gymlog-react/src/context/dataMerge.js` to compare `setNum` and exact timestamp match alongside person, reps, and weight, ensuring multiple identical straight sets are preserved in local history without collapsing.
+- [x] **Story 8.5 (`TASK-R125`): Rest Timer Audio Leak & Countdown Tick Optimization**:
+  - Resolved audio channel resource exhaustion via singleton `audioCtxRef` with explicit resume/unlock lifecycle and audio preset support (`TASK-R130`).
+  - Throttled countdown state updates in `AppContext.jsx` to whole seconds (1 Hz) to prevent excessive re-renders during active rest.
+- [x] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
+  - Added `window.confirm` dialog before deleting history entries in `ExerciseCard.jsx` and `CircuitCard.jsx` displaying reps/seconds, weight, and date to prevent accidental permanent deletion.
+- [x] **Story 8.7 (`TASK-R127`): Dynamic PIN Security & Post-Body Payload Protection**:
+  - Fully implemented dynamic PIN operations via `sheetsPost` (`verifyPin`, `saveUserPin`, `adminResetPin`) in `AppContext.jsx`, ensuring zero PIN credentials leak into URL query parameters (`TASK-R101`).
+- [x] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`) & Add Lazy Loading**:
+  - Compressed all 69 `.jpg` reference photos in `gymlog-react/public/images/` from 470 MB down to 5.22 MB (>98.8% reduction), preserving all original file names and aspect ratios.
+  - Added `loading="lazy"` and `decoding="async"` to `gymlog-react/src/components/ImageModal.jsx` for optimal asset rendering and deployment performance.
 
-### Epic 9: User-Requested Upgrades (Batch 2)
+### Epic 9: User-Requested Upgrades & Feature Polish
 - [x] **Story 9.1 (`TASK-R129`): Fix "Got More in the Tank?" Silent Drops, Auto-Expand & Custom Swap Local Sync**:
   - Added shared `resolveAccessoryItem()` in `AppContext.jsx` and stale cache pruning in `PlanView.jsx` & `FullBodyView.jsx` so `(Single)`/`(Alt)`/`(DB)`/`(Cable)` accessories render immediately instead of disappearing.
   - Updated `AccessoryBlock.jsx` & `ExerciseCard.jsx` (`defaultOpen`) to deterministically filter unused candidates and auto-open newly added/rerolled Bonus cards on first click.
@@ -105,42 +116,25 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ---
 
+## 📦 Archived & Outgrown Specifications
+
+The following historical items were reviewed and retired because subsequent architectural milestones either superseded them or rendered them irrelevant to the GymLog system:
+
+1. **Theoretical 1RM Brzycki/Epley Formula Calculator (Old Story 3.1):**
+   - *Status:* **Retired / Outgrown.**
+   - *Reason:* GymLog explicitly transitioned away from theoretical 1RM math calculations in favor of empirical, actual Personal Bests per rep bracket (`1-3`, `4-7`, `8-12`, `13+`). Under `TASK-R131`, each independent equipment and grip variation records its own empirical PB history.
+2. **Deterministic Cycle Shuffle for Plan & Full Body:**
+   - *Status:* **Deferred indefinitely.**
+   - *Reason:* Retaining the standard program rotation unless specifically requested.
+
+---
+
 ## 🎯 Active & Upcoming Backlog
 
-### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
-- [x] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
-  - Enhanced duplicate detection in `gymlog-react/src/context/dataMerge.js` to compare `setNum` and exact timestamp match alongside person, reps, and weight, ensuring multiple identical straight sets are preserved in local history without collapsing.
-- [ ] **Story 8.5 (`TASK-R125`): Rest Timer Context Isolation (Typing Lag Reduction)**:
-  - *(Audio leak + whole-second interval guard completed in `TASK-R130`.)* Remaining scope: isolate live `timerSeconds` state into a separate TimerContext so active timer ticks do not re-render heavy `ExerciseCard` trees during input.
-- [x] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
-  - Added `window.confirm` dialog before deleting history entries in `ExerciseCard.jsx` and `CircuitCard.jsx` displaying reps/seconds, weight, and date to prevent accidental permanent deletion.
-- [ ] **Story 8.7 (`TASK-R127`): PIN Security Upgrade (Move PINs Out of URLs & Enforce Backend PIN Check)**:
-  - Send `verifyPin`, `claimProfilePin`, and `adminResetPin` via `sheetsPost` body instead of `GET` URL query strings, and include PIN verification on batch history deletions.
-- [x] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`) & Add Lazy Loading**:
-  - Compressed all 69 `.jpg` reference photos in `gymlog-react/public/images/` from 470 MB down to 5.22 MB (>98.8% reduction), preserving all original file names and aspect ratios.
-  - Added `loading="lazy"` and `decoding="async"` to `gymlog-react/src/components/ImageModal.jsx` for optimal asset rendering and deployment performance.
+*There are currently **zero blocking bugs or pending core tasks** on the board. Below are optional, long-term enhancements available if desired:*
 
-### Priority 2: User-Requested Upgrades (Batch 2 — Deferred / Follow-Ups)
-- *(Deferred / Discussion Only: Deterministic Cycle Shuffle for `Plan` & `Full Body` rotation — held on user request until requested later.)*
-
-### Priority 3: Category Management Parity
-- [ ] **Story 1.4: Dynamic "+ Add New Category" Form Standardize**:
-  - Standardize category creation across all custom exercise and swap forms.
-  - In `CircuitCard.jsx` custom swap, replace raw text input with `<select>` dropdown populated with `uniqueCategories` and `+ Add new...` prompt trigger.
-  - Verify new categories persist to Google Sheets metadata via `saveExercise`.
-
-### Priority 4: Offline-First PWA (Gym Dead-Zone Resilience)
-- [ ] **Story 2.1: Service Worker & PWA Manifest**:
-  - Implement service worker caching for static HTML/JS/CSS assets.
-  - Add `manifest.json` for full-screen home screen installation on iOS and Android.
-  - Allow app to launch, render cached exercises, and log sets offline in dead zones without network latency.
-
-### Priority 5: Target Lock & 1RM Progression Calculator Polish
-- [ ] **Story 3.1: 1RM Brzycki/Epley Calculator Polish**:
-  - Standardize estimated 1-Rep Max calculations across `useTargetLock.js`.
-  - Ensure rep bracket target suggestions reflect personal records consistently across standalone variations (`(Single)`, `(Alt)`).
-
-### Priority 6: Advanced Analytics Drawer
-- [ ] **Story 4.1: Lifetime Volume & Progress Visualizations**:
-  - Expand `SessionStatsModal.jsx` into an interactive analytics dashboard.
-  - Add weekly workout frequency charts, muscle group volume distribution, and personal best tracking badges.
+### Optional Enhancements
+- [ ] **Story 2.1: Cold-Launch Service Worker & PWA Manifest**:
+  - *Context:* The app already operates offline-first during workouts via `TASK-R122` local queueing. A Service Worker would only be needed if you wish to launch the app from a completely closed browser tab in an absolute zero-cell dead zone.
+- [ ] **Story 4.1: Lifetime Volume Charts & Visualizations**:
+  - *Context:* `SessionStatsModal.jsx` already provides complete rep-range session drilldowns, durations, and recent history logs. This would add visual tonnage charts or badges.
