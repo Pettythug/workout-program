@@ -98,6 +98,10 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Added `▶ START WORKOUT` button to `WarmUpCard.jsx` when session has not yet started, initializing `startSession()` immediately upon entering gym.
   - Added live `⏱ Workout Started • Active Warm-Up` banner with accidental `Reset` option while warming up, transitioning primary button to `✓ WARM-UP DONE` and preserving warm-up minutes in final workout duration.
   - Aligned `handleSkip()` to ensure `startSession()` is initialized if warm-up is skipped.
+- [x] **Story 9.6 (`TASK-R134`): Add Variation Generator to Custom Swap Drawer (`ExerciseCard` & `CircuitCard`)**:
+  - Integrated `VariationGeneratorPanel` directly into the `-- New Custom Exercise --` swap drawer on `ExerciseCard.jsx` and `CircuitCard.jsx`.
+  - Added full Equipment, Execution, and Grip combination support with live preview when creating a custom exercise mid-workout.
+  - Wired `executeSwap()` to batch-create and register all selected variations via `createExerciseMeta()` on the backend/local state and immediately swap the primary variation into the active card slot.
 
 ---
 
