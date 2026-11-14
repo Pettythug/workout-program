@@ -248,6 +248,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
     // Swap State
     const [swapMode, setSwapMode] = useState(null);
     const [customSwapState, setCustomSwapState] = useState(null);
+    const [swapVariationOptions, setSwapVariationOptions] = useState(INITIAL_VARIATION_OPTIONS);
+    const [excludedSwapPreviewNames, setExcludedSwapPreviewNames] = useState(() => new Set());
 
     const [editMode, setEditMode] = useState(null);
     const [editValue, setEditValue] = useState("");
@@ -294,6 +296,33 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
     const newNamesToCreate = useMemo(() => {
         return selectedPreviewNames.filter(name => !existingExerciseNames.has(name.toLowerCase()));
     }, [selectedPreviewNames, existingExerciseNames]);
+
+    const generatedSwapNames = useMemo(() => {
+        return buildVariationNames(customSwapState?.name, swapVariationOptions);
+    }, [customSwapState?.name, swapVariationOptions]);
+
+    const hasSelectedSwapOption = Object.values(swapVariationOptions).some(Boolean);
+
+    const selectedSwapPreviewNames = useMemo(() => {
+        return generatedSwapNames.filter(name => !excludedSwapPreviewNames.has(name));
+    }, [generatedSwapNames, excludedSwapPreviewNames]);
+
+    const handleToggleSwapVariationOption = (key, checked) => {
+        setSwapVariationOptions(prev => ({ ...prev, [key]: checked }));
+        setExcludedSwapPreviewNames(new Set());
+    };
+
+    const handleToggleSwapPreviewName = (name) => {
+        setExcludedSwapPreviewNames(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    };
 
     const todaysSets = useMemo(() => {
         const todayStr = new Date().toDateString();
@@ -642,32 +671,79 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         const isCustom = typeof swapPayload === 'object';
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
-        
-        const cleanedStd = stdName.trim().toLowerCase();
-        let targetEx = (exercises || []).find(e => e.name.trim().toLowerCase() === cleanedStd)
-            || (exercises || []).find(e => extractBaseName(e.name).trim().toLowerCase() === cleanedStd);
-        
-        if (!targetEx) {
-            const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
-            if (pin === null) return;
-            targetEx = { 
-                name: stdName, 
-                category: isCustom ? swapPayload.category : (ex.category || "General"),
-                muscle: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
-                muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
-                manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
-                baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+
+        let targetEx = null;
+
+        if (isCustom && hasSelectedSwapOption) {
+            const namesToRegister = selectedSwapPreviewNames.length > 0 ? selectedSwapPreviewNames : generatedSwapNames;
+            if (namesToRegister.length === 0) return alert("Please select at least one variation to create.");
+
+            const newNamesToCreate = namesToRegister.filter(name => !existingExerciseNames.has(name.toLowerCase()));
+            const primaryName = namesToRegister[0];
+
+            if (newNamesToCreate.length > 0) {
+                const pin = prompt(`Enter Admin PIN to register ${newNamesToCreate.length} custom variation(s) on the database:`);
+                if (pin === null) return;
+
+                try {
+                    await createExerciseMeta({
+                        baseName: stdName,
+                        variationNames: newNamesToCreate,
+                        category: swapPayload.category || (ex.category || "General"),
+                        muscle: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                        muscleGroups: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                        manufacturer: swapPayload.manufacturer || (ex.manufacturer || ""),
+                        baseExercise: swapPayload.baseExercise || (ex.baseExercise || ""),
+                        location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
+                        timed: false,
+                        isCircuit: false
+                    }, pin);
+                } catch (e) {
+                    console.error("Error saving custom variations to backend", e);
+                    alert("Failed to save variations: " + e.message);
+                    return;
+                }
+            }
+
+            targetEx = (exercises || []).find(e => e.name.trim().toLowerCase() === primaryName.toLowerCase()) || {
+                name: primaryName,
+                category: swapPayload.category || (ex.category || "General"),
+                muscle: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                muscleGroups: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                manufacturer: swapPayload.manufacturer || (ex.manufacturer || ""),
+                baseExercise: swapPayload.baseExercise || (ex.baseExercise || ""),
                 location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
-                timed: false, history: [],
+                timed: false,
+                history: [],
                 isCircuit: false
             };
-            try {
-                await saveExercise(targetEx, pin);
-                addExerciseToLocalState(targetEx);
-            } catch (e) {
-                console.error("Error saving new swap exercise to backend", e);
-                alert("Failed to save swap exercise: " + e.message);
-                return;
+        } else {
+            const cleanedStd = stdName.trim().toLowerCase();
+            targetEx = (exercises || []).find(e => e.name.trim().toLowerCase() === cleanedStd)
+                || (exercises || []).find(e => extractBaseName(e.name).trim().toLowerCase() === cleanedStd);
+
+            if (!targetEx) {
+                const pin = prompt("Enter Admin PIN to register this custom exercise on the database:");
+                if (pin === null) return;
+                targetEx = { 
+                    name: stdName, 
+                    category: isCustom ? swapPayload.category : (ex.category || "General"),
+                    muscle: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                    muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
+                    manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
+                    baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+                    location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
+                    timed: false, history: [],
+                    isCircuit: false
+                };
+                try {
+                    await saveExercise(targetEx, pin);
+                    addExerciseToLocalState(targetEx);
+                } catch (e) {
+                    console.error("Error saving new swap exercise to backend", e);
+                    alert("Failed to save swap exercise: " + e.message);
+                    return;
+                }
             }
         }
         
@@ -678,6 +754,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         }
         setSwapMode(null);
         setCustomSwapState(null);
+        setSwapVariationOptions(INITIAL_VARIATION_OPTIONS);
+        setExcludedSwapPreviewNames(new Set());
     };
 
     const allCategories = [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
@@ -995,6 +1073,8 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                                         baseExercise: "",
                                                         muscle: ""
                                                     });
+                                                    setSwapVariationOptions(INITIAL_VARIATION_OPTIONS);
+                                                    setExcludedSwapPreviewNames(new Set());
                                                 } else if (e.target.value) {
                                                     executeSwap(e.target.value);
                                                 }
@@ -1022,6 +1102,17 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                                 <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
                                                 <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
 
+                                                <VariationGeneratorPanel
+                                                    title="Variations"
+                                                    options={swapVariationOptions}
+                                                    onToggleOption={handleToggleSwapVariationOption}
+                                                    generatedNames={generatedSwapNames}
+                                                    excludedPreviewNames={excludedSwapPreviewNames}
+                                                    onTogglePreviewName={handleToggleSwapPreviewName}
+                                                    existingExerciseNames={existingExerciseNames}
+                                                    showPreview={Boolean(customSwapState?.name?.trim())}
+                                                />
+
                                                 <button 
                                                     onClick={() => executeSwap(customSwapState)}
                                                     className="btn-success"
@@ -1029,14 +1120,14 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                                 >SAVE & SWAP</button>
                                             </div>
                                         )}
-                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); setSwapVariationOptions(INITIAL_VARIATION_OPTIONS); setExcludedSwapPreviewNames(new Set()); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
                                     </div>
                                 </div>
                             )}
 
                             <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 16 }}>
                                 {(group.originalBaseKey || onSwap || (group.alternatives && group.alternatives.length > 0)) && (
-                                    <button onClick={() => setSwapMode(ex.name)} className="btn-ghost" style={{ flex: 1, fontSize: 11, padding: '10px 4px' }}>
+                                    <button onClick={() => { setSwapMode(ex.name); setCustomSwapState(null); setSwapVariationOptions(INITIAL_VARIATION_OPTIONS); setExcludedSwapPreviewNames(new Set()); }} className="btn-ghost" style={{ flex: 1, fontSize: 11, padding: '10px 4px' }}>
                                         🔄 SWAP
                                     </button>
                                 )}
