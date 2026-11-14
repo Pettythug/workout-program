@@ -1,8 +1,10 @@
 /* eslint-disable */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useAppContext } from '../context/AppContext';
 import { useTargetLock } from '../hooks/useTargetLock';
-import { extractBaseName } from '../utils/exerciseVariations';
+import { extractBaseName, buildVariationNames, INITIAL_VARIATION_OPTIONS } from '../utils/exerciseVariations';
 import ImageModal from './ImageModal';
+import VariationGeneratorPanel from './VariationGeneratorPanel';
 
 const formatLogDate = (dateStr) => {
     if (!dateStr) return '';
@@ -172,13 +174,48 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
 
     const [activeTab, setActiveTab] = useState("LOG");
 
+    const { createExerciseMeta, activeLocation } = useAppContext();
+
     // Swap State
     const [swapMode, setSwapMode] = useState(null);
     const [customSwapState, setCustomSwapState] = useState(null);
+    const [swapVariationOptions, setSwapVariationOptions] = useState(INITIAL_VARIATION_OPTIONS);
+    const [excludedSwapPreviewNames, setExcludedSwapPreviewNames] = useState(() => new Set());
     const [showImage, setShowImage] = useState(false);
     const [toast, setToast] = useState("");
     const [historyFilter, setHistoryFilter] = useState('ALL');
     const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+
+    const existingExerciseNames = useMemo(() => {
+        return new Set((allExercises || []).map(e => (e.name || '').trim().toLowerCase()));
+    }, [allExercises]);
+
+    const generatedSwapNames = useMemo(() => {
+        return buildVariationNames(customSwapState?.name, swapVariationOptions);
+    }, [customSwapState?.name, swapVariationOptions]);
+
+    const hasSelectedSwapOption = Object.values(swapVariationOptions).some(Boolean);
+
+    const selectedSwapPreviewNames = useMemo(() => {
+        return generatedSwapNames.filter(name => !excludedSwapPreviewNames.has(name));
+    }, [generatedSwapNames, excludedSwapPreviewNames]);
+
+    const handleToggleSwapVariationOption = (key, checked) => {
+        setSwapVariationOptions(prev => ({ ...prev, [key]: checked }));
+        setExcludedSwapPreviewNames(new Set());
+    };
+
+    const handleToggleSwapPreviewName = (name) => {
+        setExcludedSwapPreviewNames(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) {
+                next.delete(name);
+            } else {
+                next.add(name);
+            }
+            return next;
+        });
+    };
 
     const filteredHistory = useMemo(() => {
         if (!ex?.history) return [];
@@ -279,10 +316,62 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         onSwap(index, targetEx);
     };
 
-    const executeSwap = (swapPayload) => {
+    const executeSwap = async (swapPayload) => {
         const isCustom = typeof swapPayload === 'object';
         const stdName = isCustom ? swapPayload.name.trim() : swapPayload.trim();
         if (!stdName) return alert("Exercise name cannot be blank.");
+
+        if (isCustom && hasSelectedSwapOption) {
+            const namesToRegister = selectedSwapPreviewNames.length > 0 ? selectedSwapPreviewNames : generatedSwapNames;
+            if (namesToRegister.length === 0) return alert("Please select at least one variation to create.");
+
+            const newNamesToCreate = namesToRegister.filter(name => !existingExerciseNames.has(name.toLowerCase()));
+            const primaryName = namesToRegister[0];
+
+            if (newNamesToCreate.length > 0) {
+                const pin = prompt(`Enter Admin PIN to register ${newNamesToCreate.length} custom variation(s) on the database:`);
+                if (pin === null) return;
+
+                try {
+                    await createExerciseMeta({
+                        baseName: stdName,
+                        variationNames: newNamesToCreate,
+                        category: swapPayload.category || (ex.category || "General"),
+                        muscle: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                        muscleGroups: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                        manufacturer: swapPayload.manufacturer || (ex.manufacturer || ""),
+                        baseExercise: swapPayload.baseExercise || (ex.baseExercise || ""),
+                        location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
+                        timed: false,
+                        isCircuit: true
+                    }, pin);
+                } catch (e) {
+                    console.error("Error saving custom variations to backend", e);
+                    alert("Failed to save variations: " + e.message);
+                    return;
+                }
+            }
+
+            const targetEx = (allExercises || []).find(e => e.name.trim().toLowerCase() === primaryName.toLowerCase()) || {
+                name: primaryName,
+                category: swapPayload.category || (ex.category || "General"),
+                muscle: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                muscleGroups: swapPayload.muscle || (ex.muscleGroups || ex.muscle || ""),
+                manufacturer: swapPayload.manufacturer || (ex.manufacturer || ""),
+                baseExercise: swapPayload.baseExercise || (ex.baseExercise || ""),
+                location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
+                timed: false,
+                history: [],
+                isCircuit: true
+            };
+
+            onSwap(index, targetEx, false);
+            setSwapMode(null);
+            setCustomSwapState(null);
+            setSwapVariationOptions(INITIAL_VARIATION_OPTIONS);
+            setExcludedSwapPreviewNames(new Set());
+            return;
+        }
         
         let targetEx = (allExercises || []).find(e => {
             const cleanedE = e.name.trim().toLowerCase();
@@ -299,6 +388,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                 muscleGroups: isCustom ? swapPayload.muscle : (ex.muscleGroups || ex.muscle || ""),
                 manufacturer: isCustom ? swapPayload.manufacturer : (ex.manufacturer || ""),
                 baseExercise: isCustom ? swapPayload.baseExercise : (ex.baseExercise || ""),
+                location: (activeLocation && activeLocation.trim().toLowerCase() !== 'all') ? activeLocation : (ex.location || 'Anywhere'),
                 timed: false, history: [],
                 isCircuit: true
             };
@@ -307,6 +397,8 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
         onSwap(index, targetEx, isNew);
         setSwapMode(null);
         setCustomSwapState(null);
+        setSwapVariationOptions(INITIAL_VARIATION_OPTIONS);
+        setExcludedSwapPreviewNames(new Set());
     };
 
 
@@ -462,6 +554,8 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                         baseExercise: "",
                                                         muscle: ""
                                                     });
+                                                    setSwapVariationOptions(INITIAL_VARIATION_OPTIONS);
+                                                    setExcludedSwapPreviewNames(new Set());
                                                 } else if (e.target.value) {
                                                     executeSwap(e.target.value);
                                                 }
@@ -509,6 +603,17 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                 <input list="muscle-list" placeholder="Muscles" value={customSwapState.muscle} onChange={e => setCustomSwapState({...customSwapState, muscle: e.target.value})} style={{ background: "#000", border: "1px solid var(--border)", color: "var(--text)", padding: 8, borderRadius: 4, fontSize: 12 }} />
                                                 <datalist id="muscle-list">{allMuscles.map(m => <option key={m} value={m} />)}</datalist>
 
+                                                <VariationGeneratorPanel
+                                                    title="Variations"
+                                                    options={swapVariationOptions}
+                                                    onToggleOption={handleToggleSwapVariationOption}
+                                                    generatedNames={generatedSwapNames}
+                                                    excludedPreviewNames={excludedSwapPreviewNames}
+                                                    onTogglePreviewName={handleToggleSwapPreviewName}
+                                                    existingExerciseNames={existingExerciseNames}
+                                                    showPreview={Boolean(customSwapState?.name?.trim())}
+                                                />
+
                                                 <button 
                                                     onClick={() => executeSwap(customSwapState)}
                                                     className="btn-success"
@@ -516,12 +621,12 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                                                 >SAVE & SWAP</button>
                                             </div>
                                         )}
-                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
+                                        <button onClick={() => { setSwapMode(null); setCustomSwapState(null); setSwapVariationOptions(INITIAL_VARIATION_OPTIONS); setExcludedSwapPreviewNames(new Set()); }} className="btn-ghost" style={{ width: "100%", padding: 12, marginTop: 8, fontSize: 14, color: 'var(--skip)', borderColor: 'var(--skip)' }}>CANCEL SWAP</button>
                                     </div>
                                 ) : (
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         <button 
-                                            onClick={() => setSwapMode(ex.name)}
+                                            onClick={() => { setSwapMode(ex.name); setCustomSwapState(null); setSwapVariationOptions(INITIAL_VARIATION_OPTIONS); setExcludedSwapPreviewNames(new Set()); }}
                                             className="btn-ghost btn-no-translate"
                                             style={{ flex: 1, minWidth: '75px', padding: '10px 4px', fontSize: 11 }}
                                         >
