@@ -108,8 +108,8 @@ This document is the official tracking backlog for the GymLog React Migration pr
 ## 🎯 Active & Upcoming Backlog
 
 ### Priority 1: Architectural Audit Remediation & Stability Roadmap (Epic 8)
-- [ ] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
-  - Include `setNum` in `mergeExerciseLists` deduplication (`dataMerge.js`) and attach `setNum` + `targetRange` to local optimistic sets in `AppContext.jsx` so straight sets (`3×10` at the same weight) are never collapsed.
+- [x] **Story 8.4 (`TASK-R124`): Preserve Multiple Identical Sets During Cloud Sync (`setNum` Deduplication)**:
+  - Enhanced duplicate detection in `gymlog-react/src/context/dataMerge.js` to compare `setNum` and exact timestamp match alongside person, reps, and weight, ensuring multiple identical straight sets are preserved in local history without collapsing.
 - [ ] **Story 8.5 (`TASK-R125`): Rest Timer Context Isolation (Typing Lag Reduction)**:
   - *(Audio leak + whole-second interval guard completed in `TASK-R130`.)* Remaining scope: isolate live `timerSeconds` state into a separate TimerContext so active timer ticks do not re-render heavy `ExerciseCard` trees during input.
 - [x] **Story 8.6 (`TASK-R126`): Accidental Set Deletion Confirmation Guard**:
