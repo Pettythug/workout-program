@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
+import { safeReadLocalJSON } from '../utils/safeStorage';
 import { useGymAPI } from '../hooks/useGymAPI';
 import CircuitCard from './CircuitCard';
 import WarmUpCard from './WarmUpCard';
@@ -50,14 +51,13 @@ export default function CircuitView() {
         return localStorage.getItem('gymlog_circuit_complete') === 'true';
     });
     const [completedSummary, setCompletedSummary] = useState(() => {
-        const cached = localStorage.getItem('gymlog_circuit_last_summary');
-        return cached ? JSON.parse(cached) : null;
+        return safeReadLocalJSON('gymlog_circuit_last_summary', null);
     });
 
     // Circuit states synced to 'gym-circuit-active'
     const [circuitState, setCircuitState] = useState(() => {
-        const cached = localStorage.getItem('gym-circuit-active');
-        return cached ? JSON.parse(cached) : { circuit: [], completedMap: {} };
+        const parsed = safeReadLocalJSON('gym-circuit-active', { circuit: [], completedMap: {} });
+        return (parsed && typeof parsed === 'object') ? parsed : { circuit: [], completedMap: {} };
     });
     const circuit = circuitState.circuit || [];
     const completedMap = circuitState.completedMap || {};
