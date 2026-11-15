@@ -131,7 +131,18 @@ The following historical items were reviewed and retired because subsequent arch
 
 ## 🎯 Active & Upcoming Backlog
 
-*There are currently **zero blocking bugs or pending core tasks** on the board. Below are optional, long-term enhancements available if desired:*
+### Priority 1: Multi-Set Sync Duplication Fix & Server Optimization
+- [ ] **Story 8.9 (`TASK-R135`): Frontend Completion In-Flight Lock, Immediate Set Drain & Offline Queue Deduplication**:
+  - Add in-flight re-entrancy locks and disabled loading states (`SAVING WORKOUT...`) to Complete Workout buttons in `FullBodyView.jsx`, `PlanView.jsx`, and `CircuitView.jsx`.
+  - Immediately drain `gymlog_pending_sets` before firing network call to prevent duplicate set collection.
+  - Attach unique `batchId` to prevent duplicate queued items in `gymlog_pending_sync_queue`.
+- [ ] **Story 8.10 (`TASK-R136`): Google Apps Script Backend Deduplication & Batch Insertion Optimization**:
+  - In `Combined_AppScript_v2.gs`, add timestamp and key deduplication check in `gymlog_handleBatchSyncSession` before writing sets.
+  - Optimize set insertion to a single bulk write operation to reduce server execution time from 35s to under 3s.
+
+### Priority 2: System Health & Proactive Audits
+- [ ] **Story 8.11 (`TASK-R137`): Comprehensive End-to-End System, Memory & Edge-Case Audit**:
+  - Perform a deep code and architecture review across all views, modals, and hooks to proactively identify unhandled edge cases, memory leaks, and latent race conditions.
 
 ### Optional Enhancements
 - [ ] **Story 2.1: Cold-Launch Service Worker & PWA Manifest**:
