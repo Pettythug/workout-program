@@ -23,19 +23,12 @@ export function useGymAPI() {
         const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         try {
-            if (payloadStr.length > 1500 || payload.action === "syncAll") {
-                res = await fetch(url, {
-                    method: "POST",
-                    body: payloadStr,
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    signal: controller.signal
-                });
-            } else {
-                const encoded = encodeURIComponent(payloadStr);
-                res = await fetch(url + "?payload=" + encoded, { 
-                    signal: controller.signal 
-                });
-            }
+            res = await fetch(url, {
+                method: "POST",
+                body: payloadStr,
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                signal: controller.signal
+            });
         } catch (fetchErr) {
             if (fetchErr.name === 'AbortError') {
                 throw new Error("Request timed out after 60 seconds. The data may have been logged successfully on the server. Please check the history or refresh before re-submitting.");
@@ -81,8 +74,13 @@ export function useGymAPI() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 60000);
 
+        const onExternalAbort = () => controller.abort();
         if (externalSignal) {
-            externalSignal.addEventListener('abort', () => controller.abort());
+            if (externalSignal.aborted) {
+                controller.abort();
+            } else {
+                externalSignal.addEventListener('abort', onExternalAbort);
+            }
         }
 
         try {
@@ -100,6 +98,9 @@ export function useGymAPI() {
             throw fetchErr;
         } finally {
             clearTimeout(timeoutId);
+            if (externalSignal) {
+                externalSignal.removeEventListener('abort', onExternalAbort);
+            }
         }
     }, []);
 

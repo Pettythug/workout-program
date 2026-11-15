@@ -308,11 +308,12 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
             bottom: 0,
             width: '100vw',
             height: '100vh',
+            minHeight: '100dvh',
             background: 'rgba(0,0,0,0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 2000,
+            zIndex: 2100,
             padding: 12,
             boxSizing: 'border-box'
         }}>
@@ -323,7 +324,7 @@ export default function SessionStatsModal({ isOpen, onClose, program }) {
                 maxWidth: 420,
                 padding: 20,
                 border: '1px solid var(--border)',
-                maxHeight: '90vh',
+                maxHeight: '90dvh',
                 overflowY: 'auto',
                 overflowX: 'hidden',
                 WebkitOverflowScrolling: 'touch',

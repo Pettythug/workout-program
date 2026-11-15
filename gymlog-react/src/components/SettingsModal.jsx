@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { safeReadLocalJSON } from '../utils/safeStorage';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { buildVariationNames, INITIAL_VARIATION_OPTIONS } from '../utils/exerciseVariations';
 import VariationGeneratorPanel from './VariationGeneratorPanel';
@@ -183,7 +184,7 @@ export default function SettingsModal({ isOpen, onClose }) {
             updateDeviceOwner('Guest');
             return;
         }
-        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
         const key = newOwner.toLowerCase();
         let pin = cachedPins[key] || localStorage.getItem('gymlog_pin_' + key);
 
@@ -235,8 +236,8 @@ export default function SettingsModal({ isOpen, onClose }) {
     };
 
     return createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 12, boxSizing: 'border-box' }}>
-            <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 420, padding: 20, border: '1px solid var(--border)', maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', minHeight: '100dvh', background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: 12, boxSizing: 'border-box' }}>
+            <div style={{ background: '#111', borderRadius: 16, width: '100%', maxWidth: 420, padding: 20, border: '1px solid var(--border)', maxHeight: '90dvh', overflowY: 'auto', boxSizing: 'border-box', overflowX: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <h3 style={{ margin: 0, fontSize: 16, letterSpacing: 1, color: 'var(--accent)' }}>SETTINGS</h3>
                     <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer' }}>&#x2715;</button>

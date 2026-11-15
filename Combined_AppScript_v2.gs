@@ -2,7 +2,13 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4.3 of the GymLog backend (TASK-R136 Apps Script Deduplication & Batch Speedup).
+// Version 4.4 of the GymLog backend (TASK-R137 System Health & Edge-Case Audit).
+//
+// Changes in v4.4 (TASK-R137):
+//   - Unified timestamp comparison tolerance (< 3000 ms) in gymlog_handleBatchSyncSession(payload.deletes)
+//     to match gymlog_handleDeleteHistory so Google Sheets Date serialization rounding never blocks set deletion.
+//   - Added gymlog_bumpLibraryVersion() to gymlog_handleDeleteHistory and gymlog_handleDeleteSession
+//     so SWR clients immediately invalidate stale cache after standalone deletions.
 //
 // Changes in v4.3 (TASK-R136):
 //   - Added set signature deduplication to batchSyncSession to prevent duplicate workout insertion on retry/timeout.
@@ -842,6 +848,7 @@ function gymlog_handleDeleteHistory(payload) {
   }
 
   gymlog_recalculateBestForExercise(exercise);
+  gymlog_bumpLibraryVersion();
   return ok({ deleted: 1 });
 }
 
@@ -1074,7 +1081,7 @@ function gymlog_handleBatchSyncSession(payload) {
             } else {
               const d1 = sheetVal instanceof Date ? sheetVal : new Date(sheetDateStr);
               const d2 = new Date(targetDateStr);
-              matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && d1.getTime() === d2.getTime();
+              matchDate = !isNaN(d1.getTime()) && !isNaN(d2.getTime()) && (d1.getTime() === d2.getTime() || Math.abs(d1.getTime() - d2.getTime()) < 3000);
             }
           }
 
@@ -1230,6 +1237,7 @@ function gymlog_handleDeleteSession(payload) {
       }
     }
   }
+  gymlog_bumpLibraryVersion();
   return ok({ status: "success", deletedId: id });
 }
 

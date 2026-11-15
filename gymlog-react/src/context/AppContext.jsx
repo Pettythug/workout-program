@@ -11,6 +11,26 @@ import {
 
 export { calculateBestForExercise };
 
+export function safeParseJSON(raw, fallback = null) {
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    try {
+        const parsed = JSON.parse(raw);
+        return parsed !== null && parsed !== undefined ? parsed : fallback;
+    } catch (e) {
+        console.warn('[safeParseJSON] Corrupted JSON detected, using fallback:', e);
+        return fallback;
+    }
+}
+
+export function safeReadLocalJSON(key, fallback = null) {
+    try {
+        const raw = localStorage.getItem(key);
+        return safeParseJSON(raw, fallback);
+    } catch (e) {
+        return fallback;
+    }
+}
+
 export function getDefaultRestForRepRange(repRange) {
     const r = (repRange || '').toString().toLowerCase().trim();
     if (r.includes('1-3') || r.includes('1_3') || r === '1-3') return '180';
@@ -73,55 +93,52 @@ export function AppProvider({ children }) {
     const [workoutDay, setWorkoutDay] = useState(() => {
         const owner = localStorage.getItem('builder_primary_user');
         const key = (owner && owner !== 'Guest') ? owner : 'Guest';
-        const cached = localStorage.getItem(`gymlog_workout_day_${key}`);
-        return cached ? JSON.parse(cached) : 1;
+        return safeReadLocalJSON(`gymlog_workout_day_${key}`, 1);
     });
     const [people, setPeople] = useState(() => {
-        const cached = localStorage.getItem('gymlog_people');
-        return cached ? JSON.parse(cached) : [];
+        const parsed = safeReadLocalJSON('gymlog_people', []);
+        return Array.isArray(parsed) ? parsed : [];
     });
     const [activePeople, setActivePeople] = useState(() => {
-        const cached = localStorage.getItem('gymlog_activePeople');
-        const parsed = cached ? JSON.parse(cached) : [];
-        if (parsed.length > 0) return [...new Set(parsed)];
+        const parsed = safeReadLocalJSON('gymlog_activePeople', []);
+        if (Array.isArray(parsed) && parsed.length > 0) return [...new Set(parsed)];
         const owner = localStorage.getItem('builder_primary_user');
         return (owner && owner !== 'Guest') ? [owner] : (owner === 'Guest' ? ['Guest'] : []);
     });
     const [exercises, setExercises] = useState(() => {
-        const cached = localStorage.getItem('gymlog_exercises');
-        if (!cached) return [];
-        const parsed = JSON.parse(cached);
+        const parsed = safeReadLocalJSON('gymlog_exercises', []);
+        if (!Array.isArray(parsed) || parsed.length === 0) return [];
+        const pendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
+        const pendingDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
         // Run through mergeFromSheets just to apply data fixes (like fileReference cleanup)
-        const mergedData = mergeFromSheets(parsed, {}, [], []);
+        const mergedData = mergeFromSheets(parsed, {}, [], [], pendingSets, pendingDeletes);
         return mergedData.exercises;
     });
     const [exerciseStatus, setExerciseStatus] = useState(() => {
-        const cached = localStorage.getItem('gymlog_exerciseStatus');
-        return cached ? JSON.parse(cached) : {};
+        const parsed = safeReadLocalJSON('gymlog_exerciseStatus', {});
+        return (parsed && typeof parsed === 'object') ? parsed : {};
     });
     const [dailySwaps, setDailySwaps] = useState(() => {
-        const cached = localStorage.getItem('gymlog_dailySwaps');
-        return cached ? JSON.parse(cached) : {};
+        const parsed = safeReadLocalJSON('gymlog_dailySwaps', {});
+        return (parsed && typeof parsed === 'object') ? parsed : {};
     });
     const [circuitWorkoutDay, setCircuitWorkoutDay] = useState(() => {
         const owner = localStorage.getItem('builder_primary_user');
         const key = (owner && owner !== 'Guest') ? owner : 'Guest';
-        const cached = localStorage.getItem(`gymlog_circuit_workout_day_${key}`);
-        return cached ? JSON.parse(cached) : 1;
+        return safeReadLocalJSON(`gymlog_circuit_workout_day_${key}`, 1);
     });
     const [fullBodyWorkoutDay, setFullBodyWorkoutDay] = useState(() => {
         const owner = localStorage.getItem('builder_primary_user');
         const key = (owner && owner !== 'Guest') ? owner : 'Guest';
-        const cached = localStorage.getItem(`gymlog_fullBody_workout_day_${key}`);
-        return cached ? JSON.parse(cached) : 1;
+        return safeReadLocalJSON(`gymlog_fullBody_workout_day_${key}`, 1);
     });
     const [fullBodySwaps, setFullBodySwaps] = useState(() => {
-        const cached = localStorage.getItem('gymlog_fullBody_swaps');
-        return cached ? JSON.parse(cached) : {};
+        const parsed = safeReadLocalJSON('gymlog_fullBody_swaps', {});
+        return (parsed && typeof parsed === 'object') ? parsed : {};
     });
     const [locations, setLocations] = useState(() => {
-        const cached = localStorage.getItem('gymlog_locations');
-        let parsed = cached ? JSON.parse(cached) : ["Anywhere", "Home", "24 Hour Fitness"];
+        let parsed = safeReadLocalJSON('gymlog_locations', ["Anywhere", "Home", "24 Hour Fitness"]);
+        if (!Array.isArray(parsed)) parsed = ["Anywhere", "Home", "24 Hour Fitness"];
         if (parsed.includes("Gym")) {
             parsed = parsed.filter(l => l !== "Gym");
             if (!parsed.includes("24 Hour Fitness")) parsed.push("24 Hour Fitness");
@@ -146,8 +163,8 @@ export function AppProvider({ children }) {
         return cached ? parseInt(cached, 10) : null;
     });
     const [sessionHistory, setSessionHistory] = useState(() => {
-        const cached = localStorage.getItem('gymlog_session_history');
-        return cached ? JSON.parse(cached) : [];
+        const parsed = safeReadLocalJSON('gymlog_session_history', []);
+        return Array.isArray(parsed) ? parsed : [];
     });
 
     // Pre-Workout Warm-Up State
@@ -452,13 +469,7 @@ export function AppProvider({ children }) {
     const flushPendingSyncQueue = async () => {
         if (isFlushingQueueRef.current) return;
 
-        let queue;
-        try {
-            const raw = localStorage.getItem('gymlog_pending_sync_queue');
-            queue = raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            queue = [];
-        }
+        let queue = safeReadLocalJSON('gymlog_pending_sync_queue', []);
 
         if (!Array.isArray(queue) || queue.length === 0 || deviceOwner === 'Guest') {
             if (Array.isArray(queue) && queue.length === 0) {
@@ -499,34 +510,47 @@ export function AppProvider({ children }) {
         const cachedVersion = localStorage.getItem('gymlog_library_version');
 
         let shouldSyncAll = true;
+        let checkedVersion = null;
         if (cachedExercises && cachedPeople && sheetsGet) {
             try {
                 const versionData = await sheetsGet({ action: 'checkVersion' });
                 if (versionData && versionData.version !== undefined) {
+                    checkedVersion = versionData.version;
                     if (cachedVersion && parseInt(cachedVersion, 10) === versionData.version) {
                         shouldSyncAll = false;
                     }
-                    localStorage.setItem('gymlog_library_version', versionData.version.toString());
                 }
             } catch (e) { console.warn("checkVersion failed", e); }
         }
 
         if (shouldSyncAll) {
             const data = await syncAll(false, signal);
-            
-            if (data && data.settings && data.settings.library_version) {
-                localStorage.setItem('gymlog_library_version', data.settings.library_version.toString());
+
+            // Re-read localStorage AFTER await syncAll so sets logged mid-sync are never overwritten (AUDIT-07)
+            const latestExercisesRaw = localStorage.getItem('gymlog_exercises');
+            const latestPeopleRaw = localStorage.getItem('gymlog_people');
+            const latestLocationsRaw = localStorage.getItem('gymlog_locations');
+            const currentLocalExercises = safeParseJSON(latestExercisesRaw, []);
+            const currentLocalPeople = safeParseJSON(latestPeopleRaw, []);
+            let currentLocalLocations = safeParseJSON(latestLocationsRaw, ["Anywhere", "Home", "24 Hour Fitness"]);
+            if (!Array.isArray(currentLocalLocations)) {
+                currentLocalLocations = ["Anywhere", "Home", "24 Hour Fitness"];
             }
-        
-            // Merge data
-            const currentLocalExercises = cachedExercises ? JSON.parse(cachedExercises) : [];
-            const currentLocalPeople = cachedPeople ? JSON.parse(cachedPeople) : [];
-            let currentLocalLocations = cachedLocations ? JSON.parse(cachedLocations) : ["Anywhere", "Home", "24 Hour Fitness"];
             if (currentLocalLocations.includes("Gym")) {
                 currentLocalLocations = currentLocalLocations.filter(l => l !== "Gym");
                 if (!currentLocalLocations.includes("24 Hour Fitness")) currentLocalLocations.push("24 Hour Fitness");
             }
-            const mergedData = mergeFromSheets(currentLocalExercises, data, currentLocalPeople, currentLocalLocations);
+            const pendingSets = safeParseJSON(localStorage.getItem('gymlog_pending_sets'), []);
+            const pendingDeletes = safeParseJSON(localStorage.getItem('gymlog_pending_deletes'), []);
+
+            const mergedData = mergeFromSheets(
+                currentLocalExercises,
+                data,
+                currentLocalPeople,
+                currentLocalLocations,
+                pendingSets,
+                pendingDeletes
+            );
             
             setExercises(mergedData.exercises);
             setPeople(mergedData.people);
@@ -534,14 +558,31 @@ export function AppProvider({ children }) {
 
             if (data && data.sessions !== undefined) {
                 const serverSessions = data.sessions || [];
-                setSessionHistory(serverSessions);
-                localStorage.setItem('gymlog_session_history', JSON.stringify(serverSessions));
+                const localSessions = safeParseJSON(localStorage.getItem('gymlog_session_history'), []);
+                const pendingQueue = safeParseJSON(localStorage.getItem('gymlog_pending_sync_queue'), []);
+                const isGuestOwner = localStorage.getItem('builder_primary_user') === 'Guest';
+                const unflushedLocalSessions = (Array.isArray(localSessions) ? localSessions : []).filter(ls => {
+                    if (!ls || !ls.id) return false;
+                    if (serverSessions.some(ss => ss && ss.id === ls.id)) return false;
+                    const inQueue = Array.isArray(pendingQueue) && pendingQueue.some(q => q?.session?.id === ls.id || q?.id === ls.id);
+                    const isGuestSession = ls.people === 'Guest' || isGuestOwner;
+                    return inQueue || isGuestSession;
+                });
+                const mergedSessions = [...unflushedLocalSessions, ...serverSessions];
+                setSessionHistory(mergedSessions);
+                localStorage.setItem('gymlog_session_history', JSON.stringify(mergedSessions));
             }
 
             // Update cache
             localStorage.setItem('gymlog_exercises', JSON.stringify(mergedData.exercises));
             localStorage.setItem('gymlog_people', JSON.stringify(mergedData.people));
             localStorage.setItem('gymlog_locations', JSON.stringify(mergedData.locations));
+
+            // Only stamp gymlog_library_version AFTER syncAll succeeds and merges cleanly (AUDIT-06)
+            const resolvedVersion = data?.settings?.library_version ?? checkedVersion;
+            if (resolvedVersion !== undefined && resolvedVersion !== null) {
+                localStorage.setItem('gymlog_library_version', String(resolvedVersion));
+            }
 
             if (data && data.settings) {
                 localStorage.setItem('gymlog_raw_settings', JSON.stringify(data.settings));
@@ -609,16 +650,9 @@ export function AppProvider({ children }) {
         let onlineTimeoutId = null;
 
         const checkAndFlush = () => {
-            const queueRaw = localStorage.getItem('gymlog_pending_sync_queue');
-            if (queueRaw) {
-                try {
-                    const parsed = JSON.parse(queueRaw);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        flushPendingSyncQueue();
-                    }
-                } catch (e) {
-                    // Ignore JSON parse error
-                }
+            const parsed = safeReadLocalJSON('gymlog_pending_sync_queue', []);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                flushPendingSyncQueue();
             }
         };
 
@@ -768,7 +802,7 @@ export function AppProvider({ children }) {
         const isActivating = !activePeople.includes(person);
 
         if (isActivating && person !== 'Guest') {
-            const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+            const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
             const legacyPin = localStorage.getItem('gymlog_pin_' + key);
             let pin = cachedPins[key] || legacyPin;
 
@@ -806,44 +840,33 @@ export function AppProvider({ children }) {
         localStorage.setItem('gymlog_activePeople', JSON.stringify(defaultActive));
 
         if (newOwner === 'Guest' || !newOwner) {
-            const planCached = localStorage.getItem('gymlog_workout_day_Guest');
-            setWorkoutDay(planCached ? JSON.parse(planCached) : 1);
-            const circCached = localStorage.getItem('gymlog_circuit_workout_day_Guest');
-            setCircuitWorkoutDay(circCached ? JSON.parse(circCached) : 1);
-            const fbCached = localStorage.getItem('gymlog_fullBody_workout_day_Guest');
-            setFullBodyWorkoutDay(fbCached ? JSON.parse(fbCached) : 1);
+            setWorkoutDay(safeReadLocalJSON('gymlog_workout_day_Guest', 1));
+            setCircuitWorkoutDay(safeReadLocalJSON('gymlog_circuit_workout_day_Guest', 1));
+            setFullBodyWorkoutDay(safeReadLocalJSON('gymlog_fullBody_workout_day_Guest', 1));
             return;
         }
 
-        let rawSettings = {};
-        try {
-            rawSettings = JSON.parse(localStorage.getItem('gymlog_raw_settings') || '{}');
-        } catch (e) {
-            console.warn('Failed to parse raw settings:', e);
-        }
+        const rawSettings = safeReadLocalJSON('gymlog_raw_settings', {});
 
         const ownerLower = newOwner.toLowerCase();
         const planFromSettings = rawSettings[`builder_workout_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Plan_Day`];
-        const planCached = localStorage.getItem(`gymlog_workout_day_${newOwner}`);
         const resolvedPlanDay = (planFromSettings !== undefined && planFromSettings !== null && planFromSettings !== '')
             ? (parseInt(planFromSettings, 10) || 1)
-            : (planCached ? JSON.parse(planCached) : 1);
+            : safeReadLocalJSON(`gymlog_workout_day_${newOwner}`, 1);
         setWorkoutDay(resolvedPlanDay);
         localStorage.setItem(`gymlog_workout_day_${newOwner}`, JSON.stringify(resolvedPlanDay));
 
         const circFromSettings = rawSettings[`builder_circuit_num_${ownerLower}`] ?? rawSettings[`${newOwner}_Circuit_Day`];
-        const circCached = localStorage.getItem(`gymlog_circuit_workout_day_${newOwner}`);
         const resolvedCircDay = (circFromSettings !== undefined && circFromSettings !== null && circFromSettings !== '')
             ? (parseInt(circFromSettings, 10) || 1)
-            : (circCached ? JSON.parse(circCached) : 1);
+            : safeReadLocalJSON(`gymlog_circuit_workout_day_${newOwner}`, 1);
         setCircuitWorkoutDay(resolvedCircDay);
         localStorage.setItem(`gymlog_circuit_workout_day_${newOwner}`, JSON.stringify(resolvedCircDay));
 
         const fbFromSettings = rawSettings[`builder_fullbody_num_${ownerLower}`] ?? rawSettings[`${newOwner}_FullBody_Day`];
-        const fbCached = localStorage.getItem(`gymlog_fullBody_workout_day_${newOwner}`);
         const resolvedFbDay = (fbFromSettings !== undefined && fbFromSettings !== null && fbFromSettings !== '')
             ? (parseInt(fbFromSettings, 10) || 1)
-            : (fbCached ? JSON.parse(fbCached) : 1);
+            : safeReadLocalJSON(`gymlog_fullBody_workout_day_${newOwner}`, 1);
         setFullBodyWorkoutDay(resolvedFbDay);
         localStorage.setItem(`gymlog_fullBody_workout_day_${newOwner}`, JSON.stringify(resolvedFbDay));
     };
@@ -919,7 +942,7 @@ export function AppProvider({ children }) {
         if (!exName || !entryDetails) return;
 
         // 1. Check if the set was logged in today's active workout (in gymlog_pending_sets)
-        const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+        const pendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
         let removedFromPending = false;
         
         const updatedPendingSets = pendingSets.map(batch => {
@@ -945,8 +968,8 @@ export function AppProvider({ children }) {
             localStorage.setItem('gymlog_pending_sets', JSON.stringify(updatedPendingSets));
         } else {
             // 2. Historical set (persisted in Google Sheets): Buffer into gymlog_pending_deletes!
-            const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
-            pendingDeletes.push({
+            const pendingDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
+            const deletePayload = {
                 exercise: exName,
                 person: entryDetails.person,
                 reps: entryDetails.reps,
@@ -954,8 +977,32 @@ export function AppProvider({ children }) {
                 range: entryDetails.range || entryDetails.repRange,
                 date: entryDetails.date,
                 setNum: entryDetails.setNum
-            });
+            };
+            pendingDeletes.push(deletePayload);
             localStorage.setItem('gymlog_pending_deletes', JSON.stringify(pendingDeletes));
+
+            if (!removedFromPending && sheetsPost && deviceOwner && deviceOwner !== 'Guest') {
+                (async () => {
+                    try {
+                        await sheetsPost({ action: 'batchSyncSession', deletes: [deletePayload] });
+                        const currentDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
+                        const remaining = currentDeletes.filter(d => !(
+                            (d.exercise || '').toLowerCase() === (deletePayload.exercise || '').toLowerCase() &&
+                            (d.person || '').toLowerCase() === (deletePayload.person || '').toLowerCase() &&
+                            String(d.reps) === String(deletePayload.reps) &&
+                            String(d.weight || '') === String(deletePayload.weight || '') &&
+                            String(d.date || '') === String(deletePayload.date || '')
+                        ));
+                        if (remaining.length > 0) {
+                            localStorage.setItem('gymlog_pending_deletes', JSON.stringify(remaining));
+                        } else {
+                            localStorage.removeItem('gymlog_pending_deletes');
+                        }
+                    } catch (err) {
+                        console.warn('[Sheets Sync] Standalone delete buffered in gymlog_pending_deletes:', err.message || err);
+                    }
+                })();
+            }
         }
 
         // 3. Remove the set at targetIndex from local state ex.history
@@ -1339,8 +1386,8 @@ export function AppProvider({ children }) {
             return newSession;
         }
 
-        const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
-        const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
+        const pendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
+        const pendingDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
         const setsToSync = [...pendingSets];
         const deletesToSync = [...pendingDeletes];
 
@@ -1364,13 +1411,7 @@ export function AppProvider({ children }) {
             }
         } catch (err) {
             console.warn("Network failed, storing payload in gymlog_pending_sync_queue", err);
-            let queue = [];
-            try {
-                const raw = localStorage.getItem('gymlog_pending_sync_queue');
-                queue = raw ? JSON.parse(raw) : [];
-            } catch (e) {
-                queue = [];
-            }
+            let queue = safeReadLocalJSON('gymlog_pending_sync_queue', []);
             if (!Array.isArray(queue)) queue = [];
 
             const isDuplicate = queue.some(item => 
@@ -1408,7 +1449,7 @@ export function AppProvider({ children }) {
             } catch (err) {
                 console.warn('[Sheets Sync] Background session delete sync warning:', err.message || err);
                 try {
-                    const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
+                    const queue = safeReadLocalJSON('gymlog_pending_sync_queue', []);
                     queue.push({ action: 'deleteSession', id: sessionId });
                     localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
                 } catch (e) {}
@@ -1425,7 +1466,7 @@ export function AppProvider({ children }) {
             else if (normKey.includes('fullbody') || normKey.includes('full-body') || normKey.includes('full_body')) storageKey = 'fullBody';
             try {
                 const cached = localStorage.getItem(`gymlog_${programKey}_last_summary`) || localStorage.getItem(`gymlog_${storageKey}_last_summary`);
-                if (cached) return JSON.parse(cached);
+                if (cached) return safeParseJSON(cached, null);
             } catch (e) {
                 console.warn('[completeWorkoutSession] Error reading cached summary:', e);
             }
@@ -1626,7 +1667,7 @@ export function AppProvider({ children }) {
         let summary = null;
         try {
             const raw = localStorage.getItem(`gymlog_${programKey}_last_summary`) || localStorage.getItem(`gymlog_${storageKey}_last_summary`);
-            if (raw) summary = JSON.parse(raw);
+            if (raw) summary = safeParseJSON(raw, null);
         } catch (e) {
             console.warn('[undoWorkoutSession] Failed to parse summary:', e);
         }
@@ -1634,16 +1675,39 @@ export function AppProvider({ children }) {
         try {
             const rawQueue = localStorage.getItem('gymlog_pending_sync_queue');
             if (rawQueue) {
-                const parsedQueue = JSON.parse(rawQueue);
+                const parsedQueue = safeParseJSON(rawQueue, []);
                 if (Array.isArray(parsedQueue)) {
+                    const restoredSets = [];
+                    const restoredDeletes = [];
+                    const normTargetProg = (programKey || '').toLowerCase().replace(/[\s_-]+/g, '');
                     const filteredQueue = parsedQueue.filter(item => {
                         const itemId = item?.session?.id;
                         const itemDay = item?.session?.workoutDay;
                         const itemProg = (item?.session?.program || '').toLowerCase();
-                        if (summary?.id && itemId === summary.id) return false;
-                        if (itemProg === programKey.toLowerCase() && itemDay === (summary?.workoutDay || currentDay)) return false;
+                        const normItemProg = itemProg.replace(/[\s_-]+/g, '');
+                        const shouldRemove = (
+                            (summary?.id && itemId === summary.id) ||
+                            ((itemProg === programKey.toLowerCase() || normItemProg === normTargetProg) && itemDay === (summary?.workoutDay || currentDay))
+                        );
+                        if (shouldRemove) {
+                            if (Array.isArray(item?.sets) && item.sets.length > 0) {
+                                restoredSets.push(...item.sets);
+                            }
+                            if (Array.isArray(item?.deletes) && item.deletes.length > 0) {
+                                restoredDeletes.push(...item.deletes);
+                            }
+                            return false;
+                        }
                         return true;
                     });
+                    if (restoredSets.length > 0) {
+                        const existingPendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
+                        localStorage.setItem('gymlog_pending_sets', JSON.stringify([...restoredSets, ...existingPendingSets]));
+                    }
+                    if (restoredDeletes.length > 0) {
+                        const existingPendingDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
+                        localStorage.setItem('gymlog_pending_deletes', JSON.stringify([...restoredDeletes, ...existingPendingDeletes]));
+                    }
                     if (filteredQueue.length > 0) {
                         localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(filteredQueue));
                     } else {
@@ -1801,6 +1865,15 @@ export function AppProvider({ children }) {
             nextSetNum = maxSetNum + 1;
         }
 
+        const hashOrPath = typeof window !== 'undefined'
+            ? `${window.location?.hash || ''} ${window.location?.pathname || ''}`.toLowerCase()
+            : '';
+        const isFullBodyActive = Boolean(ex.isFullBody) || ex.program === 'fullBody' || ex.program === 'Full Body' || hashOrPath.includes('full-body') || hashOrPath.includes('fullbody') || (fullBodyWorkoutDay !== 1 && workoutDay === 1 && !ex.isCircuit && !hashOrPath.includes('plan'));
+        const isCircuitActive = Boolean(ex.isCircuit) || ex.program === 'circuit' || ex.program === 'Circuit' || hashOrPath.includes('circuit');
+        const activeTargetDay = isFullBodyActive
+            ? fullBodyWorkoutDay
+            : (isCircuitActive ? circuitWorkoutDay : workoutDay);
+
         const entries = [];
         const seenKeys = new Set();
         for (const person of activePeople) {
@@ -1822,7 +1895,7 @@ export function AppProvider({ children }) {
                     if (!isNaN(dur)) {
                         const isZero = dur === 0;
                         const assignedRange = isZero
-                            ? getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay)
+                            ? getDayTargetRange(activeTargetDay)
                             : "r13_plus";
                         entries.push({
                             date: new Date().toLocaleString('en-US'),
@@ -1842,7 +1915,7 @@ export function AppProvider({ children }) {
                     if (!isNaN(r)) {
                         let range = "r13_plus";
                         if (r === 0) {
-                            range = getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay);
+                            range = getDayTargetRange(activeTargetDay);
                         } else if (r <= 3) {
                             range = "r1_3";
                         } else if (r <= 7) {
@@ -1882,7 +1955,7 @@ export function AppProvider({ children }) {
                 if (timerMode && timerMode !== 'off' && !isNaN(parseInt(timerMode, 10))) {
                     restSecs = parseInt(timerMode, 10);
                 } else {
-                    const targetRange = getDayTargetRange(ex.isCircuit ? circuitWorkoutDay : workoutDay);
+                    const targetRange = getDayTargetRange(activeTargetDay);
                     restSecs = parseInt(getDefaultRestForRepRange(targetRange), 10) || 90;
                 }
                 startRestTimer(restSecs);
@@ -1906,7 +1979,7 @@ export function AppProvider({ children }) {
                     if (person === 'Guest') {
                         userPins[key] = "guest";
                     } else {
-                        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+                        const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
                         let pin = cachedPins[key] || localStorage.getItem('gymlog_pin_' + key);
                         if (!pin) {
                             pin = window.prompt(`Enter PIN for ${person}:`);
@@ -1926,7 +1999,7 @@ export function AppProvider({ children }) {
             if (cancelled) return null;
 
             // Zero-latency local update
-            const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
+            const pendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
             pendingSets.push({
                 exercise: ex.name,
                 entries: entries,
@@ -1956,7 +2029,7 @@ export function AppProvider({ children }) {
                 return { success: false, error: errMsg };
             }
             // Offline fallback to locally cached PIN
-            const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+            const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
             const localPin = cachedPins[(name || '').toLowerCase()] || localStorage.getItem('gymlog_pin_' + (name || '').toLowerCase());
             if (localPin && String(localPin) === String(pin)) {
                 return { success: true, offline: true };
@@ -1987,7 +2060,7 @@ export function AppProvider({ children }) {
         }
 
         // 3. Cache PIN locally
-        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
         cachedPins[trimmedName.toLowerCase()] = String(pin);
         localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
         localStorage.setItem('gymlog_pin_' + trimmedName.toLowerCase(), String(pin));
@@ -2011,7 +2084,7 @@ export function AppProvider({ children }) {
             });
         }
 
-        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
         cachedPins[targetUser.toLowerCase()] = String(newPin);
         localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
         localStorage.setItem('gymlog_pin_' + targetUser.toLowerCase(), String(newPin));
@@ -2034,7 +2107,7 @@ export function AppProvider({ children }) {
             await registerNewUser(trimmedName, pin);
         }
 
-        const cachedPins = JSON.parse(localStorage.getItem('gymlog_user_pins') || '{}');
+        const cachedPins = safeReadLocalJSON('gymlog_user_pins', {});
         cachedPins[trimmedName.toLowerCase()] = String(pin);
         localStorage.setItem('gymlog_user_pins', JSON.stringify(cachedPins));
         localStorage.setItem('gymlog_pin_' + trimmedName.toLowerCase(), String(pin));
@@ -2042,7 +2115,7 @@ export function AppProvider({ children }) {
         updateDeviceOwner(trimmedName);
 
         // Migrate guest session history to Sheets
-        const guestHistory = JSON.parse(localStorage.getItem('gymlog_session_history') || '[]');
+        const guestHistory = safeReadLocalJSON('gymlog_session_history', []);
         if (guestHistory.length > 0 && sheetsPost) {
             for (const s of guestHistory) {
                 try {
