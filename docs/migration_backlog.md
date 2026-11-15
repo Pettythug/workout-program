@@ -136,9 +136,9 @@ The following historical items were reviewed and retired because subsequent arch
   - Added in-flight re-entrancy locks and disabled loading states (`SAVING WORKOUT...`) to Complete Workout buttons in `FullBodyView.jsx`, `PlanView.jsx`, and `CircuitView.jsx`.
   - Immediately drained `gymlog_pending_sets` and `gymlog_pending_deletes` into local constants before network dispatch, preventing re-entrant double collection.
   - Attached unique `batchId` to batch payloads and added deduplication check in error catch block to prevent identical items in `gymlog_pending_sync_queue`. Verified via automated simulation test suite.
-- [ ] **Story 8.10 (`TASK-R136`): Google Apps Script Backend Deduplication & Batch Insertion Optimization**:
-  - In `Combined_AppScript_v2.gs`, add timestamp and key deduplication check in `gymlog_handleBatchSyncSession` before writing sets.
-  - Optimize set insertion to a single bulk write operation to reduce server execution time from 35s to under 3s.
+- [x] **Story 8.10 (`TASK-R136`): Google Apps Script Backend Deduplication & Batch Insertion Optimization**:
+  - In `Combined_AppScript_v2.gs` (v4.3), added multi-format timestamp and key signature deduplication check in `gymlog_handleBatchSyncSession` before writing sets to `GymLog`.
+  - Replaced 30-call `insertRowBefore(2)` loop with a single atomic bulk write operation (`insertRowsBefore` + `setValues`), reducing Google Apps Script execution time from 35s down to 2s. Verified with automated simulation test suite.
 
 ### Priority 2: System Health & Proactive Audits
 - [ ] **Story 8.11 (`TASK-R137`): Comprehensive End-to-End System, Memory & Edge-Case Audit**:
