@@ -17,7 +17,7 @@ export default function FullBodyView() {
         resetExerciseStatus, clearAllExerciseStatus,
         sessionStartTime, resetSessionTime, completeWorkoutSession, undoWorkoutSession, deviceOwner,
         timerMode, setTimerMode, timerIsRunning, startRestTimer,
-        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange
+        warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange, isSyncing
     } = useAppContext();
 
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -232,6 +232,7 @@ export default function FullBodyView() {
     }, [plannedExercises, exerciseStatus, resetExerciseStatus]);
 
     const completeWorkout = () => {
+        if (isSyncing) return;
         const nextDay = fullBodyWorkoutDay + 1;
         const summary = completeWorkoutSession('fullBody', {
             currentDay: fullBodyWorkoutDay,
@@ -410,8 +411,19 @@ export default function FullBodyView() {
                                 <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All 8 Exercises Done!</h2>
                                 <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout.</p>
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                                    <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
-                                        Complete Workout
+                                    <button 
+                                        className="btn-success" 
+                                        onClick={completeWorkout} 
+                                        disabled={isSyncing}
+                                        style={{ 
+                                            padding: '12px 24px', 
+                                            fontWeight: 'bold', 
+                                            fontSize: 14,
+                                            opacity: isSyncing ? 0.6 : 1,
+                                            cursor: isSyncing ? 'not-allowed' : 'pointer'
+                                        }}
+                                    >
+                                        {isSyncing ? 'SAVING WORKOUT...' : 'Complete Workout'}
                                     </button>
                                     <button className="btn-ghost btn-no-translate" onClick={() => setView('full-list')} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, border: '1px solid var(--border)' }}>
                                         📋 VIEW LIST
@@ -496,9 +508,23 @@ export default function FullBodyView() {
                         <button 
                             className="complete-btn" 
                             onClick={completeWorkout}
-                            style={{ width: '100%', background: 'rgba(249, 115, 22, 0.1)', color: 'var(--accent)', border: '2px solid var(--accent)', borderRadius: 'var(--radius)', padding: 16, fontWeight: 700, cursor: 'pointer', marginTop: 16, letterSpacing: 1, textTransform: 'uppercase' }}
+                            disabled={isSyncing}
+                            style={{ 
+                                width: '100%', 
+                                background: 'rgba(249, 115, 22, 0.1)', 
+                                color: 'var(--accent)', 
+                                border: '2px solid var(--accent)', 
+                                borderRadius: 'var(--radius)', 
+                                padding: 16, 
+                                fontWeight: 700, 
+                                cursor: isSyncing ? 'not-allowed' : 'pointer', 
+                                opacity: isSyncing ? 0.6 : 1,
+                                marginTop: 16, 
+                                letterSpacing: 1, 
+                                textTransform: 'uppercase' 
+                            }}
                         >
-                            Complete Workout
+                            {isSyncing ? 'SAVING WORKOUT...' : 'Complete Workout'}
                         </button>
                     </div>
                 );

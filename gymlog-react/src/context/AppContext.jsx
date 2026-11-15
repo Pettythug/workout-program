@@ -1341,28 +1341,47 @@ export function AppProvider({ children }) {
 
         const pendingSets = JSON.parse(localStorage.getItem('gymlog_pending_sets') || '[]');
         const pendingDeletes = JSON.parse(localStorage.getItem('gymlog_pending_deletes') || '[]');
+        const setsToSync = [...pendingSets];
+        const deletesToSync = [...pendingDeletes];
+
+        // Drain pending sets and deletes immediately before beginning network call
+        localStorage.setItem('gymlog_pending_sets', '[]');
+        localStorage.setItem('gymlog_pending_deletes', '[]');
         
+        const batchId = sessionData?.batchId || `${newSession.id}_${Date.now()}`;
         const payload = {
             action: 'batchSyncSession',
+            batchId,
             session: newSession,
             settings: normalizedSettings,
-            sets: pendingSets,
-            deletes: pendingDeletes
+            sets: setsToSync,
+            deletes: deletesToSync
         };
 
         try {
             if (sheetsPost) {
                 await sheetsPost(payload);
-                localStorage.setItem('gymlog_pending_sets', '[]'); // clear only on success
-                localStorage.setItem('gymlog_pending_deletes', '[]');
             }
         } catch (err) {
             console.warn("Network failed, storing payload in gymlog_pending_sync_queue", err);
-            const queue = JSON.parse(localStorage.getItem('gymlog_pending_sync_queue') || '[]');
-            queue.push(payload);
-            localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
-            localStorage.setItem('gymlog_pending_sets', '[]');
-            localStorage.setItem('gymlog_pending_deletes', '[]');
+            let queue = [];
+            try {
+                const raw = localStorage.getItem('gymlog_pending_sync_queue');
+                queue = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                queue = [];
+            }
+            if (!Array.isArray(queue)) queue = [];
+
+            const isDuplicate = queue.some(item => 
+                (batchId && item.batchId === batchId) ||
+                (newSession.id && (item.session?.id === newSession.id || item.id === newSession.id))
+            );
+
+            if (!isDuplicate) {
+                queue.push(payload);
+                localStorage.setItem('gymlog_pending_sync_queue', JSON.stringify(queue));
+            }
         } finally {
             setIsSyncing(false);
             // Auto-reset active roster back to solo device owner for the next workout
@@ -1398,6 +1417,21 @@ export function AppProvider({ children }) {
     };
 
     const completeWorkoutSession = (programKey, { currentDay, nextDay, nextType, exercisesList } = {}) => {
+        if (inFlightBatchPromiseRef.current) {
+            console.warn('[completeWorkoutSession] In-flight batch sync already in progress, returning existing cached summary');
+            const normKey = (programKey || 'plan').toLowerCase();
+            let storageKey = 'plan';
+            if (normKey.includes('circuit')) storageKey = 'circuit';
+            else if (normKey.includes('fullbody') || normKey.includes('full-body') || normKey.includes('full_body')) storageKey = 'fullBody';
+            try {
+                const cached = localStorage.getItem(`gymlog_${programKey}_last_summary`) || localStorage.getItem(`gymlog_${storageKey}_last_summary`);
+                if (cached) return JSON.parse(cached);
+            } catch (e) {
+                console.warn('[completeWorkoutSession] Error reading cached summary:', e);
+            }
+            return null;
+        }
+
         // 1. Increment Sync Token
         const syncToken = ++completionSyncTokenRef.current;
 

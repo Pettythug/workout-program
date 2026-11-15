@@ -34,7 +34,7 @@ export default function CircuitView() {
         timerMode, setTimerMode, timerIsRunning, startRestTimer,
         sessionStartTime, startSession, resetSessionTime,
         warmUpStatus, selectedWarmUp, resetWarmUp, getDefaultRestForRepRange,
-        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutSession, undoWorkoutSession, deviceOwner
+        circuitWorkoutDay, updateCircuitWorkoutDay, completeWorkoutSession, undoWorkoutSession, deviceOwner, isSyncing
     } = useAppContext();
     
     const navigate = useNavigate();
@@ -243,6 +243,7 @@ export default function CircuitView() {
     };
 
     const completeWorkout = () => {
+        if (isSyncing) return;
         const nextDay = (circuitWorkoutDay % 16) + 1;
         const summary = completeWorkoutSession('circuit', {
             currentDay: circuitWorkoutDay,
@@ -641,8 +642,19 @@ export default function CircuitView() {
                                                 <h2 style={{ fontSize: 22, fontWeight: 'bold' }}>All Circuit Exercises Complete!</h2>
                                                 <p style={{ color: 'var(--muted)', fontSize: 13 }}>Tap below to officially complete the workout and log your session time.</p>
                                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                                                    <button className="btn-success" onClick={completeWorkout} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14 }}>
-                                                        Complete Workout
+                                                    <button 
+                                                        className="btn-success" 
+                                                        onClick={completeWorkout} 
+                                                        disabled={isSyncing}
+                                                        style={{ 
+                                                            padding: '12px 24px', 
+                                                            fontWeight: 'bold', 
+                                                            fontSize: 14,
+                                                            opacity: isSyncing ? 0.6 : 1,
+                                                            cursor: isSyncing ? 'not-allowed' : 'pointer'
+                                                        }}
+                                                    >
+                                                        {isSyncing ? 'SAVING WORKOUT...' : 'Complete Workout'}
                                                     </button>
                                                     <button className="btn-ghost btn-no-translate" onClick={() => setView('full-list')} style={{ padding: '12px 24px', fontWeight: 'bold', fontSize: 14, border: '1px solid var(--border)' }}>
                                                         📋 VIEW LIST
@@ -708,9 +720,23 @@ export default function CircuitView() {
                                             <button 
                                                 className="complete-btn" 
                                                 onClick={completeWorkout}
-                                                style={{ width: '100%', background: 'rgba(249, 115, 22, 0.1)', color: 'var(--accent)', border: '2px solid var(--accent)', borderRadius: 'var(--radius)', padding: 16, fontWeight: 700, cursor: 'pointer', marginTop: 16, letterSpacing: 1, textTransform: 'uppercase' }}
+                                                disabled={isSyncing}
+                                                style={{ 
+                                                    width: '100%', 
+                                                    background: 'rgba(249, 115, 22, 0.1)', 
+                                                    color: 'var(--accent)', 
+                                                    border: '2px solid var(--accent)', 
+                                                    borderRadius: 'var(--radius)', 
+                                                    padding: 16, 
+                                                    fontWeight: 700, 
+                                                    cursor: isSyncing ? 'not-allowed' : 'pointer', 
+                                                    opacity: isSyncing ? 0.6 : 1,
+                                                    marginTop: 16, 
+                                                    letterSpacing: 1, 
+                                                    textTransform: 'uppercase' 
+                                                }}
                                             >
-                                                Complete Workout
+                                                {isSyncing ? 'SAVING WORKOUT...' : 'Complete Workout'}
                                             </button>
                                             <button 
                                                 className="btn-ghost" 
