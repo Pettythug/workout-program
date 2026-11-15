@@ -2,7 +2,13 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4.2 of the GymLog backend (TASK-R101 Device Onboarding & Dynamic PIN Management).
+// Version 4.3 of the GymLog backend (TASK-R136 Apps Script Deduplication & Batch Speedup).
+//
+// Changes in v4.3 (TASK-R136):
+//   - Added set signature deduplication to batchSyncSession to prevent duplicate workout insertion on retry/timeout.
+//   - Optimized batchSyncSession with single atomic bulk insert (insertRowsBefore + setValues) replacing row-by-row insertion.
+//   - Only recalculates Personal Bests for exercises where new sets were actually inserted.
+//   - Returns insertedCount in batchSyncSession response.
 //
 // Changes in v4.2 (TASK-R101):
 //   - Added 'verifyPin' endpoint for dynamic PIN verification against USER_PINS / ADMIN_PIN.
@@ -952,6 +958,35 @@ function gymlog_handleCheckVersion() {
   });
 }
 
+// Build a list of normalization signatures for a set entry to safely deduplicate incoming logs
+function gymlog_getSetSignatures(dateVal, person, exercise, setNum) {
+  const cleanPerson = String(person || "").toLowerCase().trim();
+  const cleanExercise = String(exercise || "").toLowerCase().trim();
+  const cleanSetNum = String(setNum !== undefined && setNum !== null ? setNum : "").trim();
+
+  const rawDate = String(dateVal || "").trim();
+  const sigs = [`${rawDate}|${cleanPerson}|${cleanExercise}|${cleanSetNum}`];
+
+  if (dateVal) {
+    const d = dateVal instanceof Date ? dateVal : new Date(rawDate);
+    if (!isNaN(d.getTime())) {
+      const secFloor = Math.floor(d.getTime() / 1000).toString();
+      const secRound = Math.round(d.getTime() / 1000).toString();
+      sigs.push(`${secFloor}|${cleanPerson}|${cleanExercise}|${cleanSetNum}`);
+      if (secRound !== secFloor) {
+        sigs.push(`${secRound}|${cleanPerson}|${cleanExercise}|${cleanSetNum}`);
+      }
+    }
+    if (dateVal instanceof Date) {
+      try {
+        const formatted = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), "M/d/yyyy, h:mm:ss a");
+        sigs.push(`${formatted}|${cleanPerson}|${cleanExercise}|${cleanSetNum}`);
+      } catch (e) {}
+    }
+  }
+  return sigs;
+}
+
 function gymlog_handleBatchSyncSession(payload) {
   const { session, settings } = payload;
   
@@ -1060,11 +1095,28 @@ function gymlog_handleBatchSyncSession(payload) {
     }
   }
 
+  const newRows = [];
+
   if (payload.sets && payload.sets.length > 0) {
     const histSheet = getOrCreateSheet(HISTORY_TAB, HISTORY_HEADERS);
     const scriptPinsStr = PropertiesService.getScriptProperties().getProperty('USER_PINS');
     const validPins = scriptPinsStr ? JSON.parse(scriptPinsStr) : {};
 
+    // 1. Fetch existing history rows and build deduplication signatures set
+    const existingSetSignatures = new Set();
+    const histLastRow = histSheet.getLastRow();
+    if (histLastRow > 1) {
+      const existingData = histSheet.getRange(2, 1, histLastRow - 1, HISTORY_HEADERS.length).getValues();
+      for (let i = 0; i < existingData.length; i++) {
+        const row = existingData[i];
+        const rSigs = gymlog_getSetSignatures(row[0], row[1], row[2], row[7]);
+        for (let s = 0; s < rSigs.length; s++) {
+          existingSetSignatures.add(rSigs[s]);
+        }
+      }
+    }
+
+    // 2. Filter incoming payload.sets and collect valid new entries
     for (const setBatch of payload.sets) {
       const { exercise, entries, userPins = {} } = setBatch;
       
@@ -1077,8 +1129,21 @@ function gymlog_handleBatchSyncSession(payload) {
         }
       }
 
+      let exerciseHasNewSet = false;
       entries.forEach(entry => {
-        const rowData = [
+        const entrySigs = gymlog_getSetSignatures(entry.date, entry.person, exercise, entry.setNum);
+        const isDuplicate = entrySigs.some(s => existingSetSignatures.has(s));
+        if (isDuplicate) {
+          console.log("Duplicate set safely ignored: " + entrySigs[0]);
+          return;
+        }
+
+        for (let s = 0; s < entrySigs.length; s++) {
+          existingSetSignatures.add(entrySigs[s]);
+        }
+
+        exerciseHasNewSet = true;
+        newRows.push([
           entry.date,
           entry.person,
           exercise,
@@ -1087,11 +1152,18 @@ function gymlog_handleBatchSyncSession(payload) {
           normalizeRange(entry.range),
           sanitizeInput(entry.note || ""),
           entry.setNum || ""
-        ];
-        histSheet.insertRowBefore(2);
-        histSheet.getRange(2, 1, 1, rowData.length).setValues([rowData]);
+        ]);
       });
-      exercisesToRecalc.add(exercise);
+
+      if (exerciseHasNewSet && exercise) {
+        exercisesToRecalc.add(exercise);
+      }
+    }
+
+    // 3. Single atomic bulk insertion
+    if (newRows.length > 0) {
+      histSheet.insertRowsBefore(2, newRows.length);
+      histSheet.getRange(2, 1, newRows.length, HISTORY_HEADERS.length).setValues(newRows);
     }
   }
 
@@ -1101,7 +1173,7 @@ function gymlog_handleBatchSyncSession(payload) {
 
   gymlog_bumpLibraryVersion();
   
-  return ok({ synced: true, sessionId: session ? session.id : null });
+  return ok({ synced: true, sessionId: session ? session.id : null, insertedCount: newRows.length });
 }
 
 function gymlog_handleLogSession(payload) {
