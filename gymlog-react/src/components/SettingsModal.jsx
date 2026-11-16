@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { safeReadLocalJSON } from '../utils/safeStorage';
 import { useGymAPI } from '../hooks/useGymAPI';
 import { buildVariationNames, INITIAL_VARIATION_OPTIONS } from '../utils/exerciseVariations';
+import { compressImageFileToDataUrl, analyzeMachinePhotoWithAI, SAMPLE_MACHINE_PRESET, CANONICAL_APP_CATEGORIES } from '../utils/aiEquipmentScanner';
 import VariationGeneratorPanel from './VariationGeneratorPanel';
 import SessionStatsModal from './SessionStatsModal';
 import { createPortal } from 'react-dom';
@@ -16,7 +17,8 @@ export default function SettingsModal({ isOpen, onClose }) {
         workoutDay, fullBodyWorkoutDay, circuitWorkoutDay,
         updateWorkoutDay, updateFullBodyWorkoutDay, updateCircuitWorkoutDay,
         verifyUserPin, resetUserPinWithAdmin,
-        timerSound, setTimerSound, timerVibrate, setTimerVibrate, playBeepSound
+        timerSound, setTimerSound, timerVibrate, setTimerVibrate, playBeepSound,
+        activeLocation
     } = useAppContext();
     const { deleteExercise } = useGymAPI();
     const [newPerson, setNewPerson] = useState('');
@@ -39,6 +41,15 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exIsCircuit, setExIsCircuit] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
+    // AI Machine Scanner state
+    const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('gymlog_gemini_api_key') || '');
+    const [isAiScanning, setIsAiScanning] = useState(false);
+    const [aiScanStatus, setAiScanStatus] = useState('');
+    const [aiScanError, setAiScanError] = useState('');
+    const [aiScanSuccess, setAiScanSuccess] = useState('');
+    const [showApiKeyInput, setShowApiKeyInput] = useState(() => !localStorage.getItem('gymlog_gemini_api_key'));
+    const fileInputRef = useRef(null);
+
     const [deleteExName, setDeleteExName] = useState('');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
@@ -57,6 +68,10 @@ export default function SettingsModal({ isOpen, onClose }) {
         return [...new Set((exercises || []).map(e => e.category).filter(Boolean))].sort();
     }, [exercises]);
 
+    const allAvailableCategories = useMemo(() => {
+        return [...new Set([...CANONICAL_APP_CATEGORIES, ...uniqueCategories])].sort();
+    }, [uniqueCategories]);
+
     const existingExerciseNames = useMemo(() => {
         return new Set((exercises || []).map(e => (e.name || '').trim().toLowerCase()));
     }, [exercises]);
@@ -70,6 +85,75 @@ export default function SettingsModal({ isOpen, onClose }) {
     }, [generatedNames, excludedPreviewNames]);
 
     if (!isOpen) return null;
+
+    const handleApiKeyChange = (value) => {
+        setGeminiApiKey(value);
+        if (value.trim()) {
+            localStorage.setItem('gymlog_gemini_api_key', value.trim());
+        } else {
+            localStorage.removeItem('gymlog_gemini_api_key');
+        }
+    };
+
+    const applyScanResult = (result) => {
+        if (!result) return;
+        if (result.baseName) {
+            setExName(result.baseName);
+        }
+        if (result.category) {
+            setExCategory(result.category);
+        }
+        setExLocation(activeLocation || 'Anywhere');
+        if (result.variationOptions) {
+            setVariationOptions(prev => ({
+                ...prev,
+                ...result.variationOptions
+            }));
+        }
+        setExcludedPreviewNames(new Set());
+        setAiScanSuccess(`✓ Machine scanned! Review details and variations below.`);
+        setAiScanError('');
+    };
+
+    const handleApplySamplePreset = () => {
+        setAiScanError('');
+        applyScanResult(SAMPLE_MACHINE_PRESET);
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+
+        const currentKey = geminiApiKey.trim() || localStorage.getItem('gymlog_gemini_api_key');
+        if (!currentKey) {
+            setShowApiKeyInput(true);
+            setAiScanError('Please enter your Gemini API Key before scanning.');
+            return;
+        }
+
+        setIsAiScanning(true);
+        setAiScanStatus('🔍 Analyzing machine placard & handles with AI...');
+        setAiScanError('');
+        setAiScanSuccess('');
+
+        try {
+            const { base64Data, mimeType } = await compressImageFileToDataUrl(file);
+            const result = await analyzeMachinePhotoWithAI({
+                imageBase64: base64Data,
+                mimeType,
+                apiKey: currentKey,
+                availableCategories: allAvailableCategories
+            });
+            applyScanResult(result);
+        } catch (err) {
+            console.error('AI Machine Scan failed:', err);
+            setAiScanError(err.message || 'Failed to analyze machine photo');
+        } finally {
+            setIsAiScanning(false);
+            setAiScanStatus('');
+        }
+    };
 
     const handleExNameChange = (value) => {
         setExName(value);
@@ -155,6 +239,8 @@ export default function SettingsModal({ isOpen, onClose }) {
             setVariationOptions(INITIAL_VARIATION_OPTIONS);
             setExcludedPreviewNames(new Set());
             setExIsCircuit(false);
+            setAiScanSuccess('');
+            setAiScanError('');
         } catch (err) {
             alert("Failed to create exercise: " + err.message);
         }
@@ -419,6 +505,137 @@ export default function SettingsModal({ isOpen, onClose }) {
                     
                     {isCreateOpen && (
                         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {/* AI Equipment Scanner */}
+                            <div style={{
+                                background: 'rgba(56, 189, 248, 0.05)',
+                                border: '1px solid rgba(56, 189, 248, 0.25)',
+                                borderRadius: 10,
+                                padding: 12,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 10
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)', fontWeight: 'bold' }}>
+                                        AI EQUIPMENT SCANNER
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowApiKeyInput(prev => !prev)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: geminiApiKey ? 'var(--muted)' : '#f59e0b',
+                                            fontSize: 10,
+                                            cursor: 'pointer',
+                                            textDecoration: 'underline'
+                                        }}
+                                    >
+                                        {geminiApiKey ? (showApiKeyInput ? 'Hide API Key' : '⚙️ API Key') : '⚠️ Set API Key'}
+                                    </button>
+                                </div>
+
+                                {showApiKeyInput && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: '#0a0a0a', padding: 8, borderRadius: 6, border: '1px solid var(--border)' }}>
+                                        <label style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--mono)' }}>
+                                            GEMINI API KEY
+                                        </label>
+                                        <input
+                                            type="password"
+                                            placeholder="Enter Gemini API key (AI Studio)..."
+                                            value={geminiApiKey}
+                                            onChange={e => handleApiKeyChange(e.target.value)}
+                                            style={{ width: '100%', background: '#141414', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', color: 'white', fontSize: 12, boxSizing: 'border-box' }}
+                                        />
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <a
+                                                href="https://aistudio.google.com/apikey"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ color: 'var(--accent)', fontSize: 10, textDecoration: 'underline' }}
+                                            >
+                                                Get Free API Key (Google AI Studio) ↗
+                                            </a>
+                                            {geminiApiKey && (
+                                                <span style={{ fontSize: 10, color: '#10b981' }}>✓ Key Saved</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        style={{ display: 'none' }}
+                                        onChange={handleFileSelect}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn-accent"
+                                        disabled={isAiScanning}
+                                        onClick={() => {
+                                            if (!geminiApiKey.trim()) {
+                                                setShowApiKeyInput(true);
+                                                setAiScanError('Please enter your Gemini API Key before scanning.');
+                                                return;
+                                            }
+                                            fileInputRef.current?.click();
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '10px 14px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 6,
+                                            fontWeight: 'bold',
+                                            fontSize: 12,
+                                            cursor: isAiScanning ? 'wait' : 'pointer'
+                                        }}
+                                    >
+                                        {isAiScanning ? '⏳ Scanning...' : '📷 SCAN MACHINE WITH AI'}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn-secondary"
+                                        disabled={isAiScanning}
+                                        onClick={handleApplySamplePreset}
+                                        title="Load sample machine photo preset without camera/API key"
+                                        style={{
+                                            flexShrink: 0,
+                                            padding: '10px 12px',
+                                            fontSize: 11,
+                                            whiteSpace: 'nowrap',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        🧪 Try Sample Photo
+                                    </button>
+                                </div>
+
+                                {isAiScanning && (
+                                    <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span>{aiScanStatus || '🔍 Analyzing machine placard & handles with AI...'}</span>
+                                    </div>
+                                )}
+
+                                {aiScanError && (
+                                    <div style={{ fontSize: 11, color: '#ff4444', background: 'rgba(255, 68, 68, 0.1)', padding: '6px 8px', borderRadius: 4, border: '1px solid rgba(255, 68, 68, 0.3)' }}>
+                                        {aiScanError}
+                                    </div>
+                                )}
+
+                                {aiScanSuccess && (
+                                    <div style={{ fontSize: 11, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 8px', borderRadius: 4, border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                        {aiScanSuccess}
+                                    </div>
+                                )}
+                            </div>
+
                             <input 
                                 placeholder="Base Exercise Name..." 
                                 value={exName} 
@@ -433,8 +650,8 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     style={{ flex: 1, minWidth: 0, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: 10, color: 'white', boxSizing: 'border-box' }}
                                 >
                                     <option value="">Select Category...</option>
-                                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    {exCategory && !uniqueCategories.includes(exCategory) && <option value={exCategory}>{exCategory}</option>}
+                                    {allAvailableCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    {exCategory && !allAvailableCategories.includes(exCategory) && <option value={exCategory}>{exCategory}</option>}
                                     <option value="ADD_NEW">+ Add new category...</option>
                                 </select>
 
