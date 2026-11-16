@@ -1,4 +1,4 @@
-# TASK-QA-R140: Pre-Merge QA Verification — Core AI Vision Engine & Single Machine Scanner (SettingsModal.jsx)
+# TASK-QA-R140: Pre-Merge QA Verification — Phase 1 AI Scanner Layout & Columns F-J Metadata Tightening
 
 - **Target Role:** `QA_Engineer` (Read-Only Access; `DENY(Direct_Write_Code)`)
 - **Authorized Model:** `Gemini 3.8 Flash (Low)` (Recommended) or `Gemini 3.8 Flash (High)`
@@ -12,17 +12,23 @@
 
 ## Verification Scope
 
-Verify the implementation of Phase 1 of Epic 10 (`TASK-R140`):
+Verify the Phase 1 tightening implementation of `TASK-R140`:
 
-1. **Strict Isolation & Scope Check (`git diff main --name-only`):**
+1. **Strict Isolation Check (`git diff main --name-only`):**
    - Verify that **ZERO** core workout views, cards, timers, or context files (`PlanView.jsx`, `FullBodyView.jsx`, `CircuitView.jsx`, `LiftView.jsx`, `ExerciseCard.jsx`, `WarmUpCard.jsx`, `AppContext.jsx`) were modified.
    - Verify that changes are strictly isolated to `SettingsModal.jsx`, `aiEquipmentScanner.js`, and `test_task_r140.cjs`.
 
 2. **Source Inspection:**
-   - `gymlog-react/src/utils/aiEquipmentScanner.js`: Verify `CANONICAL_APP_CATEGORIES` defines the exact 9 real app categories (`Horizontal Push`, `Vertical Push`, `Horizontal Pull`, `Vertical Pull`, `Knee Dominant`, `Hip Dominant`, `Plank Core`, `Rotational Core`, `Explosive`), and implements image compression and Gemini vision analysis.
-   - `gymlog-react/src/components/SettingsModal.jsx`: Verify Gemini API key configuration and `📷 SCAN MACHINE WITH AI` button in `CREATE EXERCISE` tab pre-filling `exName`, `exCategory`, `exLocation`, and `variationOptions` in `VariationGeneratorPanel`.
+   - `gymlog-react/src/utils/aiEquipmentScanner.js`:
+     - Verify vision prompt instructs Gemini to append `(Plate-Loaded)` to `baseName` when plate horns are detected.
+     - Verify `SAMPLE_MACHINE_PRESET` includes `(Plate-Loaded)` in `baseName` and provides `manufacturer: 'Hammer Strength'`, `modelSeries: 'Iso-Lateral'`, `baseExercise: 'High Row'`, `muscleGroups: 'Latissimus Dorsi'`, and `fileReference: '20260517_090721.jpg'`.
+   - `gymlog-react/src/components/SettingsModal.jsx`:
+     - Verify `exManufacturer`, `exModelSeries`, `exBaseExercise`, `exMuscleGroups`, `exFileReference`, and `exPhotoPreview` states are maintained and passed into `createExerciseMeta`.
+     - Verify the API key input is collapsed by default behind a clean toggle button (`⚙️ Configure Gemini API Key` / `⚠️ Set Gemini API Key`).
+     - Verify scanner action buttons use `flexWrap: 'wrap'` and `width: '100%'` so buttons never overflow or clip.
+     - Verify an image thumbnail preview with a `✕` remove button renders when a photo or sample is loaded.
 
-3. **Automated Test Suite Execution (MANDATORY):**
+3. **Automated Verification Suite (MANDATORY):**
    - Run the dedicated automated test script:
      ```bash
      cd gymlog-react && node test_task_r140.cjs
