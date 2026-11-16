@@ -54,7 +54,16 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exMuscleGroups, setExMuscleGroups] = useState('');
     const [exFileReference, setExFileReference] = useState('');
     const [exPhotoPreview, setExPhotoPreview] = useState(null);
+    const [isPhotoInspectorOpen, setIsPhotoInspectorOpen] = useState(false);
     const fileInputRef = useRef(null);
+
+    const getPhotoSrc = (ref) => {
+        if (!ref) return null;
+        if (typeof ref === 'string' && (ref.startsWith('data:') || ref.startsWith('http') || ref.startsWith('blob:'))) {
+            return ref;
+        }
+        return `${import.meta.env.BASE_URL}images/${ref}`;
+    };
 
     const [deleteExName, setDeleteExName] = useState('');
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -89,6 +98,8 @@ export default function SettingsModal({ isOpen, onClose }) {
     const selectedPreviewNames = useMemo(() => {
         return generatedNames.filter(name => !excludedPreviewNames.has(name));
     }, [generatedNames, excludedPreviewNames]);
+
+    const photoSrc = getPhotoSrc(exPhotoPreview || exFileReference);
 
     if (!isOpen) return null;
 
@@ -276,6 +287,7 @@ export default function SettingsModal({ isOpen, onClose }) {
             setExMuscleGroups('');
             setExFileReference('');
             setExPhotoPreview(null);
+            setIsPhotoInspectorOpen(false);
             setAiScanSuccess('');
             setAiScanError('');
         } catch (err) {
@@ -656,20 +668,25 @@ export default function SettingsModal({ isOpen, onClose }) {
                                 </div>
 
                                 {exPhotoPreview && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 10,
-                                        background: '#0a0a0a',
-                                        padding: '6px 10px',
-                                        borderRadius: 8,
-                                        border: '1px solid var(--border)',
-                                        width: '100%',
-                                        boxSizing: 'border-box'
-                                    }}>
-                                        {typeof exPhotoPreview === 'string' && (exPhotoPreview.startsWith('data:') || exPhotoPreview.startsWith('http') || exPhotoPreview.startsWith('/')) ? (
+                                    <div
+                                        onClick={() => setIsPhotoInspectorOpen(true)}
+                                        title="Click to inspect photo in full size (🔍 Tap to view)"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            background: '#0a0a0a',
+                                            padding: '6px 10px',
+                                            borderRadius: 8,
+                                            border: '1px solid var(--border)',
+                                            width: '100%',
+                                            boxSizing: 'border-box',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {photoSrc ? (
                                             <img
-                                                src={exPhotoPreview}
+                                                src={photoSrc}
                                                 alt="Machine preview"
                                                 style={{
                                                     width: 48,
@@ -699,8 +716,13 @@ export default function SettingsModal({ isOpen, onClose }) {
                                             </div>
                                         )}
                                         <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {exFileReference || 'Machine Photo'}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 11, fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {exFileReference || 'Machine Photo'}
+                                                </span>
+                                                <span style={{ fontSize: 9, color: 'var(--accent)', background: 'rgba(56, 189, 248, 0.1)', padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                                    🔍 Tap to view
+                                                </span>
                                             </div>
                                             {exManufacturer && (
                                                 <div style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -715,9 +737,11 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         </div>
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 setExPhotoPreview(null);
                                                 setExFileReference('');
+                                                setIsPhotoInspectorOpen(false);
                                             }}
                                             title="Clear photo"
                                             style={{
@@ -1073,6 +1097,182 @@ export default function SettingsModal({ isOpen, onClose }) {
                 isOpen={isStatsOpen} 
                 onClose={() => setIsStatsOpen(false)} 
             />
+
+            {isPhotoInspectorOpen && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        width: '100vw',
+                        height: '100vh',
+                        minHeight: '100dvh',
+                        background: 'rgba(0, 0, 0, 0.88)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 3000,
+                        padding: 16,
+                        boxSizing: 'border-box'
+                    }}
+                    onClick={() => setIsPhotoInspectorOpen(false)}
+                >
+                    <div 
+                        style={{
+                            background: '#111',
+                            borderRadius: 16,
+                            width: '100%',
+                            maxWidth: 540,
+                            maxHeight: '90dvh',
+                            border: '1px solid var(--border)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxSizing: 'border-box',
+                            overflow: 'hidden',
+                            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.8)'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '14px 18px',
+                            borderBottom: '1px solid var(--border)',
+                            background: '#141414'
+                        }}>
+                            <h3 style={{ margin: 0, fontSize: 14, letterSpacing: 0.5, color: 'var(--accent)', fontWeight: 'bold' }}>
+                                📷 Machine Photo Preview
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => setIsPhotoInspectorOpen(false)}
+                                style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+                                title="Close Preview"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{
+                            padding: 16,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: '#080808',
+                            overflowY: 'auto',
+                            flex: 1
+                        }}>
+                            {photoSrc ? (
+                                <img
+                                    src={photoSrc}
+                                    alt="Machine Photo Preview"
+                                    style={{
+                                        maxWidth: '100%',
+                                        maxHeight: '70vh',
+                                        objectFit: 'contain',
+                                        borderRadius: 8,
+                                        border: '1px solid var(--border)'
+                                    }}
+                                />
+                            ) : (
+                                <div style={{ color: 'var(--muted)', padding: 32, fontSize: 13, textAlign: 'center' }}>
+                                    No photo loaded to inspect
+                                </div>
+                            )}
+                            {exFileReference && (
+                                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, fontFamily: 'var(--mono)', textAlign: 'center' }}>
+                                    {exFileReference}
+                                    {exManufacturer ? ` • ${exManufacturer}` : ''}
+                                    {exModelSeries ? ` (${exModelSeries})` : ''}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Action Footer */}
+                        <div style={{
+                            display: 'flex',
+                            gap: 8,
+                            padding: '12px 16px',
+                            borderTop: '1px solid var(--border)',
+                            background: '#141414',
+                            flexWrap: 'wrap'
+                        }}>
+                            <button
+                                type="button"
+                                className="btn-accent"
+                                onClick={() => setIsPhotoInspectorOpen(false)}
+                                style={{
+                                    flex: '1 1 110px',
+                                    padding: '10px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                [ ✓ Keep Photo ]
+                            </button>
+
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => {
+                                    setIsPhotoInspectorOpen(false);
+                                    fileInputRef.current?.click();
+                                }}
+                                style={{
+                                    flex: '1 1 130px',
+                                    padding: '10px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                [ 📸 Retake / Replace ]
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setExPhotoPreview(null);
+                                    setExFileReference('');
+                                    setIsPhotoInspectorOpen(false);
+                                }}
+                                style={{
+                                    flex: '1 1 110px',
+                                    padding: '10px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                    background: 'rgba(255, 68, 68, 0.12)',
+                                    border: '1px solid #ff4444',
+                                    color: '#ff4444',
+                                    borderRadius: 8,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                [ 🗑️ Remove Photo ]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>,
         document.body
     );

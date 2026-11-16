@@ -347,3 +347,20 @@ export const SAMPLE_MACHINE_PRESET = {
     ],
     confidence: 0.98
 };
+
+/**
+ * Resolves an image reference (data URL, web URL, blob, or local image filename)
+ * into a valid image source URL.
+ */
+export function getPhotoSrc(ref, baseUrl) {
+    if (!ref) return null;
+    if (typeof ref === 'string' && (ref.startsWith('data:') || ref.startsWith('http') || ref.startsWith('blob:'))) {
+        return ref;
+    }
+    const cleanRef = typeof ref === 'string' && ref.startsWith('/') ? ref.slice(1) : ref;
+    const base = baseUrl !== undefined
+        ? baseUrl
+        : ((typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/');
+    return cleanRef.startsWith('images/') ? `${base}${cleanRef}` : `${base}images/${cleanRef}`;
+}
+

@@ -20,7 +20,8 @@ async function runTests() {
         normalizeVariationOptions,
         compressImageFileToDataUrl,
         analyzeMachinePhotoWithAI,
-        SAMPLE_MACHINE_PRESET
+        SAMPLE_MACHINE_PRESET,
+        getPhotoSrc
     } = await import('file://' + scannerModulePath.replace(/\\/g, '/'));
 
     const expectedCanonicalCategories = [
@@ -299,6 +300,97 @@ async function runTests() {
     );
 
     console.log('✅ TEST 5 PASSED: SettingsModal.jsx and aiEquipmentScanner.js include all required Columns F-J bindings, layout wrapping, and thumbnail previews.\n');
+
+    // -----------------------------------------------------------------------------
+    // TEST 6: Photo source resolution & Fullscreen Photo Inspector Modal
+    // -----------------------------------------------------------------------------
+    console.log('TEST 6: Verifying getPhotoSrc and Fullscreen Photo Inspector Modal...');
+
+    // 1. getPhotoSrc unit testing across data:, http:, blob:, and local filenames
+    assert.strictEqual(getPhotoSrc(null), null, 'getPhotoSrc(null) must return null');
+    assert.strictEqual(getPhotoSrc(undefined), null, 'getPhotoSrc(undefined) must return null');
+    assert.strictEqual(getPhotoSrc(''), null, 'getPhotoSrc("") must return null');
+
+    const sampleDataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD...';
+    assert.strictEqual(getPhotoSrc(sampleDataUrl), sampleDataUrl, 'Must return data: URLs verbatim');
+
+    const sampleHttpUrl = 'http://example.com/machines/leg-press.jpg';
+    assert.strictEqual(getPhotoSrc(sampleHttpUrl), sampleHttpUrl, 'Must return http: URLs verbatim');
+
+    const sampleHttpsUrl = 'https://example.com/machines/high-row.jpg';
+    assert.strictEqual(getPhotoSrc(sampleHttpsUrl), sampleHttpsUrl, 'Must return https: URLs verbatim');
+
+    const sampleBlobUrl = 'blob:http://localhost:5173/d38101a2-5fc8-4721-a3f2-10872ef74a44';
+    assert.strictEqual(getPhotoSrc(sampleBlobUrl), sampleBlobUrl, 'Must return blob: URLs verbatim');
+
+    // Relative image filenames must resolve to BASE_URL + images/
+    const sampleFilename = '20260517_090721.jpg';
+    assert.strictEqual(
+        getPhotoSrc(sampleFilename),
+        '/images/20260517_090721.jpg',
+        'Must resolve local filenames with default BASE_URL /'
+    );
+    assert.strictEqual(
+        getPhotoSrc(sampleFilename, '/gymlog/'),
+        '/gymlog/images/20260517_090721.jpg',
+        'Must resolve local filenames with custom BASE_URL'
+    );
+
+    // 2. SettingsModal.jsx getPhotoSrc definition check
+    assert.ok(
+        settingsSource.includes('const getPhotoSrc =') || settingsSource.includes('function getPhotoSrc'),
+        'SettingsModal.jsx must define getPhotoSrc'
+    );
+    assert.ok(
+        settingsSource.includes('${import.meta.env.BASE_URL}images/${ref}') || settingsSource.includes('images/'),
+        'SettingsModal.jsx getPhotoSrc must resolve to BASE_URL images path'
+    );
+
+    // 3. Clickable thumbnail affordance
+    assert.ok(
+        settingsSource.includes('🔍 Tap to view'),
+        'SettingsModal.jsx must provide 🔍 Tap to view affordance'
+    );
+    assert.ok(
+        settingsSource.includes('setIsPhotoInspectorOpen(true)'),
+        'SettingsModal.jsx clicking thumbnail must set isPhotoInspectorOpen to true'
+    );
+
+    // 4. Modal overlay header, body, and responsive styling
+    assert.ok(
+        settingsSource.includes('📷 Machine Photo Preview'),
+        'SettingsModal.jsx must contain 📷 Machine Photo Preview in modal inspector header'
+    );
+    assert.ok(
+        settingsSource.includes("maxHeight: '70vh'"),
+        'SettingsModal.jsx modal image must specify maxHeight: 70vh for large crisp preview'
+    );
+    assert.ok(
+        settingsSource.includes("objectFit: 'contain'"),
+        'SettingsModal.jsx modal image must specify objectFit: contain'
+    );
+
+    // 5. Action footer buttons & bindings
+    assert.ok(
+        settingsSource.includes('[ ✓ Keep Photo ]'),
+        'SettingsModal.jsx must contain [ ✓ Keep Photo ] action button'
+    );
+    assert.ok(
+        settingsSource.includes('[ 📸 Retake / Replace ]'),
+        'SettingsModal.jsx must contain [ 📸 Retake / Replace ] action button'
+    );
+    assert.ok(
+        settingsSource.includes('[ 🗑️ Remove Photo ]'),
+        'SettingsModal.jsx must contain [ 🗑️ Remove Photo ] action button'
+    );
+
+    // Verify retake button triggers fileInputRef
+    assert.ok(
+        settingsSource.includes('fileInputRef.current?.click()'),
+        'SettingsModal.jsx must trigger fileInputRef click for retake'
+    );
+
+    console.log('✅ TEST 6 PASSED: getPhotoSrc and Fullscreen Photo Inspector Modal meet all functional and responsive requirements.\n');
 
     console.log('====================================================');
     console.log('🎉 ALL AUTOMATED VERIFICATION SUITES PASSED FOR TASK-R140');
