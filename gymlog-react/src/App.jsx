@@ -3,6 +3,7 @@ import PlanView from './components/PlanView';
 import FullBodyView from './components/FullBodyView';
 import LiftView from './components/LiftView';
 import CircuitView from './components/CircuitView';
+import ScannerLabView from './components/ScannerLabView';
 import Header from './components/Header';
 import StickyRestBanner from './components/StickyRestBanner';
 import WelcomeModal from './components/WelcomeModal';
@@ -26,6 +27,7 @@ function App() {
             <Route path="/full-body" element={<FullBodyView />} />
             <Route path="/lift" element={<LiftView />} />
             <Route path="/circuit" element={<CircuitView />} />
+            <Route path="/scanner-lab" element={<ScannerLabView />} />
             <Route path="/" element={<Navigate to="/lift" replace />} />
           </Routes>
         </main>
