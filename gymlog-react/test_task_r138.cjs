@@ -210,6 +210,7 @@ const { execSync } = require('child_process');
         // Verify git diff against main only touches App.jsx among existing workout files
         const allowedFiles = new Set([
             'docs/jira_tasks/TASK-R138.md',
+            'docs/jira_tasks/TASK-QA-R138.md',
             'gymlog-react/src/App.jsx',
             'gymlog-react/src/utils/aiEquipmentScanner.js',
             'gymlog-react/src/components/ScannerLabView.jsx',
