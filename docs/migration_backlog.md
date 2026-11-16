@@ -129,6 +129,20 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Implemented `renameExerciseInLocalState` in `AppContext.jsx` to combine historical sets, deduplicate entries, remove obsolete cards, and recalculate Personal Bests across rep ranges immediately.
   - Upgraded Google Apps Script backend (`Combined_AppScript_v2.gs`) to **v4.5** with `exactOnly: true` support to prevent greedy wildcard renaming of sibling variations. Verified via automated test suite (`test_task_r139.cjs`).
 
+### Epic 10: AI Equipment & Cardio Scanner
+- [ ] **Story 10.1 (`TASK-R140`): Core AI Vision Engine & In-Form Single Machine Scanner (`SettingsModal.jsx`)**:
+  - Embed a clean `📷 SCAN MACHINE` button inside **Settings ⚙️ → CREATE EXERCISE** that takes 1–2 photos or picks from phone gallery.
+  - Auto-compresses photos on client canvas (~60 KB) and calls Gemini 3.8 / 3.5 Flash using the user's free API key configured in Settings.
+  - Strictly maps to canonical app categories (`Horizontal Push`, `Vertical Push`, `Horizontal Pull`, `Vertical Pull`, `Knee Dominant`, `Hip Dominant`, `Plank Core`, `Rotational Core`, `Explosive`).
+  - Automatically pre-fills Base Name, Category, Location, and checks the grip/execution boxes in `VariationGeneratorPanel` (`Overhand`, `Underhand`, `Neutral`, `Cable`, `Single`, `Alt`).
+- [ ] **Story 10.2 (`TASK-R141`): Rapid Walk-Through & Multi-Branch Batch Scanner (50-Machine Mode)**:
+  - Rapid-fire continuous camera mode and multi-photo phone gallery batch uploader for fast 30–50 machine walk-throughs without waiting between machines.
+  - Background AI processing queue with clean review card deck (`[Accept All]` / `[Review]`).
+  - Intelligent multi-branch location tagging: if a machine exists at another branch (e.g. `24 Hour - Downtown`), appends the new branch (`Downtown, North`) to share history and Personal Bests without creating duplicate cards.
+- [ ] **Story 10.3 (`TASK-R142`): Mid-Workout Swap Scanner & Cardio Warm-Up Integration**:
+  - Embed `📷 SCAN MACHINE` inside the `-- New Custom Exercise --` swap drawer on `ExerciseCard.jsx` and `CircuitCard.jsx` to scan and swap a machine directly into the active workout slot.
+  - Detect cardio equipment (StairMaster, Elliptical, Row) and offer 1-click addition as a 5-minute pre-workout warm-up modality to `WarmUpCard.jsx` for that specific gym.
+
 ---
 
 ## 📦 Archived & Outgrown Specifications
