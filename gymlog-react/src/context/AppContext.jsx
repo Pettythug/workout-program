@@ -1223,6 +1223,200 @@ export function AppProvider({ children }) {
         });
     };
 
+    const renameExerciseInLocalState = (oldName, newName, isMerge = false) => {
+        if (!oldName || !newName) return;
+        const normOld = oldName.trim();
+        const normNew = newName.trim();
+        if (normOld === normNew) return;
+
+        const oldLower = normOld.toLowerCase();
+        const newLower = normNew.toLowerCase();
+
+        setExercises(prev => {
+            const oldEx = prev.find(e => (e.name || '').trim().toLowerCase() === oldLower);
+            const targetEx = prev.find(e => (e.name || '').trim().toLowerCase() === newLower);
+
+            let next;
+            if (isMerge && oldEx && targetEx && oldLower !== newLower) {
+                // Combine history: map oldEx.history entries to { ...entry, exercise: targetEx.name }
+                const remappedOldHistory = (oldEx.history || []).map(entry => ({
+                    ...entry,
+                    exercise: targetEx.name
+                }));
+                const combinedHistory = [...(targetEx.history || []), ...remappedOldHistory];
+
+                // Deduplicate any identical entries
+                const dedupedHistory = [];
+                combinedHistory.forEach(item => {
+                    if (!item) return;
+                    const isDup = dedupedHistory.some(existing => (
+                        (existing.person || '').trim().toLowerCase() === (item.person || '').trim().toLowerCase() &&
+                        String(existing.reps ?? '').trim() === String(item.reps ?? '').trim() &&
+                        String(existing.weight ?? '').trim() === String(item.weight ?? '').trim() &&
+                        String(existing.date ?? '').trim() === String(item.date ?? '').trim() &&
+                        String(existing.range ?? existing.repRange ?? '').trim() === String(item.range ?? item.repRange ?? '').trim() &&
+                        String(existing.setNum ?? '').trim() === String(item.setNum ?? '').trim()
+                    ));
+                    if (!isDup) {
+                        dedupedHistory.push(item);
+                    }
+                });
+
+                dedupedHistory.sort((a, b) => {
+                    const da = a.date ? new Date(a.date).getTime() : 0;
+                    const db = b.date ? new Date(b.date).getTime() : 0;
+                    if (!isNaN(da) && !isNaN(db) && da !== db) return db - da;
+                    return 0;
+                });
+
+                const updatedTargetEx = {
+                    ...targetEx,
+                    history: dedupedHistory
+                };
+                updatedTargetEx.best = calculateBestForExercise(updatedTargetEx);
+
+                next = prev
+                    .filter(e => (e.name || '').trim().toLowerCase() !== oldLower)
+                    .map(e => (e.name || '').trim().toLowerCase() === newLower ? updatedTargetEx : e);
+            } else if (oldEx) {
+                // Simple rename (or target does not exist in exercises)
+                next = prev.map(ex => {
+                    if ((ex.name || '').trim().toLowerCase() === oldLower) {
+                        const updatedHistory = (ex.history || []).map(entry => ({
+                            ...entry,
+                            exercise: normNew
+                        }));
+                        const renamedEx = {
+                            ...ex,
+                            name: normNew,
+                            history: updatedHistory
+                        };
+                        renamedEx.best = calculateBestForExercise(renamedEx);
+                        return renamedEx;
+                    }
+                    return ex;
+                });
+            } else {
+                next = prev;
+            }
+
+            localStorage.setItem('gymlog_exercises', JSON.stringify(next));
+            return next;
+        });
+
+        // Update exerciseStatus if oldName is present
+        setExerciseStatus(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.keys(next).forEach(key => {
+                if (key.trim().toLowerCase() === oldLower) {
+                    next[normNew] = next[key];
+                    delete next[key];
+                    changed = true;
+                }
+            });
+            if (changed) {
+                localStorage.setItem('gymlog_exerciseStatus', JSON.stringify(next));
+                return next;
+            }
+            return prev;
+        });
+
+        // Update gymlog_pending_sets and gymlog_pending_deletes in localStorage
+        const pendingSets = safeReadLocalJSON('gymlog_pending_sets', []);
+        let pendingSetsChanged = false;
+        const updatedPendingSets = pendingSets.map(batch => {
+            if (batch.exercise && batch.exercise.trim().toLowerCase() === oldLower) {
+                pendingSetsChanged = true;
+                return {
+                    ...batch,
+                    exercise: normNew,
+                    entries: (batch.entries || []).map(e => ({ ...e, exercise: normNew }))
+                };
+            }
+            return batch;
+        });
+        if (pendingSetsChanged) {
+            localStorage.setItem('gymlog_pending_sets', JSON.stringify(updatedPendingSets));
+        }
+
+        const pendingDeletes = safeReadLocalJSON('gymlog_pending_deletes', []);
+        let pendingDeletesChanged = false;
+        const updatedPendingDeletes = pendingDeletes.map(d => {
+            if (d.exercise && d.exercise.trim().toLowerCase() === oldLower) {
+                pendingDeletesChanged = true;
+                return { ...d, exercise: normNew };
+            }
+            return d;
+        });
+        if (pendingDeletesChanged) {
+            localStorage.setItem('gymlog_pending_deletes', JSON.stringify(updatedPendingDeletes));
+        }
+
+        // Update dailySwaps and fullBodySwaps if oldName is present in them
+        setDailySwaps(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.keys(next).forEach(day => {
+                if (next[day]) {
+                    const daySwaps = { ...next[day] };
+                    let dayChanged = false;
+                    Object.keys(daySwaps).forEach(k => {
+                        if (k.trim().toLowerCase() === oldLower) {
+                            daySwaps[normNew] = daySwaps[k];
+                            delete daySwaps[k];
+                            dayChanged = true;
+                        }
+                        if (daySwaps[k] && daySwaps[k].trim().toLowerCase() === oldLower) {
+                            daySwaps[k] = normNew;
+                            dayChanged = true;
+                        }
+                    });
+                    if (dayChanged) {
+                        next[day] = daySwaps;
+                        changed = true;
+                    }
+                }
+            });
+            if (changed) {
+                localStorage.setItem('gymlog_dailySwaps', JSON.stringify(next));
+                return next;
+            }
+            return prev;
+        });
+
+        setFullBodySwaps(prev => {
+            let changed = false;
+            const next = { ...prev };
+            Object.keys(next).forEach(day => {
+                if (next[day]) {
+                    const daySwaps = { ...next[day] };
+                    let dayChanged = false;
+                    Object.keys(daySwaps).forEach(k => {
+                        if (k.trim().toLowerCase() === oldLower) {
+                            daySwaps[normNew] = daySwaps[k];
+                            delete daySwaps[k];
+                            dayChanged = true;
+                        }
+                        if (daySwaps[k] && daySwaps[k].trim().toLowerCase() === oldLower) {
+                            daySwaps[k] = normNew;
+                            dayChanged = true;
+                        }
+                    });
+                    if (dayChanged) {
+                        next[day] = daySwaps;
+                        changed = true;
+                    }
+                }
+            });
+            if (changed) {
+                localStorage.setItem('gymlog_fullBody_swaps', JSON.stringify(next));
+                return next;
+            }
+            return prev;
+        });
+    };
+
     // Session Tracking Handlers
     const startSession = (time = null) => {
         const startTime = time || Date.now();
@@ -2198,6 +2392,7 @@ export function AppProvider({ children }) {
         addExerciseToLocalState,
         removeExerciseFromLocalState,
         updateExerciseInLocalState,
+        renameExerciseInLocalState,
         logExerciseSet,
         clearAllExerciseStatus,
         timerMode,

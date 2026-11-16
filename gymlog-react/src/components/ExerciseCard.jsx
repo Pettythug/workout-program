@@ -235,8 +235,8 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
 };
 
 export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defaultOpen = false, onSwap }) {
-    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, activeLocation, createExerciseMeta, addExerciseToLocalState, removeExerciseFromLocalState } = useAppContext();
-    const { logSet, deleteHistory, saveExercise, deleteExercise } = useGymAPI();
+    const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, renameExerciseInLocalState, activeLocation, createExerciseMeta, addExerciseToLocalState, removeExerciseFromLocalState } = useAppContext();
+    const { logSet, deleteHistory, saveExercise, deleteExercise, renameExercise } = useGymAPI();
     
     const [isOpenState, setIsOpenState] = useState(Boolean(defaultOpen));
     const isOpen = propIsOpen !== undefined ? propIsOpen : isOpenState;
@@ -570,6 +570,45 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         const typeToSave = explicitType || editMode;
         if (!typeToSave) return;
 
+        let finalValue = editValue;
+
+        if (typeToSave === 'rename') {
+            if (!finalValue || finalValue.trim() === ex.name.trim()) {
+                setEditMode(null);
+                return;
+            }
+            const targetExists = exercises.some(e => e.name.trim().toLowerCase() === finalValue.trim().toLowerCase());
+            if (targetExists) {
+                const confirmMerge = window.confirm(`'${finalValue.trim()}' already exists in your library.\n\nDo you want to merge '${ex.name}' into '${finalValue.trim()}'?\n\nAll past history and sets will be combined.`);
+                if (!confirmMerge) return;
+            }
+
+            const pin = prompt("Admin PIN required to rename/merge:");
+            if (pin === null) return;
+
+            try {
+                setToast(targetExists ? "Merging exercise records..." : "Renaming exercise...");
+                let res = await renameExercise(ex.name, finalValue.trim(), targetExists, pin, true);
+                if (res && res.status === "requiresMerge") {
+                    const confirmMergeBackend = window.confirm(res.message || "One or more target exercises already exist. Do you want to merge them?");
+                    if (!confirmMergeBackend) {
+                        setToast("");
+                        return;
+                    }
+                    res = await renameExercise(ex.name, finalValue.trim(), true, pin, true);
+                }
+                renameExerciseInLocalState(ex.name, finalValue.trim(), targetExists);
+                setEditMode(null);
+                setToast(targetExists ? "Merged successfully!" : "Renamed successfully!");
+                setTimeout(() => setToast(""), 2000);
+            } catch (e) {
+                console.error(e);
+                setToast("Error: " + (e.message || "Failed"));
+                setTimeout(() => setToast(""), 2000);
+            }
+            return;
+        }
+
         let payload = {
             name: ex.name,
             exercise: ex.name,
@@ -584,7 +623,6 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
             muscleGroups: ex.muscleGroups || "",
             fileReference: ex.fileReference || ""
         };
-        let finalValue = editValue;
 
         if (typeToSave === 'timed') {
             const confirmMsg = ex.timed 
@@ -604,10 +642,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                 if (!finalValue) return;
             }
 
-            if (typeToSave === 'rename') {
-                if (!finalValue || finalValue === ex.name) { setEditMode(null); return; }
-                payload.newName = finalValue;
-            } else if (typeToSave === 'category') {
+            if (typeToSave === 'category') {
                 if (finalValue === ex.category) { setEditMode(null); return; }
                 payload.category = finalValue;
             } else if (typeToSave === 'location') {

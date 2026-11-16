@@ -2,7 +2,11 @@
 // Combined_AppScript_v2.gs
 // Author: Brian Wance
 //
-// Version 4.4 of the GymLog backend (TASK-R137 System Health & Edge-Case Audit).
+// Version 4.5 of the GymLog backend (TASK-R139 Exercise Rename & Merge).
+//
+// Changes in v4.5 (TASK-R139):
+//   - Added exactOnly support to gymlog_handleRenameExercise to prevent greedy wildcard expansion during explicit single-exercise renames.
+//   - Fixed frontend rename integration to invoke renameExercise and perform unified state merging.
 //
 // Changes in v4.4 (TASK-R137):
 //   - Unified timestamp comparison tolerance (< 3000 ms) in gymlog_handleBatchSyncSession(payload.deletes)
@@ -1333,7 +1337,7 @@ function gymlog_escapeRegExp(string) {
 
 function gymlog_handleRenameExercise(payload) {
   verifyAdminPin(payload);
-  const { oldName, newName, mergeConfirmed } = payload;
+  const { oldName, newName, mergeConfirmed, exactOnly } = payload;
   if (!oldName || !newName) return err("Missing oldName or newName");
   if (oldName.trim().toLowerCase() === newName.trim().toLowerCase()) return err("Names are identical");
 
@@ -1343,24 +1347,10 @@ function gymlog_handleRenameExercise(payload) {
   const newBase = gymlog_getBaseName(newName); // Keep original casing for replacement
   
   // Collect all unique variations of oldName from Exercises tab
-  const variationsToRename = [];
+  let variationsToRename = [];
   let exData = [];
   if (exSheet.getLastRow() > 1) {
     exData = exSheet.getRange(2, 1, exSheet.getLastRow() - 1, exSheet.getLastColumn()).getValues();
-    for (let i = 0; i < exData.length; i++) {
-      const name = String(exData[i][0]).trim();
-      if (gymlog_getBaseName(name).toLowerCase() === oldBaseLower) {
-        if (!variationsToRename.some(v => v.old.toLowerCase() === name.toLowerCase())) {
-          let calcNew = name;
-          if (oldBaseLower.length > 0) {
-            calcNew = name.replace(new RegExp(gymlog_escapeRegExp(oldBaseLower), 'i'), newBase);
-          } else {
-            calcNew = newName;
-          }
-          variationsToRename.push({ old: name, new: calcNew, oldLower: name.toLowerCase(), newLower: calcNew.toLowerCase() });
-        }
-      }
-    }
   }
   
   // Also check History tab just in case an exercise has history but no metadata
@@ -1370,25 +1360,49 @@ function gymlog_handleRenameExercise(payload) {
   if (histSheet.getLastRow() > 1) {
     hRange = histSheet.getRange(2, 3, histSheet.getLastRow() - 1, 1);
     hData = hRange.getValues();
-    for (let i = 0; i < hData.length; i++) {
-      const name = String(hData[i][0]).trim();
-      if (gymlog_getBaseName(name).toLowerCase() === oldBaseLower) {
-        if (!variationsToRename.some(v => v.old.toLowerCase() === name.toLowerCase())) {
-          let calcNew = name;
-          if (oldBaseLower.length > 0) {
-            calcNew = name.replace(new RegExp(gymlog_escapeRegExp(oldBaseLower), 'i'), newBase);
-          } else {
-            calcNew = newName;
+  }
+
+  if (exactOnly === true) {
+    variationsToRename = [{ old: oldName.trim(), new: newName.trim(), oldLower: oldName.trim().toLowerCase(), newLower: newName.trim().toLowerCase() }];
+  } else {
+    if (exData.length > 0) {
+      for (let i = 0; i < exData.length; i++) {
+        const name = String(exData[i][0]).trim();
+        if (gymlog_getBaseName(name).toLowerCase() === oldBaseLower) {
+          if (!variationsToRename.some(v => v.old.toLowerCase() === name.toLowerCase())) {
+            let calcNew = name;
+            if (oldBaseLower.length > 0) {
+              calcNew = name.replace(new RegExp(gymlog_escapeRegExp(oldBaseLower), 'i'), newBase);
+            } else {
+              calcNew = newName;
+            }
+            variationsToRename.push({ old: name, new: calcNew, oldLower: name.toLowerCase(), newLower: calcNew.toLowerCase() });
           }
-          variationsToRename.push({ old: name, new: calcNew, oldLower: name.toLowerCase(), newLower: calcNew.toLowerCase() });
         }
       }
     }
-  }
+    
+    if (hData.length > 0) {
+      for (let i = 0; i < hData.length; i++) {
+        const name = String(hData[i][0]).trim();
+        if (gymlog_getBaseName(name).toLowerCase() === oldBaseLower) {
+          if (!variationsToRename.some(v => v.old.toLowerCase() === name.toLowerCase())) {
+            let calcNew = name;
+            if (oldBaseLower.length > 0) {
+              calcNew = name.replace(new RegExp(gymlog_escapeRegExp(oldBaseLower), 'i'), newBase);
+            } else {
+              calcNew = newName;
+            }
+            variationsToRename.push({ old: name, new: calcNew, oldLower: name.toLowerCase(), newLower: calcNew.toLowerCase() });
+          }
+        }
+      }
+    }
 
-  // If we couldn't find anything matching the base (shouldn't happen), at least do the exact ones requested
-  if (variationsToRename.length === 0) {
-     variationsToRename.push({ old: oldName.trim(), new: newName.trim(), oldLower: oldName.trim().toLowerCase(), newLower: newName.trim().toLowerCase() });
+    // If we couldn't find anything matching the base (shouldn't happen), at least do the exact ones requested
+    if (variationsToRename.length === 0) {
+       variationsToRename.push({ old: oldName.trim(), new: newName.trim(), oldLower: oldName.trim().toLowerCase(), newLower: newName.trim().toLowerCase() });
+    }
   }
 
   // Check if ANY of the target new names already exist
