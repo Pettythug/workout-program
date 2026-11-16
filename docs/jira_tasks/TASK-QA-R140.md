@@ -1,4 +1,4 @@
-# TASK-QA-R140: Pre-Merge QA Verification — Phase 1 AI Scanner Layout & Columns F-J Metadata Tightening
+# TASK-QA-R140: Pre-Merge QA Verification — Fullscreen Photo Inspector & Real Image Resolution
 
 - **Target Role:** `QA_Engineer` (Read-Only Access; `DENY(Direct_Write_Code)`)
 - **Authorized Model:** `Gemini 3.8 Flash (Low)` (Recommended) or `Gemini 3.8 Flash (High)`
@@ -12,23 +12,21 @@
 
 ## Verification Scope
 
-Verify the Phase 1 tightening implementation of `TASK-R140`:
+Verify the implementation of the Fullscreen Photo Inspector and real image resolution in `TASK-R140`:
 
 1. **Strict Isolation Check (`git diff main --name-only`):**
    - Verify that **ZERO** core workout views, cards, timers, or context files (`PlanView.jsx`, `FullBodyView.jsx`, `CircuitView.jsx`, `LiftView.jsx`, `ExerciseCard.jsx`, `WarmUpCard.jsx`, `AppContext.jsx`) were modified.
    - Verify that changes are strictly isolated to `SettingsModal.jsx`, `aiEquipmentScanner.js`, and `test_task_r140.cjs`.
 
-2. **Source Inspection:**
-   - `gymlog-react/src/utils/aiEquipmentScanner.js`:
-     - Verify vision prompt instructs Gemini to append `(Plate-Loaded)` to `baseName` when plate horns are detected.
-     - Verify `SAMPLE_MACHINE_PRESET` includes `(Plate-Loaded)` in `baseName` and provides `manufacturer: 'Hammer Strength'`, `modelSeries: 'Iso-Lateral'`, `baseExercise: 'High Row'`, `muscleGroups: 'Latissimus Dorsi'`, and `fileReference: '20260517_090721.jpg'`.
-   - `gymlog-react/src/components/SettingsModal.jsx`:
-     - Verify `exManufacturer`, `exModelSeries`, `exBaseExercise`, `exMuscleGroups`, `exFileReference`, and `exPhotoPreview` states are maintained and passed into `createExerciseMeta`.
-     - Verify the API key input is collapsed by default behind a clean toggle button (`⚙️ Configure Gemini API Key` / `⚠️ Set Gemini API Key`).
-     - Verify scanner action buttons use `flexWrap: 'wrap'` and `width: '100%'` so buttons never overflow or clip.
-     - Verify an image thumbnail preview with a `✕` remove button renders when a photo or sample is loaded.
+2. **Source Inspection (`SettingsModal.jsx`):**
+   - Verify `getPhotoSrc` correctly resolves `data:`, `http:`, and relative image filenames (using `${import.meta.env.BASE_URL}images/${ref}`) so that both camera snapshots and stored reference photos render real images.
+   - Verify the thumbnail container is clickable with `cursor: pointer` and opens the inspector modal via `setIsPhotoViewerOpen(true)`.
+   - Verify the Fullscreen Photo Inspector Modal renders with:
+     - Backdrop (`rgba(0,0,0,0.92)`).
+     - Full-resolution responsive image display (`maxHeight: '70vh'`, `objectFit: 'contain'`).
+     - Action buttons: `[ ✓ Keep Photo ]` (closes modal), `[ 📸 Retake / Replace ]` (triggers file/camera input and closes modal), and `[ 🗑️ Remove Photo ]` (clears photo states and closes modal).
 
-3. **Automated Verification Suite (MANDATORY):**
+3. **Automated Test Suite Execution (MANDATORY):**
    - Run the dedicated automated test script:
      ```bash
      cd gymlog-react && node test_task_r140.cjs
