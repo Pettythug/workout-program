@@ -53,11 +53,22 @@ export function useGymAPI() {
                 if (!json) {
                     json = { status: "ok", data: {} };
                 }
+            } else if (text.includes('"status":"requiresMerge"') || text.includes("'status':'requiresMerge'")) {
+                const match = text.match(/\{"status"\s*:\s*"requiresMerge"[^\}]*\}/) || text.match(/\{'status'\s*:\s*'requiresMerge'[^\}]*\}/);
+                if (match) {
+                    try {
+                        json = JSON.parse(match[0]);
+                    } catch (innerErr) {}
+                }
+                if (!json) {
+                    json = { status: "requiresMerge", message: "Target exercise already exists. Do you want to merge?" };
+                }
             } else {
                 throw new Error("Failed to parse response: " + text.slice(0, 100));
             }
         }
 
+        if (json.status === "requiresMerge") return json;
         if (json.status !== "ok") throw new Error(json.message);
         return json.data;
     }, []);
@@ -225,6 +236,26 @@ export function useGymAPI() {
         });
     }, [sheetsPost]);
 
+    /**
+     * Rename or merge an exercise across all database records.
+     * @param {string} oldName
+     * @param {string} newName
+     * @param {boolean} mergeConfirmed
+     * @param {string|null} pin
+     * @param {boolean} exactOnly
+     * @returns {Promise<any>}
+     */
+    const renameExercise = useCallback(async (oldName, newName, mergeConfirmed = false, pin = null, exactOnly = true) => {
+        return await sheetsPost({
+            action: "renameExercise",
+            oldName,
+            newName,
+            mergeConfirmed: Boolean(mergeConfirmed),
+            exactOnly: Boolean(exactOnly),
+            pin
+        });
+    }, [sheetsPost]);
+
     return {
         syncAll,
         logSet,
@@ -236,6 +267,7 @@ export function useGymAPI() {
         deleteExercise,
         saveSettings,
         saveExerciseNote,
-        uploadImage
+        uploadImage,
+        renameExercise
     };
 }

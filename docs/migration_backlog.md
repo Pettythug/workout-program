@@ -6,9 +6,9 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ## 📊 Summary Status
 * **Core SPA Architecture**: Complete (Vite + React 18 + Context API)
-* **Active Version**: v4.2 (Backend) / React SPA v1.0
+* **Active Version**: v4.4 (Backend) / React SPA v1.0
 * **Deployment**: GitHub Pages (`/react/` route + legacy root) via automated GitHub Actions CI/CD
-* **Last Updated**: November 13, 2026
+* **Last Updated**: November 15, 2026
 
 ---
 
@@ -89,6 +89,16 @@ This document is the official tracking backlog for the GymLog React Migration pr
 - [x] **Story 8.8 (`TASK-R128`): Compress 470 MB Exercise Images (`public/images/`) & Add Lazy Loading**:
   - Compressed all 69 `.jpg` reference photos in `gymlog-react/public/images/` from 470 MB down to 5.22 MB (>98.8% reduction), preserving all original file names and aspect ratios.
   - Added `loading="lazy"` and `decoding="async"` to `gymlog-react/src/components/ImageModal.jsx` for optimal asset rendering and deployment performance.
+- [x] **Story 8.9 (`TASK-R135`): Frontend Completion In-Flight Lock, Immediate Set Drain & Offline Queue Deduplication**:
+  - Added in-flight re-entrancy locks and disabled loading states (`SAVING WORKOUT...`) to Complete Workout buttons in `FullBodyView.jsx`, `PlanView.jsx`, and `CircuitView.jsx`.
+  - Immediately drained `gymlog_pending_sets` and `gymlog_pending_deletes` into local constants before network dispatch, preventing re-entrant double collection.
+  - Attached unique `batchId` to batch payloads and added deduplication check in error catch block to prevent identical items in `gymlog_pending_sync_queue`. Verified via automated simulation test suite (`test_task_r135.cjs`).
+- [x] **Story 8.10 (`TASK-R136`): Google Apps Script Backend Deduplication & Batch Insertion Optimization**:
+  - In `Combined_AppScript_v2.gs` (v4.3), added multi-format timestamp and key signature deduplication check in `gymlog_handleBatchSyncSession` before writing sets to `GymLog`.
+  - Replaced 30-call `insertRowBefore(2)` loop with a single atomic bulk write operation (`insertRowsBefore` + `setValues`), reducing Google Apps Script execution time from 35s down to 2s. Verified with automated simulation test suite (`test_task_r136.cjs`).
+- [x] **Story 8.11 (`TASK-R137`): Comprehensive End-to-End System, Memory & Edge-Case Audit & Remediation**:
+  - Actively reproduced and remediated 10 end-to-end defects (`AUDIT-01` through `AUDIT-10`) across `safeStorage.js`, `dataMerge.js`, `useGymAPI.js`, `AppContext.jsx`, `CircuitView.jsx`, `SettingsModal.jsx`, `SessionStatsModal.jsx`, and `Combined_AppScript_v2.gs` (v4.4).
+  - Eliminated deleted set resurrection on SWR sync, midnight pending set loss, unguarded `JSON.parse` crashes, HTTP `GET` PIN query-string exposure, `AbortSignal` listener leaks, modal `z-index` collision, premature `gymlog_library_version` stamping, stale `cachedExercises` overwrites during background sync, offline Undo set destruction, offline/Guest session history overwrites, and Full Body `0`-rep target-day misattribution. Verified with automated 10-bug regression suite (`test_task_r137.cjs`).
 
 ### Epic 9: User-Requested Upgrades & Feature Polish
 - [x] **Story 9.1 (`TASK-R129`): Fix "Got More in the Tank?" Silent Drops, Auto-Expand & Custom Swap Local Sync**:
@@ -130,19 +140,6 @@ The following historical items were reviewed and retired because subsequent arch
 ---
 
 ## 🎯 Active & Upcoming Backlog
-
-### Priority 1: Multi-Set Sync Duplication Fix & Server Optimization
-- [x] **Story 8.9 (`TASK-R135`): Frontend Completion In-Flight Lock, Immediate Set Drain & Offline Queue Deduplication**:
-  - Added in-flight re-entrancy locks and disabled loading states (`SAVING WORKOUT...`) to Complete Workout buttons in `FullBodyView.jsx`, `PlanView.jsx`, and `CircuitView.jsx`.
-  - Immediately drained `gymlog_pending_sets` and `gymlog_pending_deletes` into local constants before network dispatch, preventing re-entrant double collection.
-  - Attached unique `batchId` to batch payloads and added deduplication check in error catch block to prevent identical items in `gymlog_pending_sync_queue`. Verified via automated simulation test suite.
-- [x] **Story 8.10 (`TASK-R136`): Google Apps Script Backend Deduplication & Batch Insertion Optimization**:
-  - In `Combined_AppScript_v2.gs` (v4.3), added multi-format timestamp and key signature deduplication check in `gymlog_handleBatchSyncSession` before writing sets to `GymLog`.
-  - Replaced 30-call `insertRowBefore(2)` loop with a single atomic bulk write operation (`insertRowsBefore` + `setValues`), reducing Google Apps Script execution time from 35s down to 2s. Verified with automated simulation test suite.
-
-### Priority 2: System Health & Proactive Audits
-- [ ] **Story 8.11 (`TASK-R137`): Comprehensive End-to-End System, Memory & Edge-Case Audit**:
-  - Perform a deep code and architecture review across all views, modals, and hooks to proactively identify unhandled edge cases, memory leaks, and latent race conditions.
 
 ### Optional Enhancements
 - [ ] **Story 2.1: Cold-Launch Service Worker & PWA Manifest**:
