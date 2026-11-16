@@ -167,7 +167,8 @@ export async function analyzeMachinePhotoWithAI({
     mimeType = 'image/jpeg',
     apiKey,
     model = 'gemini-2.5-flash',
-    availableCategories = []
+    availableCategories = [],
+    fileReference = ''
 }) {
     if (!apiKey || !apiKey.trim()) {
         throw new Error('Gemini API key is required. Please set it in Settings.');
@@ -181,14 +182,22 @@ export async function analyzeMachinePhotoWithAI({
     const categoryList = [...new Set([...CANONICAL_APP_CATEGORIES, ...(availableCategories || [])])];
 
     const promptText = `You are an expert biomechanics gym equipment scanner for GymLog.
-Analyze this photo of a gym machine, cable station, or exercise apparatus. Inspect the machine frame, branding/placard, handles, seat, and pulleys.
+Analyze this photo of a gym machine, cable station, or exercise apparatus. Inspect the machine frame, branding/placard, handles, seat, pulleys, and resistance mechanism.
 
 CRITICAL INSTRUCTIONS:
-1. Identify the specific machine base name (e.g., "Hammer Strength High Row", "Cable Lat Pulldown", "Precor Leg Press", "Life Fitness Pec Fly").
+1. Identify the specific machine base name (e.g., "Hammer Strength Iso-Lateral High Row (Plate-Loaded)", "Life Fitness Cable Lat Pulldown", "Precor Leg Press", "Life Fitness Pec Fly").
+   - RESISTANCE MECHANISM DETECTION: Check whether the machine uses weight plates loaded onto horns/pegs (Plate-Loaded) versus a selectorized pin-loaded weight stack.
+   - If plate horns or free weight Olympic plates are present on the machine, you MUST append "(Plate-Loaded)" to the baseName (e.g. "Hammer Strength Iso-Lateral High Row (Plate-Loaded)").
 2. Map the movement category STRICTLY to ONE of these exact categories:
 ${categoryList.map(c => `- "${c}"`).join('\n')}
 Do NOT use non-canonical categories like "Back", "Chest", "Arms", "Biceps", "Legs", "Squat", or "Hinge". You must pick from the list above.
-3. Detect handle types and exercise variation options supported by this machine:
+3. Extract machine equipment metadata for columns F through J:
+   - "manufacturer": Brand name (e.g., "Hammer Strength", "Life Fitness", "Precor", "Matrix", "Rogue", "Cybex", "Nautilus").
+   - "modelSeries": Product line or series (e.g., "Iso-Lateral", "Signature Series", "Select", "MTS", "Discovery").
+   - "baseExercise": Core exercise movement performed (e.g., "High Row", "Chest Press", "Leg Extension", "Shoulder Press").
+   - "muscleGroups": Primary target muscle(s) (e.g., "Latissimus Dorsi", "Pectorals", "Quadriceps", "Deltoids", "Hamstrings").
+   - "fileReference": Reference label or photo identifier if discernible, otherwise an empty string or descriptive filename.
+4. Detect handle types and exercise variation options supported by this machine:
 - overhand (true/false)
 - underhand (true/false)
 - neutral (true/false)
@@ -198,13 +207,18 @@ Do NOT use non-canonical categories like "Back", "Chest", "Arms", "Biceps", "Leg
 - dumbbell (true if dumbbell-based)
 - barbell (true if barbell-based, e.g. Smith machine or barbell rack)
 - band (true if resistance band pegs or attachment points exist)
-4. List 2-3 notable detected features (e.g., "Iso-lateral independent arms", "Multi-grip rotating handles").
-5. Return your confidence score (0.0 to 1.0).
+5. List 2-3 notable detected features (e.g., "Plate-Loaded horns", "Dual independent pivot arms", "Multi-grip handles (Overhand, Neutral)").
+6. Return your confidence score (0.0 to 1.0).
 
 Return ONLY valid JSON matching this schema:
 {
   "baseName": string,
   "category": string,
+  "manufacturer": string,
+  "modelSeries": string,
+  "baseExercise": string,
+  "muscleGroups": string,
+  "fileReference": string,
   "variationOptions": {
     "overhand": boolean,
     "underhand": boolean,
@@ -280,11 +294,25 @@ Return ONLY valid JSON matching this schema:
         throw new Error(`Failed to parse Gemini JSON output: ${parseErr.message}`);
     }
 
+    const detectedFeatures = Array.isArray(parsed.detectedFeatures) ? parsed.detectedFeatures : [];
+    let baseName = String(parsed.baseName || 'Gym Machine').trim();
+
+    // Auto-detect plate loaded tag if plate horns detected or mentioned
+    const isPlateLoaded = /plate[-\s]?load/i.test(baseName) || detectedFeatures.some(f => /plate[-\s]?load|plate\s?horn/i.test(f));
+    if (isPlateLoaded && !baseName.includes('(Plate-Loaded)')) {
+        baseName = baseName.replace(/\s*\(plate-loaded\)/i, '').trim() + ' (Plate-Loaded)';
+    }
+
     return {
-        baseName: String(parsed.baseName || 'Gym Machine').trim(),
+        baseName,
         category: normalizeCategory(parsed.category, availableCategories),
         variationOptions: normalizeVariationOptions(parsed.variationOptions),
-        detectedFeatures: Array.isArray(parsed.detectedFeatures) ? parsed.detectedFeatures : [],
+        manufacturer: String(parsed.manufacturer || '').trim(),
+        modelSeries: String(parsed.modelSeries || '').trim(),
+        baseExercise: String(parsed.baseExercise || '').trim(),
+        muscleGroups: String(parsed.muscleGroups || '').trim(),
+        fileReference: String(parsed.fileReference || fileReference || '').trim(),
+        detectedFeatures,
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.9
     };
 }
@@ -293,8 +321,14 @@ Return ONLY valid JSON matching this schema:
  * Rich sample preset for instant 1-click desktop localhost testing without an image.
  */
 export const SAMPLE_MACHINE_PRESET = {
-    baseName: 'Hammer Strength Iso-Lateral High Row',
+    baseName: 'Hammer Strength Iso-Lateral High Row (Plate-Loaded)',
     category: 'Vertical Pull',
+    location: '24 Hour Fitness',
+    manufacturer: 'Hammer Strength',
+    modelSeries: 'Iso-Lateral',
+    baseExercise: 'High Row',
+    muscleGroups: 'Latissimus Dorsi',
+    fileReference: '20260517_090721.jpg',
     variationOptions: {
         barbell: false,
         dumbbell: false,
@@ -307,9 +341,9 @@ export const SAMPLE_MACHINE_PRESET = {
         neutral: true
     },
     detectedFeatures: [
-        'Iso-lateral independent arms',
-        'Dual grip handles (overhand and neutral)',
-        'Pin-loaded weight stack with instructional placard'
+        'Plate-Loaded horns',
+        'Dual independent pivot arms',
+        'Multi-grip handles (Overhand, Neutral)'
     ],
     confidence: 0.98
 };

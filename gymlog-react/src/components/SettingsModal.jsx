@@ -41,13 +41,19 @@ export default function SettingsModal({ isOpen, onClose }) {
     const [exIsCircuit, setExIsCircuit] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-    // AI Machine Scanner state
+    // AI Machine Scanner state & Columns F-J Metadata
     const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('gymlog_gemini_api_key') || '');
     const [isAiScanning, setIsAiScanning] = useState(false);
     const [aiScanStatus, setAiScanStatus] = useState('');
     const [aiScanError, setAiScanError] = useState('');
     const [aiScanSuccess, setAiScanSuccess] = useState('');
-    const [showApiKeyInput, setShowApiKeyInput] = useState(() => !localStorage.getItem('gymlog_gemini_api_key'));
+    const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+    const [exManufacturer, setExManufacturer] = useState('');
+    const [exModelSeries, setExModelSeries] = useState('');
+    const [exBaseExercise, setExBaseExercise] = useState('');
+    const [exMuscleGroups, setExMuscleGroups] = useState('');
+    const [exFileReference, setExFileReference] = useState('');
+    const [exPhotoPreview, setExPhotoPreview] = useState(null);
     const fileInputRef = useRef(null);
 
     const [deleteExName, setDeleteExName] = useState('');
@@ -103,12 +109,26 @@ export default function SettingsModal({ isOpen, onClose }) {
         if (result.category) {
             setExCategory(result.category);
         }
-        setExLocation(activeLocation || 'Anywhere');
+        if (result.location) {
+            setExLocation(result.location);
+        } else {
+            setExLocation(activeLocation || 'Anywhere');
+        }
         if (result.variationOptions) {
             setVariationOptions(prev => ({
                 ...prev,
                 ...result.variationOptions
             }));
+        }
+        if (result.manufacturer !== undefined) setExManufacturer(result.manufacturer);
+        if (result.modelSeries !== undefined) setExModelSeries(result.modelSeries);
+        if (result.baseExercise !== undefined) setExBaseExercise(result.baseExercise);
+        if (result.muscleGroups !== undefined) setExMuscleGroups(result.muscleGroups);
+        if (result.fileReference !== undefined) setExFileReference(result.fileReference);
+        if (result.photoPreview) {
+            setExPhotoPreview(result.photoPreview);
+        } else if (result.fileReference) {
+            setExPhotoPreview(result.fileReference);
         }
         setExcludedPreviewNames(new Set());
         setAiScanSuccess(`✓ Machine scanned! Review details and variations below.`);
@@ -138,14 +158,20 @@ export default function SettingsModal({ isOpen, onClose }) {
         setAiScanSuccess('');
 
         try {
-            const { base64Data, mimeType } = await compressImageFileToDataUrl(file);
+            const { base64Data, dataUrl, mimeType } = await compressImageFileToDataUrl(file);
+            const refName = file.name || `photo_${Date.now()}.jpg`;
             const result = await analyzeMachinePhotoWithAI({
                 imageBase64: base64Data,
                 mimeType,
                 apiKey: currentKey,
-                availableCategories: allAvailableCategories
+                availableCategories: allAvailableCategories,
+                fileReference: refName
             });
-            applyScanResult(result);
+            applyScanResult({
+                ...result,
+                photoPreview: dataUrl,
+                fileReference: result.fileReference || refName
+            });
         } catch (err) {
             console.error('AI Machine Scan failed:', err);
             setAiScanError(err.message || 'Failed to analyze machine photo');
@@ -229,7 +255,12 @@ export default function SettingsModal({ isOpen, onClose }) {
                 timed: exTimed,
                 category: exCategory,
                 location: exLocation,
-                isCircuit: exIsCircuit
+                isCircuit: exIsCircuit,
+                manufacturer: exManufacturer,
+                modelSeries: exModelSeries,
+                baseExercise: exBaseExercise,
+                muscleGroups: exMuscleGroups,
+                fileReference: exFileReference
             }, pin);
             alert("Exercise(s) created and syncing to backend.");
             setExName('');
@@ -239,6 +270,12 @@ export default function SettingsModal({ isOpen, onClose }) {
             setVariationOptions(INITIAL_VARIATION_OPTIONS);
             setExcludedPreviewNames(new Set());
             setExIsCircuit(false);
+            setExManufacturer('');
+            setExModelSeries('');
+            setExBaseExercise('');
+            setExMuscleGroups('');
+            setExFileReference('');
+            setExPhotoPreview(null);
             setAiScanSuccess('');
             setAiScanError('');
         } catch (err) {
@@ -531,7 +568,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                             textDecoration: 'underline'
                                         }}
                                     >
-                                        {geminiApiKey ? (showApiKeyInput ? 'Hide API Key' : '⚙️ API Key') : '⚠️ Set API Key'}
+                                        ⚙️ Configure Gemini API Key {showApiKeyInput ? '▲' : '▼'}
                                     </button>
                                 </div>
 
@@ -563,7 +600,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                     </div>
                                 )}
 
-                                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%', alignItems: 'center', boxSizing: 'border-box' }}>
                                     <input
                                         ref={fileInputRef}
                                         type="file"
@@ -585,7 +622,8 @@ export default function SettingsModal({ isOpen, onClose }) {
                                             fileInputRef.current?.click();
                                         }}
                                         style={{
-                                            flex: 1,
+                                            flex: '1 1 180px',
+                                            minWidth: 160,
                                             padding: '10px 14px',
                                             display: 'flex',
                                             alignItems: 'center',
@@ -606,7 +644,7 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         onClick={handleApplySamplePreset}
                                         title="Load sample machine photo preset without camera/API key"
                                         style={{
-                                            flexShrink: 0,
+                                            flex: '0 1 auto',
                                             padding: '10px 12px',
                                             fontSize: 11,
                                             whiteSpace: 'nowrap',
@@ -616,6 +654,86 @@ export default function SettingsModal({ isOpen, onClose }) {
                                         🧪 Try Sample Photo
                                     </button>
                                 </div>
+
+                                {exPhotoPreview && (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 10,
+                                        background: '#0a0a0a',
+                                        padding: '6px 10px',
+                                        borderRadius: 8,
+                                        border: '1px solid var(--border)',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}>
+                                        {typeof exPhotoPreview === 'string' && (exPhotoPreview.startsWith('data:') || exPhotoPreview.startsWith('http') || exPhotoPreview.startsWith('/')) ? (
+                                            <img
+                                                src={exPhotoPreview}
+                                                alt="Machine preview"
+                                                style={{
+                                                    width: 48,
+                                                    height: 48,
+                                                    borderRadius: 6,
+                                                    objectFit: 'cover',
+                                                    flexShrink: 0,
+                                                    border: '1px solid var(--border)'
+                                                }}
+                                            />
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    width: 48,
+                                                    height: 48,
+                                                    borderRadius: 6,
+                                                    background: '#1a1a1a',
+                                                    border: '1px solid var(--border)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontSize: 20,
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                📷
+                                            </div>
+                                        )}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 11, fontWeight: 'bold', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {exFileReference || 'Machine Photo'}
+                                            </div>
+                                            {exManufacturer && (
+                                                <div style={{ fontSize: 10, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {exManufacturer}{exModelSeries ? ` • ${exModelSeries}` : ''}
+                                                </div>
+                                            )}
+                                            {exMuscleGroups && (
+                                                <div style={{ fontSize: 9, color: 'var(--accent)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    🎯 {exMuscleGroups}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setExPhotoPreview(null);
+                                                setExFileReference('');
+                                            }}
+                                            title="Clear photo"
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: 'var(--muted)',
+                                                fontSize: 16,
+                                                cursor: 'pointer',
+                                                padding: '4px 6px',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
 
                                 {isAiScanning && (
                                     <div style={{ fontSize: 11, color: '#38bdf8', fontFamily: 'var(--mono)', display: 'flex', alignItems: 'center', gap: 6 }}>

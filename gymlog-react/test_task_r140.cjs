@@ -128,6 +128,13 @@ async function runTests() {
 
     // Verify variation generation using SAMPLE_MACHINE_PRESET
     assert.ok(SAMPLE_MACHINE_PRESET.baseName, 'Preset must have baseName');
+    assert.ok(SAMPLE_MACHINE_PRESET.baseName.includes('(Plate-Loaded)'), 'SAMPLE_MACHINE_PRESET baseName must include (Plate-Loaded)');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.manufacturer, 'Hammer Strength', 'Preset must include manufacturer');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.modelSeries, 'Iso-Lateral', 'Preset must include modelSeries');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.baseExercise, 'High Row', 'Preset must include baseExercise');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.muscleGroups, 'Latissimus Dorsi', 'Preset must include muscleGroups');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.fileReference, '20260517_090721.jpg', 'Preset must include fileReference');
+    assert.strictEqual(SAMPLE_MACHINE_PRESET.location, '24 Hour Fitness', 'Preset must include location');
     assert.ok(CANONICAL_APP_CATEGORIES.includes(SAMPLE_MACHINE_PRESET.category), 'Preset category must be canonical');
     assert.ok(SAMPLE_MACHINE_PRESET.confidence >= 0.9, 'Preset confidence must be >= 0.9');
 
@@ -142,7 +149,7 @@ async function runTests() {
         'Variations must include Overhand flag'
     );
 
-    console.log(`✅ TEST 2 PASSED: Variation normalization produced ${generatedVariations.length} variations from preset.\n`);
+    console.log(`✅ TEST 2 PASSED: Variation normalization produced ${generatedVariations.length} variations from preset with Columns F-J metadata.\n`);
 
     // -----------------------------------------------------------------------------
     // TEST 3: Canvas image compression helper
@@ -191,11 +198,29 @@ async function runTests() {
     // -----------------------------------------------------------------------------
     // TEST 5: SettingsModal.jsx integration check
     // -----------------------------------------------------------------------------
-    console.log('TEST 5: Verifying SettingsModal.jsx source code integration...');
+    console.log('TEST 5: Verifying SettingsModal.jsx and aiEquipmentScanner.js integration...');
 
     const settingsModalPath = path.resolve(__dirname, 'src/components/SettingsModal.jsx');
     const settingsSource = fs.readFileSync(settingsModalPath, 'utf-8');
 
+    const scannerPath = path.resolve(__dirname, 'src/utils/aiEquipmentScanner.js');
+    const scannerSource = fs.readFileSync(scannerPath, 'utf-8');
+
+    // 1. aiEquipmentScanner prompt checks
+    assert.ok(
+        scannerSource.includes('(Plate-Loaded)'),
+        'aiEquipmentScanner.js must instruct Gemini to detect and append (Plate-Loaded)'
+    );
+    assert.ok(
+        scannerSource.includes('"manufacturer"') &&
+        scannerSource.includes('"modelSeries"') &&
+        scannerSource.includes('"baseExercise"') &&
+        scannerSource.includes('"muscleGroups"') &&
+        scannerSource.includes('"fileReference"'),
+        'aiEquipmentScanner.js must extract Columns F through J metadata in JSON schema'
+    );
+
+    // 2. SettingsModal.jsx bindings and features
     assert.ok(
         settingsSource.includes('aiEquipmentScanner'),
         'SettingsModal.jsx must import from aiEquipmentScanner'
@@ -237,7 +262,43 @@ async function runTests() {
         'SettingsModal.jsx must use CANONICAL_APP_CATEGORIES for category options'
     );
 
-    console.log('✅ TEST 5 PASSED: SettingsModal.jsx includes all required UI components and state bindings.\n');
+    // Columns F-J metadata passing to createExerciseMeta
+    assert.ok(
+        settingsSource.includes('manufacturer: exManufacturer'),
+        'SettingsModal.jsx must pass manufacturer to createExerciseMeta'
+    );
+    assert.ok(
+        settingsSource.includes('modelSeries: exModelSeries'),
+        'SettingsModal.jsx must pass modelSeries to createExerciseMeta'
+    );
+    assert.ok(
+        settingsSource.includes('baseExercise: exBaseExercise'),
+        'SettingsModal.jsx must pass baseExercise to createExerciseMeta'
+    );
+    assert.ok(
+        settingsSource.includes('muscleGroups: exMuscleGroups'),
+        'SettingsModal.jsx must pass muscleGroups to createExerciseMeta'
+    );
+    assert.ok(
+        settingsSource.includes('fileReference: exFileReference'),
+        'SettingsModal.jsx must pass fileReference to createExerciseMeta'
+    );
+
+    // Layout tightening & styling checks
+    assert.ok(
+        settingsSource.includes("flexWrap: 'wrap'") && settingsSource.includes('gap: 8') && settingsSource.includes("width: '100%'"),
+        'SettingsModal.jsx must style scan action buttons with flexWrap: wrap, gap: 8, width: 100% to prevent overflow'
+    );
+    assert.ok(
+        settingsSource.includes('⚙️ Configure Gemini API Key'),
+        'SettingsModal.jsx must include sleek toggle: ⚙️ Configure Gemini API Key'
+    );
+    assert.ok(
+        settingsSource.includes('width: 48') && settingsSource.includes('height: 48'),
+        'SettingsModal.jsx must render 48x48 photo thumbnail preview'
+    );
+
+    console.log('✅ TEST 5 PASSED: SettingsModal.jsx and aiEquipmentScanner.js include all required Columns F-J bindings, layout wrapping, and thumbnail previews.\n');
 
     console.log('====================================================');
     console.log('🎉 ALL AUTOMATED VERIFICATION SUITES PASSED FOR TASK-R140');
