@@ -1,11 +1,11 @@
 # TASK-QA-R138: Pre-Merge QA Verification — Standalone AI Equipment & Cardio Scanner Lab (`/#/scanner-lab`)
 
 - **Target Role:** `QA_Engineer` (Read-Only Access; `DENY(Direct_Write_Code)`)
-- **Authorized Model:** `LOW_TIER` (`Gemini 4 Argon (Low)`, `Gemini 3.8 Flash (Low)`) or `MEDIUM_TIER` (`Gemini 3.8 Flash (High)`)
+- **Authorized Model:** `Gemini 3.8 Flash (Low)` (Recommended) or `Gemini 3.8 Flash (High)`
 - **STRICT MODEL GATEKEEPER CHECK (MANDATORY ON TURN 1):**
-  - If your active model is in `HIGH_TIER` (e.g. `Gemini 4 Argon (High)`, `Gemini 3.8 Pro`, `Claude Opus`):
+  - If your active model is in `HIGH_TIER` or any `Gemini 4 Argon` / `Gemini 3.8 Pro` / `Claude Opus` model:
     - **HALT IMMEDIATELY.** Do NOT run commands.
-    - Output: `Model Alignment Error: Request Switch -> Model is too high for QA. Please switch to Gemini 4 Argon (Low) or Gemini 3.8 Flash (Low) before proceeding.`
+    - Output: `Model Alignment Error: Request Switch -> Model is too high for QA. Please switch to Gemini 3.8 Flash (Low) or (High) before proceeding.`
 - **Target Branch:** `feat/TASK-R138-ai-scanner-lab-sandbox`
 
 ---
