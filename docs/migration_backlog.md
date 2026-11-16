@@ -6,9 +6,9 @@ This document is the official tracking backlog for the GymLog React Migration pr
 
 ## 📊 Summary Status
 * **Core SPA Architecture**: Complete (Vite + React 18 + Context API)
-* **Active Version**: v4.4 (Backend) / React SPA v1.0
+* **Active Version**: v4.5 (Backend) / React SPA v1.0
 * **Deployment**: GitHub Pages (`/react/` route + legacy root) via automated GitHub Actions CI/CD
-* **Last Updated**: November 15, 2026
+* **Last Updated**: November 16, 2026
 
 ---
 
@@ -123,6 +123,11 @@ This document is the official tracking backlog for the GymLog React Migration pr
   - Integrated `VariationGeneratorPanel` directly into the `-- New Custom Exercise --` swap drawer on `ExerciseCard.jsx` and `CircuitCard.jsx`.
   - Added full Equipment, Execution, and Grip combination support with live preview when creating a custom exercise mid-workout.
   - Wired `executeSwap()` to batch-create and register all selected variations via `createExerciseMeta()` on the backend/local state and immediately swap the primary variation into the active card slot.
+- [x] **Story 9.7 (`TASK-R139`): Exercise Rename & Historical Record Merge with Instant PB Recalculation**:
+  - Wired `renameExercise` endpoint (`action: "renameExercise"`) in `useGymAPI.js` and `ExerciseCard.jsx`, eliminating broken `saveExercise` bypass that previously ignored new names.
+  - Added duplicate detection and user merge confirmation dialog before combining records.
+  - Implemented `renameExerciseInLocalState` in `AppContext.jsx` to combine historical sets, deduplicate entries, remove obsolete cards, and recalculate Personal Bests across rep ranges immediately.
+  - Upgraded Google Apps Script backend (`Combined_AppScript_v2.gs`) to **v4.5** with `exactOnly: true` support to prevent greedy wildcard renaming of sibling variations. Verified via automated test suite (`test_task_r139.cjs`).
 
 ---
 
