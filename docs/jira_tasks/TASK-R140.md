@@ -1,4 +1,4 @@
-# TASK-R140: Core AI Vision Engine & Single Machine Scanner (SettingsModal.jsx)
+# TASK-R140: Core AI Vision Engine & Single Machine Scanner (SettingsModal.jsx) — Phase 1 Tightening
 
 - **Target Role:** `Sandbox_Developer` (`DENY(git checkout, git merge, git push)`)
 - **Authorized Model Tier:** `MEDIUM_TIER` (`Gemini 3.8 Flash (High)` / `Claude Sonnet 4.6 (Thinking)`) or `HIGH_TIER` (`Gemini 4 Argon (High)` / `Gemini 3.8 Pro` / `Claude Opus 4.6 (Thinking)`)
@@ -10,84 +10,91 @@
 
 ---
 
-## 1. Objective & Scope (Phase 1 of Epic 10)
+## 1. Objective & Scope (Phase 1 Tightening)
 
-Implement **Phase 1 of Epic 10**: Embed a simple, clean **`📷 SCAN MACHINE WITH AI`** button directly inside **Settings ⚙️ → CREATE EXERCISE** in `SettingsModal.jsx` using the reusable AI vision service `gymlog-react/src/utils/aiEquipmentScanner.js`.
+Enhance and tighten the Phase 1 AI Equipment Scanner in `gymlog-react/src/utils/aiEquipmentScanner.js` and `gymlog-react/src/components/SettingsModal.jsx`:
 
-### Strict Boundaries:
-- **NO new pages, NO separate cockpits, NO test queue dashboards.**
-- **NO modification of existing workout card execution flows** (`PlanView.jsx`, `FullBodyView.jsx`, `CircuitView.jsx`, `LiftView.jsx`, `ExerciseCard.jsx`, `WarmUpCard.jsx`, `AppContext.jsx`).
-- The AI prompt **MUST strictly map only to the app's real canonical categories**:
-  `['Horizontal Push', 'Vertical Push', 'Horizontal Pull', 'Vertical Pull', 'Knee Dominant', 'Hip Dominant', 'Plank Core', 'Rotational Core', 'Explosive']` (plus any custom categories already present in `uniqueCategories`).
-- Upon scanning, the AI simply **pre-fills the existing form fields** in `SettingsModal.jsx`:
-  - `exName` (Base Name, e.g. `Hammer Strength Iso-Lateral High Row`)
-  - `exCategory` (selected from `uniqueCategories`)
-  - `exLocation` (defaults to current `activeLocation` or `exLocation`)
-  - `variationOptions` (checks the detected handle/equipment boxes in `VariationGeneratorPanel`: `overhand`, `underhand`, `neutral`, `single`, `alt`, `cable`, `dumbbell`, `barbell`, `band`)
-- The user can review the pre-filled fields and click the existing **`SAVE EXERCISE`** button.
+1. **Auto-Detect `(Plate-Loaded)` Resistance Type:**
+   - When plate horns/free weight plates are present on the machine, the AI must format the base name with **`(Plate-Loaded)`** (e.g. `Hammer Strength Iso-Lateral High Row (Plate-Loaded)`), matching the user's existing spreadsheet convention and preventing duplicate rows without the tag.
+2. **Auto-Populate Columns F, G, H, I, J Metadata:**
+   - Extract and populate:
+     - **Column F (`manufacturer`):** e.g. `Hammer Strength`
+     - **Column G (`modelSeries`):** e.g. `Iso-Lateral`
+     - **Column H (`baseExercise`):** e.g. `High Row`
+     - **Column I (`muscleGroups`):** e.g. `Latissimus Dorsi`
+     - **Column J (`fileReference`):** photo filename or local reference
+   - Pass all 5 metadata fields to `createExerciseMeta` in `SettingsModal.jsx` so Google Sheets columns F through J are filled automatically upon exercise creation.
+3. **Layout & UI Tightening in `SettingsModal.jsx`:**
+   - **Fix Button Clipping:** Wrap scanner action buttons (`📷 SCAN MACHINE WITH AI` and `🧪 Try Sample Photo`) using `flex-wrap: wrap` and fluid sizing so neither button overflows or clips on the right edge of the modal.
+   - **Compact API Key Section:** Make the API key input collapsible by default (collapsed into a clean, subtle `⚙️ Configure Gemini API Key` toggle button) so it does not squish the drawer or consume excessive vertical height.
+   - **Image Thumbnail Preview:** When an image (or sample preset) is loaded, display a neat thumbnail preview (48x48 rounded thumbnail) with a small `×` clear button so the user sees the photo being analyzed.
+4. **Update `SAMPLE_MACHINE_PRESET`:**
+   - Update `SAMPLE_MACHINE_PRESET` in `aiEquipmentScanner.js` to include `(Plate-Loaded)` in `baseName` along with `manufacturer: 'Hammer Strength'`, `modelSeries: 'Iso-Lateral'`, `baseExercise: 'High Row'`, `muscleGroups: 'Latissimus Dorsi'`, and `fileReference: '20260517_090721.jpg'`.
 
 ---
 
 ## 2. Implementation Steps
 
-### Step 1: Create `gymlog-react/src/utils/aiEquipmentScanner.js`
-1. Export `CANONICAL_APP_CATEGORIES`:
+### Step 1: Update `gymlog-react/src/utils/aiEquipmentScanner.js`
+1. Update vision prompt and JSON schema in `analyzeMachinePhotoWithAI`:
+   - Prompt instructions:
+     - Check resistance mechanism: if machine uses weight plates loaded onto horns, ensure `(Plate-Loaded)` is appended to `baseName` (e.g. `${brand} ${series} ${movement} (Plate-Loaded)`).
+     - Extract `manufacturer` (e.g. `Hammer Strength`, `Matrix`, `Precor`).
+     - Extract `modelSeries` (e.g. `Iso-Lateral`, `Select`, `MTS`).
+     - Extract `baseExercise` (e.g. `High Row`, `Chest Press`, `Leg Extension`).
+     - Extract `muscleGroups` (e.g. `Latissimus Dorsi`, `Pectorals`, `Quadriceps`).
+     - Output JSON with: `{ baseName, category, variationOptions, manufacturer, modelSeries, baseExercise, muscleGroups, fileReference, detectedFeatures, confidence }`.
+2. Update `SAMPLE_MACHINE_PRESET`:
    ```javascript
-   export const CANONICAL_APP_CATEGORIES = [
-       'Horizontal Push',
-       'Vertical Push',
-       'Horizontal Pull',
-       'Vertical Pull',
-       'Knee Dominant',
-       'Hip Dominant',
-       'Plank Core',
-       'Rotational Core',
-       'Explosive'
-   ];
+   export const SAMPLE_MACHINE_PRESET = {
+       baseName: 'Hammer Strength Iso-Lateral High Row (Plate-Loaded)',
+       category: 'Vertical Pull',
+       location: '24 Hour Fitness',
+       manufacturer: 'Hammer Strength',
+       modelSeries: 'Iso-Lateral',
+       baseExercise: 'High Row',
+       muscleGroups: 'Latissimus Dorsi',
+       fileReference: '20260517_090721.jpg',
+       variationOptions: {
+           barbell: false,
+           dumbbell: false,
+           band: false,
+           cable: false,
+           single: true,
+           alt: true,
+           overhand: true,
+           underhand: true,
+           neutral: true
+       },
+       detectedFeatures: ['Plate-Loaded horns', 'Dual independent pivot arms', 'Multi-grip handles (Overhand, Neutral)']
+   };
    ```
-2. Implement `compressImageFileToDataUrl(file, maxDimension = 1024, quality = 0.72)`:
-   - Reads image File or Blob.
-   - Proportional canvas resize to at most `maxDimension` px.
-   - Returns `{ dataUrl, base64Data, mimeType: 'image/jpeg', sizeKB }`.
-3. Implement `analyzeMachinePhotoWithAI({ imageBase64, mimeType, apiKey, model = 'gemini-2.5-flash', availableCategories = [] })`:
-   - Fallback/default model: `gemini-2.5-flash` with support for `gemini-3.8-flash` / `gemini-1.5-flash`.
-   - Combines `CANONICAL_APP_CATEGORIES` with `availableCategories`.
-   - Sends prompt instructing Gemini to inspect the gym machine frame, handles, and instructional placard:
-     - Identify `baseName` (clean, title case, e.g. `Hammer Strength High Row`).
-     - Map `category` strictly to the provided category list.
-     - Detect `variationOptions`: boolean flags for `overhand`, `underhand`, `neutral`, `single`, `alt`, `cable`, `dumbbell`, `barbell`, `band`.
-     - Output JSON with keys: `{ baseName, category, variationOptions, detectedFeatures, confidence }`.
-   - Parses and safely normalizes the JSON response.
-4. Export rich sample preset `SAMPLE_MACHINE_PRESET`:
-   - For 1-click desktop localhost testing when no physical gym machine photo is handy.
 
 ### Step 2: Update `gymlog-react/src/components/SettingsModal.jsx`
-1. **AI Key Configuration in Settings:**
-   - In Settings (under an "AI Machine Scanner" section or directly inside the CREATE EXERCISE panel):
-     - Password input for `Gemini API Key` saved to `localStorage.setItem('gymlog_gemini_api_key', key)`.
-     - Helper link: `Get Free API Key (Google AI Studio)` linking to `https://aistudio.google.com/apikey` (`target="_blank"`).
-2. **In `CREATE EXERCISE` Tab:**
-   - Above the Exercise Name input:
-     - Render a clean **`📷 SCAN MACHINE WITH AI`** button (`btn-accent`) with a subtle camera icon.
-     - Hidden `<input type="file" accept="image/*" capture="environment" />` ref-triggered by the button.
-     - A small **`🧪 Try Sample Photo`** test button for instant 1-click testing on desktop localhost.
-   - When photo is selected:
-     - Show loading state: `🔍 Analyzing machine placard & handles with AI...`
-     - On completion:
-       - Set `exName(result.baseName)`
-       - Set `exCategory(result.category)`
-       - Set `exLocation(activeLocation || 'Anywhere')`
-       - Update `variationOptions(result.variationOptions)`
-       - Show success toast/banner: `✓ Machine scanned! Review details and variations below.`
-   - User reviews the auto-populated inputs and existing `VariationGeneratorPanel` checklist, and taps existing `SAVE EXERCISE`.
+1. Add state for the metadata fields:
+   - `const [exManufacturer, setExManufacturer] = useState('');`
+   - `const [exModelSeries, setExModelSeries] = useState('');`
+   - `const [exBaseExercise, setExBaseExercise] = useState('');`
+   - `const [exMuscleGroups, setExMuscleGroups] = useState('');`
+   - `const [exFileReference, setExFileReference] = useState('');`
+   - `const [exPhotoPreview, setExPhotoPreview] = useState(null);`
+2. In `applyScanResult(result)`:
+   - Set all metadata states from `result.manufacturer`, `result.modelSeries`, `result.baseExercise`, `result.muscleGroups`, `result.fileReference`.
+   - Set `exPhotoPreview(result.photoPreview || result.fileReference)`.
+3. In `handleCreateExercise`:
+   - Pass `manufacturer: exManufacturer`, `modelSeries: exModelSeries`, `baseExercise: exBaseExercise`, `muscleGroups: exMuscleGroups`, `fileReference: exFileReference` into `createExerciseMeta(...)`!
+   - Reset metadata states upon successful creation.
+4. Layout Refinements:
+   - Ensure the API key box is hidden behind a clean toggle by default if a key exists (or subtle accordion).
+   - Display buttons with `flex-wrap: wrap; gap: 8px; width: 100%;` so neither button overflows.
+   - If `exPhotoPreview` exists, render a thumbnail badge showing the photo and a `✕` to clear.
 
 ### Step 3: Automated Verification Suite (`gymlog-react/test_task_r140.cjs`)
-1. Create `gymlog-react/test_task_r140.cjs` to test:
-   - Canonical category mapping validation (rejects invalid categories like "Squat", "Hinge", "Biceps", "Triceps").
-   - Variation option boolean mapping to `buildVariationNames`.
-   - Canvas image compression helper.
-   - `SettingsModal.jsx` integration and presence of `📷 SCAN MACHINE` button and API key setup.
-2. Run `cd gymlog-react && node test_task_r140.cjs` and `cd gymlog-react && cmd /c npm run build` and verify `EXIT_CODE: 0`.
+1. Update `test_task_r140.cjs` to verify:
+   - `SAMPLE_MACHINE_PRESET` includes `(Plate-Loaded)` and all columns F-J metadata.
+   - `SettingsModal.jsx` binds and passes `manufacturer`, `modelSeries`, `baseExercise`, `muscleGroups`, `fileReference` to `createExerciseMeta`.
+   - Action buttons contain proper wrapping/no-overflow styles.
+2. Run `cd gymlog-react && node test_task_r140.cjs` and `cd gymlog-react && cmd /c npm run build` and ensure both pass with `EXIT_CODE: 0`.
 
 ---
 
