@@ -22,6 +22,13 @@ const VARIATION_OPTION_GROUPS = [
             { key: 'underhand', label: 'Underhand' },
             { key: 'neutral', label: 'Neutral' }
         ]
+    },
+    {
+        label: 'Grip Width',
+        items: [
+            { key: 'wide', label: 'Wide' },
+            { key: 'narrow', label: 'Narrow' }
+        ]
     }
 ];
 
