@@ -715,6 +715,7 @@ export default function CircuitView() {
                                                 onSwap={handleSwap}
                                                 allExercises={exercises}
                                                 onRemove={handleRemoveExerciseFromCircuit}
+                                                activeDay={circuitWorkoutDay}
                                             />
                                             
                                             <button 
