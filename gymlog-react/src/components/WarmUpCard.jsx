@@ -386,7 +386,13 @@ export default function WarmUpCard({ onAdvance }) {
             )}
 
             {/* Action Buttons: Left: Orange START/DONE, Right: Red SKIP */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', 
+                gap: 12,
+                width: '100%',
+                boxSizing: 'border-box'
+            }}>
                 {!sessionStartTime ? (
                     <button
                         type="button"
@@ -398,7 +404,7 @@ export default function WarmUpCard({ onAdvance }) {
                             background: 'var(--accent)',
                             color: '#000',
                             fontWeight: 'bold',
-                            padding: '12px',
+                            padding: '12px 6px',
                             borderRadius: '8px',
                             border: 'none',
                             cursor: 'pointer',
@@ -407,6 +413,11 @@ export default function WarmUpCard({ onAdvance }) {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            textAlign: 'center',
+                            whiteSpace: 'normal',
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
                             gap: 6
                         }}
                     >
@@ -421,7 +432,7 @@ export default function WarmUpCard({ onAdvance }) {
                             background: 'var(--accent)',
                             color: '#000',
                             fontWeight: 'bold',
-                            padding: '12px',
+                            padding: '12px 6px',
                             borderRadius: '8px',
                             border: 'none',
                             cursor: 'pointer',
@@ -430,6 +441,11 @@ export default function WarmUpCard({ onAdvance }) {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            textAlign: 'center',
+                            whiteSpace: 'normal',
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
                             gap: 6
                         }}
                     >
@@ -444,7 +460,7 @@ export default function WarmUpCard({ onAdvance }) {
                         background: '#ef4444',
                         color: '#fff',
                         fontWeight: 'bold',
-                        padding: '12px',
+                        padding: '12px 6px',
                         borderRadius: '8px',
                         border: 'none',
                         cursor: 'pointer',
@@ -453,6 +469,11 @@ export default function WarmUpCard({ onAdvance }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        textAlign: 'center',
+                        whiteSpace: 'normal',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         gap: 6
                     }}
                 >
