@@ -23,7 +23,7 @@ Verify the implementation of `TASK-R143` on branch `TASK-R143`:
 
 2. **Source Code Inspection (`git diff main`):**
    - **`WarmUpCard.jsx`:** Verify the `START WORKOUT` / `DONE` + `SKIP` action button grid uses `minmax(0, 1fr)` (or equivalent `minWidth: 0` flex/grid constraint) and `boxSizing: 'border-box'` so neither button overflows past the card border on narrow mobile viewports.
-   - **`ExerciseCard.jsx`:** Verify the inline `editMode` row (`'rename'`, `'category'`, `'location'`) applies `minWidth: 0` and `boxSizing: 'border-box'` to inputs/selects and `flexShrink: 0` (or clean wrapping) to the Save/Cancel buttons so they never clip off the right edge of the card.
+   - **`ExerciseCard.jsx`:** Verify the inline `editMode` panel (`'rename'`, `'category'`, `'location'`) stacks vertically (`flexDirection: 'column'`) with a full-width (`width: '100%'`, `boxSizing: 'border-box'`) input/select on Row 1 and a `minmax(0, 1fr) minmax(0, 1fr)` grid for `SAVE` and `CANCEL` on Row 2.
 
 3. **Production Build & Compilation Check (MANDATORY):**
    - Run `cd gymlog-react && cmd /c npm run build` and ensure clean compilation with exit code `0`.
