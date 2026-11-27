@@ -26,10 +26,9 @@
      - Use `gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)'` (or `flex: 1, minWidth: 0` inside a `width: '100%', boxSizing: 'border-box'` container).
      - Ensure both buttons have `minWidth: 0`, `width: '100%'`, `boxSizing: 'border-box'`, and responsive padding/text-alignment (`textAlign: 'center'`, `justifyContent: 'center'`, `whiteSpace: 'normal'` or slightly tighter horizontal padding so `▶ START WORKOUT` and `SKIP` fit comfortably inside equal-width columns).
 2. **Fix `gymlog-react/src/components/ExerciseCard.jsx`:**
-   - In the inline `editMode` row (around line 1198, covering `'rename'`, `'category'`, and `'location'`):
-     - Ensure the container has `boxSizing: 'border-box'`, `width: '100%'`, and `flexWrap: 'wrap'` (or `minWidth: 0` on the input/select).
-     - Add `minWidth: 0, width: '100%', boxSizing: 'border-box'` to the `<input>` and `<select>` elements so they shrink cleanly to leave room for the action buttons.
-     - Add `flexShrink: 0` to the `SAVE` / `CANCEL` buttons so they never get squished or clipped past the right border.
+   - In the inline `editMode` panel (around line 1198, covering `'rename'`, `'category'`, and `'location'`):
+     - **Stack vertically** (`display: 'flex', flexDirection: 'column', gap: 8, width: '100%', boxSizing: 'border-box'`) so the `<input>` / `<select>` gets **100% of the card width** on Row 1 (plenty of room to read and type long exercise names on mobile!).
+     - Place `SAVE` and `CANCEL` on **Row 2** inside a `display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, width: '100%'` container so both buttons are evenly sized, centered, and never crowd the input.
 3. **Cohesive Check in `gymlog-react/src/components/CircuitCard.jsx`:**
    - Inspect any inline edit / rename / category / location flex rows in `CircuitCard.jsx` and apply the same `minWidth: 0` + `flexShrink: 0` protection if the same pattern exists.
 4. **Verification:**
