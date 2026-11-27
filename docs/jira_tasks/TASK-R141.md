@@ -31,9 +31,12 @@ As a result, when the user is on the **Full Body** tab on a `1-3` rep day (days 
    - Pass `activeDay={fullBodyWorkoutDay}` to every `<ExerciseCard ... />` rendered in `FullBodyView.jsx` (including full-list view and any accessory `ExerciseCard`s if applicable).
 4. **Update `gymlog-react/src/components/PlanView.jsx`:**
    - Pass `activeDay={workoutDay}` to `<ExerciseCard ... />` for explicit clarity (optional fallback remains `workoutDay`).
-5. **Verification:**
+5. **Update `gymlog-react/src/components/CircuitView.jsx` & `gymlog-react/src/components/CircuitCard.jsx`:**
+   - Pass `activeDay={circuitWorkoutDay}` from `CircuitView.jsx` to every `<CircuitCard ... />` (and any `<AccessoryBlock ... />` if rendered).
+   - Accept `activeDay` in `CircuitCard.jsx` (and its inner log section component) and forward it to `useTargetLock(ex, key, activeDay)` so Circuit, Full Body, and Plan all share the exact same unified `useTargetLock(ex, key, activeDay)` pattern.
+6. **Verification:**
    - Run `cd gymlog-react && cmd /c npm run build` and confirm clean compilation (`exit code 0`).
-   - Commit all changes to `TASK-R141` with a clear commit message (e.g. `fix(fullbody): pass fullBodyWorkoutDay to ExerciseCard and useTargetLock (TASK-R141)`).
+   - Commit all changes to `TASK-R141` with a clear commit message (e.g. `fix(circuit): pass circuitWorkoutDay to CircuitCard and useTargetLock (TASK-R141)`).
 
 ---
 
