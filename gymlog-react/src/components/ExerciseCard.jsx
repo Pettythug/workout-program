@@ -1195,18 +1195,18 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                     borderRadius: 8 
                                 }}>
                                     {editMode ? (
-                                        <div style={{ display: 'flex', gap: 8, width: '100%', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', boxSizing: 'border-box' }}>
                                             {editMode === 'rename' && (
                                                 <input 
                                                     value={editValue} onChange={e => setEditValue(e.target.value)} 
-                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                    style={{ width: '100%', boxSizing: 'border-box', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
                                                     autoFocus
                                                 />
                                             )}
                                             {editMode === 'category' && (
                                                 <select 
                                                     value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                    style={{ width: '100%', boxSizing: 'border-box', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
                                                 >
                                                     <option value="">Select Category...</option>
                                                     {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1216,15 +1216,17 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                             {editMode === 'location' && (
                                                 <select 
                                                     value={editValue} onChange={e => setEditValue(e.target.value)}
-                                                    style={{ flex: 1, background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
+                                                    style={{ width: '100%', boxSizing: 'border-box', background: '#0c0c0c', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'white' }}
                                                 >
                                                     <option value="Anywhere">Anywhere</option>
                                                     {(locations || []).filter(l => l !== 'Anywhere').map(l => <option key={l} value={l}>{l}</option>)}
                                                     <option value="ADD_NEW">+ Add new...</option>
                                                 </select>
                                             )}
-                                            <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12 }}>SAVE</button>
-                                            <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)' }}>CANCEL</button>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 8, width: '100%', boxSizing: 'border-box' }}>
+                                                <button className="btn-success" onClick={() => handleSaveInlineEdit()} style={{ padding: '8px 16px', fontSize: 12, textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>SAVE</button>
+                                                <button className="btn-ghost" onClick={() => setEditMode(null)} style={{ padding: '8px 12px', fontSize: 12, color: 'var(--muted)', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>CANCEL</button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <>
