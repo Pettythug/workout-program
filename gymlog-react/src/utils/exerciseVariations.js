@@ -8,7 +8,9 @@ const KNOWN_MODIFIER_TOKENS = new Set([
     'alt',
     'overhand',
     'underhand',
-    'neutral'
+    'neutral',
+    'wide',
+    'narrow'
 ]);
 
 const REP_RANGES = ['r1_3', 'r4_7', 'r8_12', 'r13_plus'];
@@ -22,7 +24,9 @@ export const INITIAL_VARIATION_OPTIONS = {
     alt: false,
     overhand: false,
     underhand: false,
-    neutral: false
+    neutral: false,
+    wide: false,
+    narrow: false
 };
 
 function parseVariationName(name) {
@@ -82,7 +86,9 @@ export function buildVariationNames(baseName, options = {}) {
         alt = false,
         overhand = false,
         underhand = false,
-        neutral = false
+        neutral = false,
+        wide = false,
+        narrow = false
     } = options;
 
     const results = [];
@@ -101,20 +107,37 @@ export function buildVariationNames(baseName, options = {}) {
     if (single) executions.push('Single');
     if (alt) executions.push('Alt');
 
+    const widths = [];
+    if (wide) widths.push('Wide');
+    if (narrow) widths.push('Narrow');
+
     const grips = [];
     if (overhand) grips.push('Overhand');
     if (underhand) grips.push('Underhand');
     if (neutral) grips.push('Neutral');
 
+    let gripCombos = [];
+    if (widths.length > 0 && grips.length > 0) {
+        widths.forEach(w => {
+            grips.forEach(g => {
+                gripCombos.push([w, g]);
+            });
+        });
+    } else if (widths.length > 0) {
+        gripCombos = widths.map(w => [w]);
+    } else if (grips.length > 0) {
+        gripCombos = grips.map(g => [g]);
+    }
+
     const hasAnyEquipment = Boolean(barbell || dumbbell || band || cable);
-    const hasGrips = grips.length > 0;
+    const hasGripCombos = gripCombos.length > 0;
 
     // 1. No equipment checked (or explicit standard fallback)
     if (!hasAnyEquipment || standard) {
-        if (hasGrips) {
-            grips.forEach(grip => addName([grip]));
+        if (hasGripCombos) {
+            gripCombos.forEach(combo => addName([...combo]));
             executions.forEach(exec => {
-                grips.forEach(grip => addName([exec, grip]));
+                gripCombos.forEach(combo => addName([exec, ...combo]));
             });
         } else {
             addName([]);
@@ -124,8 +147,8 @@ export function buildVariationNames(baseName, options = {}) {
 
     // 2. Barbell never auto-combines with Single or Alt
     if (barbell) {
-        if (hasGrips) {
-            grips.forEach(grip => addName(['Barbell', grip]));
+        if (hasGripCombos) {
+            gripCombos.forEach(combo => addName(['Barbell', ...combo]));
         } else {
             addName(['Barbell']);
         }
@@ -138,10 +161,10 @@ export function buildVariationNames(baseName, options = {}) {
     if (cable) equipmentList.push('Cable');
 
     equipmentList.forEach(eq => {
-        if (hasGrips) {
-            grips.forEach(grip => addName([eq, grip]));
+        if (hasGripCombos) {
+            gripCombos.forEach(combo => addName([eq, ...combo]));
             executions.forEach(exec => {
-                grips.forEach(grip => addName([eq, exec, grip]));
+                gripCombos.forEach(combo => addName([eq, exec, ...combo]));
             });
         } else {
             addName([eq]);
