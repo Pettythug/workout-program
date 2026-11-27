@@ -429,7 +429,7 @@ export default function PlanView() {
                                     </button>
                                 </div>
                             </div>
-                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
+                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} activeDay={workoutDay} />
                         </>
                     );
                 }
@@ -492,12 +492,13 @@ export default function PlanView() {
                                     key={activeIdx} 
                                     group={activeGroup} 
                                     isOpen={true} 
-                                    onLogSet={handleLogSetSaved} 
+                                    onLogSet={handleLogSetSaved}
+                                    activeDay={workoutDay}
                                 />
                             )}
                         </div>
 
-                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
+                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} activeDay={workoutDay} />
 
                         <button 
                             className="complete-btn" 

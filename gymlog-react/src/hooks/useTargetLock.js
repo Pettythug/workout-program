@@ -1,9 +1,10 @@
 import { useAppContext } from '../context/AppContext';
 
-export function useTargetLock(ex, personKey) {
+export function useTargetLock(ex, personKey, overrideDay) {
     const { workoutDay } = useAppContext();
 
-    const day = ((workoutDay || 1) % 16) === 0 ? 16 : ((workoutDay || 1) % 16);
+    const effectiveDay = overrideDay ?? workoutDay ?? 1;
+    const day = (effectiveDay % 16) === 0 ? 16 : (effectiveDay % 16);
     
     let activeRangeKey = "";
     if (day >= 1 && day <= 4) activeRangeKey = "r8_12";

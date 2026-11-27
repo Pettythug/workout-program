@@ -47,9 +47,9 @@ const matchesRepRange = (h, filter) => {
     return false;
 };
 
-const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
+const PersonRow = ({ person, ex, input, updateInput, toast, setToast, activeDay }) => {
     const key = person.toLowerCase();
-    const { targetRanges } = useTargetLock(ex, key);
+    const { targetRanges } = useTargetLock(ex, key, activeDay);
 
     const toggleNotePhrase = (phrase) => {
         if (toast) setToast("");
@@ -142,7 +142,7 @@ const PersonRow = ({ person, ex, input, updateInput, toast, setToast }) => {
     );
 };
 
-export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises }) {
+export default function CircuitCard({ ex, index, completedStatus, activePeople, onLogSet, onExplicitDone, onSkip, onUndo, onDeleteSet, onDeleteHistoryEntry, isOpen, onToggle, onSwap, allExercises, onRemove, activeDay }) {
     const status = typeof completedStatus === 'string' ? completedStatus : (completedStatus?.status || 'active');
 
     const handleDeleteHistory = (h, i) => {
@@ -532,7 +532,7 @@ export default function CircuitCard({ ex, index, completedStatus, activePeople, 
                     {activeTab === "LOG" && (
                         <div>
                             {activePeople.map(p => (
-                                <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} toast={toast} setToast={setToast} />
+                                <PersonRow key={p} person={p} ex={ex} input={inputs[p.toLowerCase()] || {}} updateInput={updateInput} toast={toast} setToast={setToast} activeDay={activeDay} />
                             ))}
 
                             <button className="btn-success" style={{ width: '100%', padding: 12, fontWeight: 'bold', marginTop: 12, marginBottom: 12 }} onClick={handleSave} disabled={isSaving}>

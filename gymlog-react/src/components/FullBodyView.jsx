@@ -430,7 +430,7 @@ export default function FullBodyView() {
                                     </button>
                                 </div>
                             </div>
-                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
+                            <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} activeDay={fullBodyWorkoutDay} />
                         </>
                     );
                 }
@@ -494,6 +494,7 @@ export default function FullBodyView() {
                                     group={activeGroup} 
                                     isOpen={true} 
                                     onLogSet={handleLogSetSaved}
+                                    activeDay={fullBodyWorkoutDay}
                                     onSwap={(oldName, newName) => {
                                         if (activeGroup.originalBaseKey) {
                                             swapFullBodyExercise(fullBodyWorkoutDay, activeGroup.originalBaseKey, newName);
@@ -503,7 +504,7 @@ export default function FullBodyView() {
                             )}
                         </div>
 
-                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} />
+                        <AccessoryBlock excludeNames={plannedExercises.map(e => e.baseName)} accessoriesList={resolvedAccessories} setAccessoriesList={setAccessoriesList} onLogSet={handleLogSetSaved} activeDay={fullBodyWorkoutDay} />
 
                         <button 
                             className="complete-btn" 
