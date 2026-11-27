@@ -71,9 +71,9 @@ const BandAndNotesInput = ({ personKey, input, updateLogInput }) => (
     </div>
 );
 
-const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet, isSaving, getNextSetNumber, toast, setToast }) => {
+const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet, isSaving, getNextSetNumber, toast, setToast, activeDay }) => {
     const key = person.toLowerCase();
-    const { targetRanges } = useTargetLock(ex, key);
+    const { targetRanges } = useTargetLock(ex, key, activeDay);
 
     const toggleNotePhrase = (phrase) => {
         if (toast) setToast("");
@@ -153,9 +153,9 @@ const SingleUserLogSection = ({ person, ex, input, updateLogInput, handleSaveSet
     );
 };
 
-const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast }) => {
+const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, setToast, activeDay }) => {
     const key = person.toLowerCase();
-    const { targetRanges } = useTargetLock(ex, key);
+    const { targetRanges } = useTargetLock(ex, key, activeDay);
 
     const toggleNotePhrase = (phrase) => {
         if (toast) setToast("");
@@ -234,8 +234,9 @@ const MultiUserPersonLogSection = ({ person, ex, input, updateLogInput, toast, s
     );
 };
 
-export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defaultOpen = false, onSwap }) {
+export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defaultOpen = false, onSwap, activeDay }) {
     const { people, activePeople, exerciseStatus, setExerciseDone, setExerciseSkipped, resetExerciseStatus, addSetToLocalHistory, deleteSetFromLocalHistory, workoutDay, swapExercise, exercises, locations, logExerciseSet, updateExerciseInLocalState, renameExerciseInLocalState, activeLocation, createExerciseMeta, addExerciseToLocalState, removeExerciseFromLocalState } = useAppContext();
+    const effectiveDay = activeDay ?? workoutDay;
     const { logSet, deleteHistory, saveExercise, deleteExercise, renameExercise } = useGymAPI();
     
     const [isOpenState, setIsOpenState] = useState(Boolean(defaultOpen));
@@ -790,7 +791,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
         if (onSwap) {
             onSwap(ex.name, targetEx.name, targetEx);
         } else if (group.originalBaseKey) {
-            swapExercise(workoutDay, group.originalBaseKey, targetEx.name);
+            swapExercise(effectiveDay, group.originalBaseKey, targetEx.name);
         }
         setSwapMode(null);
         setCustomSwapState(null);
@@ -906,6 +907,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                             getNextSetNumber={getNextSetNumber}
                                             toast={toast}
                                             setToast={setToast}
+                                            activeDay={activeDay}
                                         />
                                     ) : (
                                         <>
@@ -921,6 +923,7 @@ export default function ExerciseCard({ group, onLogSet, isOpen: propIsOpen, defa
                                                         updateLogInput={updateLogInput}
                                                         toast={toast}
                                                         setToast={setToast}
+                                                        activeDay={activeDay}
                                                     />
                                                 );
                                             })}

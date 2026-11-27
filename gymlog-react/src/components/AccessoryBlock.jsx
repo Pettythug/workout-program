@@ -5,7 +5,7 @@ import { matchesLocation } from '../utils/locationHelper';
 import { extractBaseName } from '../utils/exerciseVariations';
 import ExerciseCard from './ExerciseCard';
 
-export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet }) {
+export default function AccessoryBlock({ excludeNames = [], accessoriesList = [], setAccessoriesList, onLogSet, activeDay }) {
     const { exercises, activeLocation } = useAppContext();
     const [lastAddedIdx, setLastAddedIdx] = useState(null);
 
@@ -166,6 +166,7 @@ export default function AccessoryBlock({ excludeNames = [], accessoriesList = []
                                 defaultOpen={idx === lastAddedIdx}
                                 onLogSet={onLogSet}
                                 onSwap={(oldName, target, targetObj) => handleDirectSwap(idx, target, targetObj)}
+                                activeDay={activeDay}
                             />
                             <button 
                                 onClick={() => handleSwapAccessory(idx)}
